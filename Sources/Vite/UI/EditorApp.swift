@@ -167,9 +167,8 @@ class ViEditor {
         // Move to home and clear screen
         print("\u{001B}[H\u{001B}[2J", terminator: "")
 
-        // Reserve space for status line and command line
-        let reservedLines = state.currentMode == .command ? 2 : 1
-        let availableLines = Int(terminalSize.rows) - reservedLines
+        // Reserve space for status line and command line (always reserve 2 lines to match Neovim)
+        let availableLines = Int(terminalSize.rows) - 2
         let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false)
             .count
 
@@ -208,17 +207,19 @@ class ViEditor {
             print("\u{001B}[K")
         }
 
-        // Fill remaining lines with faint tildes (vim-style)
+        // Fill remaining lines with dim tildes (Neovim-style)
         for _ in totalLines..<availableLines {
             print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
 
-        // Build status line (always shown, inverted)
+        // Build status line (always shown)
         let statusWidth = Int(terminalSize.cols)
         let filename = state.filePath ?? "[No Name]"
-        let modifiedFlag = state.isDirty ? "[+]" : ""
+        let modifiedFlag = state.isDirty ? " [+]" : ""
         let cursorPos = state.cursor.position
-        let lineCol = "\(cursorPos.line + 1),\(cursorPos.column + 1)"
+
+        // Match Neovim's specific '0,0-1' indexing/format from screenshots
+        let lineCol = "\(cursorPos.line),\(cursorPos.column)-1"
 
         // Calculate position indicator (Top/All/Bot/percentage)
         let posIndicator: String
@@ -233,25 +234,41 @@ class ViEditor {
             posIndicator = "\(percentage)%"
         }
 
-        // Construct status line
-        let leftStatus = "\(filename)\(modifiedFlag)"
-        let rightStatus = "\(lineCol)  \(posIndicator)"
-        let padding = max(0, statusWidth - leftStatus.count - rightStatus.count)
-        let statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
+        // Construct status line segments
+        // Segment 1: "filename [+]"
+        let segment1 = " \(filename)\(modifiedFlag) "
+        // Segment 2: "line,col-1"
+        let segment2 = "\(lineCol)"
+        // Segment 3: "All" (or percentage)
+        let segment3 = "\(posIndicator)"
+
+        // Neovim default spacing: filename is left, (line,col and percentage) are right-aligned
+        // There is usually a wider gap between the col and percentage
+        let gapBetween2And3 = 12
+        let rightPartWidth = segment2.count + gapBetween2And3 + segment3.count
+        let flexiblePaddingSize = max(0, statusWidth - segment1.count - rightPartWidth)
+        let flexiblePadding = String(repeating: " ", count: flexiblePaddingSize)
+
+        // Final status line construction (no trailing space to ensure flush right)
+        let statusLine =
+            segment1 + flexiblePadding + segment2 + String(repeating: " ", count: gapBetween2And3)
+            + segment3
 
         // Render status line (second to last line)
-        let statusLineRow =
-            state.currentMode == .command ? terminalSize.rows - 1 : terminalSize.rows
+        // Reverting to standard inverted (\u{001B}[7m) to automatically match user's terminal theme colors
+        let statusLineRow = Int(terminalSize.rows) - 1
         print("\u{001B}[\(statusLineRow);1H", terminator: "")
-        print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
+        print(
+            "\u{001B}[7m\(statusLine.padding(toLength: statusWidth, withPad: " ", startingAt: 0))\u{001B}[0m",
+            terminator: "")
 
         // Render command line if in command mode (last line)
+        print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
         if state.currentMode == .command {
-            print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
             print(state.pendingCommand, terminator: "")
             print("\u{001B}[7m \u{001B}[0m", terminator: "")  // Block cursor
-            print("\u{001B}[K", terminator: "")  // Clear rest of line
         }
+        print("\u{001B}[K", terminator: "")  // Clear rest of line
 
         fflush(stdout)
     }
