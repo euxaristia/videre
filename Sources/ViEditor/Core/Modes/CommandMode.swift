@@ -46,13 +46,11 @@ class CommandMode: BaseModeHandler {
             if state.isDirty {
                 state.statusMessage = "No write since last change (add ! to override)"
             } else {
-                state.statusMessage = ":q - exiting"
-                // Signal exit via a property (handled by main loop)
+                state.shouldExit = true
             }
 
         case "q!", "quit!":
-            state.statusMessage = ":q! - exiting"
-            // Signal exit
+            state.shouldExit = true
 
         case "w", "write":
             if let filePath = state.filePath {
@@ -81,8 +79,16 @@ class CommandMode: BaseModeHandler {
                 do {
                     try state.buffer.text.write(toFile: filePath, atomically: true, encoding: .utf8)
                     state.isDirty = false
-                    state.statusMessage = "Exiting"
-                    // Signal exit
+                    state.shouldExit = true
+                } catch {
+                    state.statusMessage = "Error writing file: \(error)"
+                }
+            } else if !arg.isEmpty {
+                do {
+                    try state.buffer.text.write(toFile: arg, atomically: true, encoding: .utf8)
+                    state.filePath = arg
+                    state.isDirty = false
+                    state.shouldExit = true
                 } catch {
                     state.statusMessage = "Error writing file: \(error)"
                 }

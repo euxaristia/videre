@@ -21,7 +21,8 @@ class TextBuffer {
     // MARK: - Properties
 
     var text: String {
-        gapBuffer.text()
+        // Return text from lines array (this is where edits are actually stored)
+        lines.joined(separator: "\n")
     }
 
     var lineCount: Int {

@@ -36,17 +36,10 @@ class ViEditor {
 
             if let char = readCharacter() {
                 let keyEvent = KeyEvent(character: char)
-
-                // Check if we should exit
-                if state.currentMode == .command && state.pendingCommand.hasPrefix(":q") {
-                    if state.pendingCommand == ":q" || state.pendingCommand == ":q!" {
-                        shouldExit = true
-                    }
-                }
-
                 inputDispatcher.dispatch(keyEvent, editor: self)
 
-                if shouldExit {
+                // Check if editor signaled exit
+                if state.shouldExit {
                     break
                 }
             }

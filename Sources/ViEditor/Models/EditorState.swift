@@ -18,6 +18,7 @@ class EditorState {
     var filePath: String?
     var isDirty: Bool = false
     var registerManager: RegisterManager
+    var shouldExit: Bool = false
 
     init() {
         self.buffer = TextBuffer()
