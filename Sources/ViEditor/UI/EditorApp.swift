@@ -175,8 +175,10 @@ class ViEditor {
             let line = state.buffer.line(lineIndex)
             let isCurrentLine = lineIndex == state.cursor.position.line
 
-            // Line number
+            // Line number (faint/dimmed)
+            print("\u{001B}[2m", terminator: "") // Dim mode
             print(String(format: "%4d ", lineIndex + 1), terminator: "")
+            print("\u{001B}[0m", terminator: "") // Reset
 
             // Line content with cursor (truncate if exceeds terminal width)
             let maxLineLength = Int(terminalSize.cols) - 6 // Account for line numbers and margin
@@ -200,14 +202,40 @@ class ViEditor {
             print("\u{001B}[K")
         }
 
-        // Fill remaining lines with tildes (vim-style)
-        for _ in availableLines..<Int(terminalSize.rows) - 1 {
-            print("~\u{001B}[K")
+        // Fill remaining lines with faint tildes (vim-style)
+        for _ in totalLines..<availableLines {
+            print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
+
+        // Build status line (Neovim format)
+        let filename = state.filePath ?? "[No Name]"
+        let modifiedFlag = state.isDirty ? "[+]" : ""
+        let cursorPos = state.cursor.position
+        let lineCol = "\(cursorPos.line + 1),\(cursorPos.column + 1)"
+
+        // Calculate position indicator (Top/All/Bot/percentage)
+        let posIndicator: String
+        if totalLines <= availableLines {
+            posIndicator = "All"
+        } else if cursorPos.line == 0 {
+            posIndicator = "Top"
+        } else if cursorPos.line >= totalLines - 1 {
+            posIndicator = "Bot"
+        } else {
+            let percentage = (cursorPos.line + 1) * 100 / totalLines
+            posIndicator = "\(percentage)%"
+        }
+
+        // Construct status line
+        let leftStatus = "\(filename)\(modifiedFlag)"
+        let rightStatus = "\(lineCol)  \(posIndicator)"
+        let statusWidth = Int(terminalSize.cols)
+        let padding = max(0, statusWidth - leftStatus.count - rightStatus.count)
+        let statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
 
         // Move to status line position and render
         print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
-        print("\u{001B}[7m\(state.statusMessage)\u{001B}[K\u{001B}[0m", terminator: "")
+        print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
 
         fflush(stdout)
     }
