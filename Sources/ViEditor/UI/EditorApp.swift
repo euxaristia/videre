@@ -9,13 +9,20 @@ class ViEditor {
     let state: EditorState
     let inputDispatcher: InputDispatcher
     let modeManager: ModeManager
-    let normalModeHandler: NormalModeHandler
+    var normalMode: NormalMode
+    var insertMode: InsertMode
+    var visualMode: VisualMode
+    var commandMode: CommandMode
+    var shouldExit: Bool = false
 
     init(state: EditorState) {
         self.state = state
         self.inputDispatcher = InputDispatcher(state: state)
         self.modeManager = ModeManager(state: state)
-        self.normalModeHandler = NormalModeHandler(state: state)
+        self.normalMode = NormalMode(state: state)
+        self.insertMode = InsertMode(state: state)
+        self.visualMode = VisualMode(state: state)
+        self.commandMode = CommandMode(state: state)
 
         state.setMode(.normal)
     }
@@ -29,9 +36,17 @@ class ViEditor {
 
             if let char = readCharacter() {
                 let keyEvent = KeyEvent(character: char)
-                inputDispatcher.dispatch(keyEvent)
 
-                if inputDispatcher.shouldExit {
+                // Check if we should exit
+                if state.currentMode == .command && state.pendingCommand.hasPrefix(":q") {
+                    if state.pendingCommand == ":q" || state.pendingCommand == ":q!" {
+                        shouldExit = true
+                    }
+                }
+
+                inputDispatcher.dispatch(keyEvent, editor: self)
+
+                if shouldExit {
                     break
                 }
             }
@@ -118,151 +133,26 @@ struct KeyEvent {
 
 class InputDispatcher {
     let state: EditorState
-    var shouldExit = false
-    var pendingCommand = ""
 
     init(state: EditorState) {
         self.state = state
     }
 
-    func dispatch(_ event: KeyEvent) {
+    func dispatch(_ event: KeyEvent, editor: ViEditor) {
         switch state.currentMode {
         case .normal:
-            dispatchNormal(event)
+            _ = editor.normalMode.handleInput(event.character)
         case .insert:
-            dispatchInsert(event)
+            _ = editor.insertMode.handleInput(event.character)
         case .visual:
-            dispatchVisual(event)
+            _ = editor.visualMode.handleInput(event.character)
         case .command:
-            dispatchCommand(event)
+            _ = editor.commandMode.handleInput(event.character)
         }
-    }
 
-    private func dispatchNormal(_ event: KeyEvent) {
-        let char = event.character
-
-        switch char {
-        case "h":
-            state.moveCursorLeft()
-        case "j":
-            state.moveCursorDown()
-        case "k":
-            state.moveCursorUp()
-        case "l":
-            state.moveCursorRight()
-        case "0":
-            state.moveCursorToLineStart()
-        case "$":
-            state.moveCursorToLineEnd()
-        case "g":
-            pendingCommand = "g"
-        case "G":
-            if pendingCommand == "g" {
-                state.moveCursorToBeginningOfFile()
-            } else {
-                state.moveCursorToEndOfFile()
-            }
-            pendingCommand = ""
-        case "i":
-            state.setMode(.insert)
-        case "a":
-            state.moveCursorRight()
-            state.setMode(.insert)
-        case "I":
-            state.moveCursorToLineStart()
-            state.setMode(.insert)
-        case "A":
-            state.moveCursorToLineEnd()
-            state.moveCursorRight()
-            state.setMode(.insert)
-        case "o":
-            state.moveCursorToLineEnd()
-            state.insertNewLine()
-            state.setMode(.insert)
-        case "O":
-            state.moveCursorToLineStart()
-            let pos = state.cursor.position
-            state.buffer.insertLine("", at: pos.line)
-            state.setMode(.insert)
-        case "x":
-            state.deleteCharacter()
-        case "d":
-            state.deleteCurrentLine()
-        case "p":
-            // Paste (simplified for now)
-            break
-        case "u":
-            // Undo (simplified for now)
-            break
-        case ":":
-            state.setMode(.command)
-            state.pendingCommand = ":"
-        case "q":
-            if pendingCommand == ":" {
-                shouldExit = true
-            }
-        case "\u{1B}":
-            // Escape
-            pendingCommand = ""
-        default:
-            break
-        }
-    }
-
-    private func dispatchInsert(_ event: KeyEvent) {
-        let char = event.character
-
-        switch char {
-        case "\u{1B}":
-            // Escape - return to normal mode
-            state.setMode(.normal)
-        case "\u{7F}", "\u{08}":
-            // Backspace
-            state.deleteBackward()
-        case "\n":
-            // Enter
-            state.insertNewLine()
-        default:
-            state.insertCharacter(char)
-        }
-    }
-
-    private func dispatchVisual(_ event: KeyEvent) {
-        // Visual mode (to be implemented)
-    }
-
-    private func dispatchCommand(_ event: KeyEvent) {
-        let char = event.character
-
-        switch char {
-        case "\u{1B}":
-            // Escape
-            state.setMode(.normal)
-            state.pendingCommand = ""
-        case "\n":
-            // Execute command
-            processCommand(state.pendingCommand)
-            state.setMode(.normal)
-            state.pendingCommand = ""
-        default:
-            state.pendingCommand.append(char)
-        }
-    }
-
-    private func processCommand(_ command: String) {
-        let cmd = command.trimmingCharacters(in: .whitespaces)
-
-        switch cmd {
-        case ":q", ":quit":
-            shouldExit = true
-        case ":w", ":write":
-            // Save file (to be implemented)
-            break
-        case ":wq", ":wq!":
-            // Save and quit
-            shouldExit = true
-        default:
-            break
+        // Check for exit condition from command mode
+        if state.currentMode == .command && state.pendingCommand == ":q" {
+            editor.shouldExit = true
         }
     }
 }
@@ -278,15 +168,5 @@ class ModeManager {
 
     func switchMode(_ mode: EditorMode) {
         state.setMode(mode)
-    }
-}
-
-// MARK: - Normal Mode Handler (placeholder)
-
-class NormalModeHandler {
-    let state: EditorState
-
-    init(state: EditorState) {
-        self.state = state
     }
 }

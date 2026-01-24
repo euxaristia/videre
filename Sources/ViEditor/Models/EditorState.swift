@@ -17,6 +17,7 @@ class EditorState {
 
     var filePath: String?
     var isDirty: Bool = false
+    var registerManager: RegisterManager
 
     init() {
         self.buffer = TextBuffer()
@@ -24,6 +25,7 @@ class EditorState {
         self.currentMode = .normal
         self.statusMessage = ""
         self.pendingCommand = ""
+        self.registerManager = RegisterManager()
     }
 
     init(filePath: String) throws {
@@ -35,6 +37,7 @@ class EditorState {
         self.pendingCommand = ""
         self.filePath = filePath
         self.isDirty = false
+        self.registerManager = RegisterManager()
     }
 
     // MARK: - Mode Management
