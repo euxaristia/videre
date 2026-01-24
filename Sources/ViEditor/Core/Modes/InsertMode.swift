@@ -25,6 +25,7 @@ class InsertMode: BaseModeHandler {
             // Tab - insert spaces
             for _ in 0..<4 {
                 state.insertCharacter(" ")
+                state.moveCursorRight(count: 1)
             }
             state.updateStatusMessage()
             return true
@@ -32,6 +33,7 @@ class InsertMode: BaseModeHandler {
         default:
             // Regular character
             state.insertCharacter(char)
+            state.moveCursorRight(count: 1)
             state.updateStatusMessage()
             return true
         }
