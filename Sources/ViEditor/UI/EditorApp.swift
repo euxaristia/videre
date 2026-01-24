@@ -243,7 +243,16 @@ class ViEditor {
 
         // Move to status line position and render
         print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
-        print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
+
+        if state.currentMode == .command {
+            // Command mode: plain text with cursor
+            print(state.pendingCommand, terminator: "")
+            print("\u{001B}[7m \u{001B}[0m", terminator: "") // Block cursor
+            print("\u{001B}[K") // Clear rest of line
+        } else {
+            // Other modes: inverted status line
+            print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
+        }
 
         fflush(stdout)
     }
