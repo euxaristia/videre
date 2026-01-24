@@ -30,6 +30,24 @@ class InsertMode: BaseModeHandler {
             state.updateStatusMessage()
             return true
 
+        // Arrow key navigation in insert mode
+        case "←":
+            state.moveCursorLeft()
+            state.updateStatusMessage()
+            return true
+        case "→":
+            state.moveCursorRight()
+            state.updateStatusMessage()
+            return true
+        case "↑":
+            state.moveCursorUp()
+            state.updateStatusMessage()
+            return true
+        case "↓":
+            state.moveCursorDown()
+            state.updateStatusMessage()
+            return true
+
         default:
             // Regular character
             state.insertCharacter(char)

@@ -47,16 +47,16 @@ class NormalMode: BaseModeHandler {
         // Single character commands
         switch char {
         // Cursor movement
-        case "h":
+        case "h", "←":
             state.moveCursorLeft(count: count)
             return true
-        case "j":
+        case "j", "↓":
             state.moveCursorDown(count: count)
             return true
-        case "k":
+        case "k", "↑":
             state.moveCursorUp(count: count)
             return true
-        case "l":
+        case "l", "→":
             state.moveCursorRight(count: count)
             return true
 

@@ -126,7 +126,41 @@ class ViEditor {
     private func readCharacter() -> Character? {
         var buffer: [UInt8] = [0]
         let n = read(STDIN_FILENO, &buffer, 1)
-        return n > 0 ? Character(UnicodeScalar(buffer[0])) : nil
+        guard n > 0 else { return nil }
+
+        let byte = buffer[0]
+
+        // Check for escape sequence
+        if byte == 0x1B { // ESC
+            // Set non-blocking to check if more bytes follow
+            let flags = fcntl(STDIN_FILENO, F_GETFL, 0)
+            _ = fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK)
+
+            // Try to read the next byte
+            var nextBuffer: [UInt8] = [0]
+            let nextN = read(STDIN_FILENO, &nextBuffer, 1)
+
+            // Restore blocking mode
+            _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+
+            if nextN > 0 && nextBuffer[0] == 0x5B { // '['
+                // Read the final byte of the escape sequence
+                var finalBuffer: [UInt8] = [0]
+                let finalN = read(STDIN_FILENO, &finalBuffer, 1)
+
+                if finalN > 0 {
+                    switch finalBuffer[0] {
+                    case 0x41: return "↑" // Up arrow
+                    case 0x42: return "↓" // Down arrow
+                    case 0x43: return "→" // Right arrow
+                    case 0x44: return "←" // Left arrow
+                    default: break
+                    }
+                }
+            }
+        }
+
+        return Character(UnicodeScalar(byte))
     }
 
     private func render() {
