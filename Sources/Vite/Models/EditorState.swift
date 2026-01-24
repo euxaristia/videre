@@ -143,12 +143,20 @@ class EditorState {
 
     func deleteBackward() {
         let pos = cursor.position
-        buffer.deleteBackward(at: pos)
-        if pos.column > 0 {
-            cursor.moveLeft()
-        } else if pos.line > 0 {
+
+        // If at start of line (but not first line), we'll be merging with previous line
+        // Calculate new column position BEFORE the merge
+        if pos.column == 0 && pos.line > 0 {
+            let prevLineLength = buffer.lineLength(pos.line - 1)
+            buffer.deleteBackward(at: pos)
             cursor.moveUp()
-            cursor.moveToLineEnd()
+            cursor.position.column = prevLineLength
+        } else {
+            // Normal backspace within line or at start of file
+            buffer.deleteBackward(at: pos)
+            if pos.column > 0 {
+                cursor.moveLeft()
+            }
         }
         isDirty = true
     }
