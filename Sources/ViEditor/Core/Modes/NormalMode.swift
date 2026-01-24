@@ -227,8 +227,8 @@ class NormalMode: BaseModeHandler {
 
         // Command mode
         case ":":
-            state.setMode(.command)
             state.pendingCommand = ":"
+            state.setMode(.command)
             return true
 
         // Escape

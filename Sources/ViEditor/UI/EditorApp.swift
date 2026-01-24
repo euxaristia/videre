@@ -207,31 +207,39 @@ class ViEditor {
             print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
 
-        // Build status line (Neovim format)
-        let filename = state.filePath ?? "[No Name]"
-        let modifiedFlag = state.isDirty ? "[+]" : ""
-        let cursorPos = state.cursor.position
-        let lineCol = "\(cursorPos.line + 1),\(cursorPos.column + 1)"
-
-        // Calculate position indicator (Top/All/Bot/percentage)
-        let posIndicator: String
-        if totalLines <= availableLines {
-            posIndicator = "All"
-        } else if cursorPos.line == 0 {
-            posIndicator = "Top"
-        } else if cursorPos.line >= totalLines - 1 {
-            posIndicator = "Bot"
-        } else {
-            let percentage = (cursorPos.line + 1) * 100 / totalLines
-            posIndicator = "\(percentage)%"
-        }
-
-        // Construct status line
-        let leftStatus = "\(filename)\(modifiedFlag)"
-        let rightStatus = "\(lineCol)  \(posIndicator)"
+        // Build status line
+        let statusLine: String
         let statusWidth = Int(terminalSize.cols)
-        let padding = max(0, statusWidth - leftStatus.count - rightStatus.count)
-        let statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
+
+        // In Command mode, show the command being typed
+        if state.currentMode == .command {
+            statusLine = state.pendingCommand + String(repeating: " ", count: max(0, statusWidth - state.pendingCommand.count))
+        } else {
+            // Neovim-style status line for other modes
+            let filename = state.filePath ?? "[No Name]"
+            let modifiedFlag = state.isDirty ? "[+]" : ""
+            let cursorPos = state.cursor.position
+            let lineCol = "\(cursorPos.line + 1),\(cursorPos.column + 1)"
+
+            // Calculate position indicator (Top/All/Bot/percentage)
+            let posIndicator: String
+            if totalLines <= availableLines {
+                posIndicator = "All"
+            } else if cursorPos.line == 0 {
+                posIndicator = "Top"
+            } else if cursorPos.line >= totalLines - 1 {
+                posIndicator = "Bot"
+            } else {
+                let percentage = (cursorPos.line + 1) * 100 / totalLines
+                posIndicator = "\(percentage)%"
+            }
+
+            // Construct status line
+            let leftStatus = "\(filename)\(modifiedFlag)"
+            let rightStatus = "\(lineCol)  \(posIndicator)"
+            let padding = max(0, statusWidth - leftStatus.count - rightStatus.count)
+            statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
+        }
 
         // Move to status line position and render
         print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
