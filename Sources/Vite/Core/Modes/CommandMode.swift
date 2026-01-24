@@ -37,7 +37,8 @@ class CommandMode: BaseModeHandler {
     }
 
     private func executeCommand(_ commandStr: String) {
-        let command = commandStr.trimmingCharacters(in: CharacterSet(charactersIn: ":")).trimmingCharacters(in: .whitespaces)
+        let command = commandStr.trimmingCharacters(in: CharacterSet(charactersIn: ":"))
+            .trimmingCharacters(in: .whitespaces)
 
         let parts = command.split(separator: " ", maxSplits: 1).map(String.init)
         let cmd = parts.first ?? ""
@@ -98,6 +99,28 @@ class CommandMode: BaseModeHandler {
                 state.statusMessage = "E32: No file name"
             }
 
+        case "wq!":
+            if let filePath = state.filePath {
+                do {
+                    try state.buffer.text.write(toFile: filePath, atomically: true, encoding: .utf8)
+                    state.isDirty = false
+                    state.shouldExit = true
+                } catch {
+                    state.statusMessage = "E212: Can't open file for writing: \(filePath)"
+                }
+            } else if !arg.isEmpty {
+                do {
+                    try state.buffer.text.write(toFile: arg, atomically: true, encoding: .utf8)
+                    state.filePath = arg
+                    state.isDirty = false
+                    state.shouldExit = true
+                } catch {
+                    state.statusMessage = "E212: Can't open file for writing: \(arg)"
+                }
+            } else {
+                state.statusMessage = "E32: No file name"
+            }
+
         case "e", "edit":
             if !arg.isEmpty {
                 do {
@@ -118,7 +141,8 @@ class CommandMode: BaseModeHandler {
 
         default:
             if let lineNum = Int(cmd) {
-                let pos = MotionEngine(buffer: state.buffer, cursor: state.cursor).goToLine(lineNum - 1)
+                let pos = MotionEngine(buffer: state.buffer, cursor: state.cursor).goToLine(
+                    lineNum - 1)
                 state.cursor.move(to: pos)
                 state.statusMessage = ""
             } else {

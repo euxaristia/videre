@@ -1,9 +1,9 @@
 import Foundation
 
 #if os(Linux)
-import Glibc
+    import Glibc
 #else
-import Darwin
+    import Darwin
 #endif
 
 /// Terminal window size structure
@@ -81,15 +81,15 @@ class ViEditor {
         var ws = winsize()
 
         #if os(Linux)
-        if ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &ws) == 0 {
-            terminalSize.rows = ws.ws_row
-            terminalSize.cols = ws.ws_col
-        }
+            if ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &ws) == 0 {
+                terminalSize.rows = ws.ws_row
+                terminalSize.cols = ws.ws_col
+            }
         #else
-        if ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 {
-            terminalSize.rows = ws.ws_row
-            terminalSize.cols = ws.ws_col
-        }
+            if ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 {
+                terminalSize.rows = ws.ws_row
+                terminalSize.cols = ws.ws_col
+            }
         #endif
     }
 
@@ -131,7 +131,7 @@ class ViEditor {
         let byte = buffer[0]
 
         // Check for escape sequence
-        if byte == 0x1B { // ESC
+        if byte == 0x1B {  // ESC
             // Set non-blocking to check if more bytes follow
             let flags = fcntl(STDIN_FILENO, F_GETFL, 0)
             _ = fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK)
@@ -143,17 +143,17 @@ class ViEditor {
             // Restore blocking mode
             _ = fcntl(STDIN_FILENO, F_SETFL, flags)
 
-            if nextN > 0 && nextBuffer[0] == 0x5B { // '['
+            if nextN > 0 && nextBuffer[0] == 0x5B {  // '['
                 // Read the final byte of the escape sequence
                 var finalBuffer: [UInt8] = [0]
                 let finalN = read(STDIN_FILENO, &finalBuffer, 1)
 
                 if finalN > 0 {
                     switch finalBuffer[0] {
-                    case 0x41: return "↑" // Up arrow
-                    case 0x42: return "↓" // Down arrow
-                    case 0x43: return "→" // Right arrow
-                    case 0x44: return "←" // Left arrow
+                    case 0x41: return "↑"  // Up arrow
+                    case 0x42: return "↓"  // Down arrow
+                    case 0x43: return "→"  // Right arrow
+                    case 0x44: return "←"  // Left arrow
                     default: break
                     }
                 }
@@ -170,20 +170,22 @@ class ViEditor {
         // Reserve space for status line and command line
         let reservedLines = state.currentMode == .command ? 2 : 1
         let availableLines = Int(terminalSize.rows) - reservedLines
-        let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false).count
+        let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false)
+            .count
 
         // Render buffer (limited to available screen lines)
+        let gutterWidth = String(totalLines).count
         for lineIndex in 0..<min(totalLines, availableLines) {
             let line = state.buffer.line(lineIndex)
             let isCurrentLine = lineIndex == state.cursor.position.line
 
             // Line number (faint/dimmed)
-            print("\u{001B}[2m", terminator: "") // Dim mode
-            print(String(format: "%4d ", lineIndex + 1), terminator: "")
-            print("\u{001B}[0m", terminator: "") // Reset
+            print("\u{001B}[2m", terminator: "")  // Dim mode
+            print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
+            print("\u{001B}[0m", terminator: "")  // Reset
 
             // Line content with cursor (truncate if exceeds terminal width)
-            let maxLineLength = Int(terminalSize.cols) - 6 // Account for line numbers and margin
+            let maxLineLength = Int(terminalSize.cols) - (gutterWidth + 1)  // Account for line numbers and space
             let displayLine = String(line.prefix(maxLineLength))
 
             for (colIndex, char) in displayLine.enumerated() {
@@ -196,7 +198,9 @@ class ViEditor {
             }
 
             // Cursor at end of line
-            if isCurrentLine && displayLine.count == state.cursor.position.column && state.cursor.position.column < maxLineLength {
+            if isCurrentLine && displayLine.count == state.cursor.position.column
+                && state.cursor.position.column < maxLineLength
+            {
                 print("\u{001B}[7m \u{001B}[0m", terminator: "")
             }
 
@@ -236,7 +240,8 @@ class ViEditor {
         let statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
 
         // Render status line (second to last line)
-        let statusLineRow = state.currentMode == .command ? terminalSize.rows - 1 : terminalSize.rows
+        let statusLineRow =
+            state.currentMode == .command ? terminalSize.rows - 1 : terminalSize.rows
         print("\u{001B}[\(statusLineRow);1H", terminator: "")
         print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
 
@@ -244,8 +249,8 @@ class ViEditor {
         if state.currentMode == .command {
             print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
             print(state.pendingCommand, terminator: "")
-            print("\u{001B}[7m \u{001B}[0m", terminator: "") // Block cursor
-            print("\u{001B}[K") // Clear rest of line
+            print("\u{001B}[7m \u{001B}[0m", terminator: "")  // Block cursor
+            print("\u{001B}[K", terminator: "")  // Clear rest of line
         }
 
         fflush(stdout)
