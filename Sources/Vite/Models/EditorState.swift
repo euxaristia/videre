@@ -19,6 +19,7 @@ class EditorState {
     var isDirty: Bool = false
     var registerManager: RegisterManager
     var shouldExit: Bool = false
+    var showWelcomeMessage: Bool = false
 
     init() {
         self.buffer = TextBuffer()

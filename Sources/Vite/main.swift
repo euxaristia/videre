@@ -24,6 +24,9 @@ if CommandLine.arguments.count > 1 {
         editorState.filePath = filePath
         editorState.isDirty = false
     }
+} else {
+    // No file specified - show welcome message
+    editorState.showWelcomeMessage = true
 }
 
 // Start editor

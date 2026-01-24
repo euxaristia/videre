@@ -173,43 +173,47 @@ class ViEditor {
             .count
 
         // Render buffer (limited to available screen lines)
-        let gutterWidth = String(totalLines).count
-        for lineIndex in 0..<min(totalLines, availableLines) {
-            let line = state.buffer.line(lineIndex)
-            let isCurrentLine = lineIndex == state.cursor.position.line
+        if state.showWelcomeMessage {
+            renderWelcomeMessage(availableLines: availableLines)
+        } else {
+            let gutterWidth = String(totalLines).count
+            for lineIndex in 0..<min(totalLines, availableLines) {
+                let line = state.buffer.line(lineIndex)
+                let isCurrentLine = lineIndex == state.cursor.position.line
 
-            // Line number (faint/dimmed)
-            print("\u{001B}[2m", terminator: "")  // Dim mode
-            print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
-            print("\u{001B}[0m", terminator: "")  // Reset
+                // Line number (faint/dimmed)
+                print("\u{001B}[2m", terminator: "")  // Dim mode
+                print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
+                print("\u{001B}[0m", terminator: "")  // Reset
 
-            // Line content with cursor (truncate if exceeds terminal width)
-            let maxLineLength = Int(terminalSize.cols) - (gutterWidth + 1)  // Account for line numbers and space
-            let displayLine = String(line.prefix(maxLineLength))
+                // Line content with cursor (truncate if exceeds terminal width)
+                let maxLineLength = Int(terminalSize.cols) - (gutterWidth + 1)  // Account for line numbers and space
+                let displayLine = String(line.prefix(maxLineLength))
 
-            for (colIndex, char) in displayLine.enumerated() {
-                let isCursor = isCurrentLine && colIndex == state.cursor.position.column
-                if isCursor {
-                    print("\u{001B}[7m\(char)\u{001B}[0m", terminator: "")
-                } else {
-                    print(char, terminator: "")
+                for (colIndex, char) in displayLine.enumerated() {
+                    let isCursor = isCurrentLine && colIndex == state.cursor.position.column
+                    if isCursor {
+                        print("\u{001B}[7m\(char)\u{001B}[0m", terminator: "")
+                    } else {
+                        print(char, terminator: "")
+                    }
                 }
+
+                // Cursor at end of line
+                if isCurrentLine && displayLine.count == state.cursor.position.column
+                    && state.cursor.position.column < maxLineLength
+                {
+                    print("\u{001B}[7m \u{001B}[0m", terminator: "")
+                }
+
+                // Clear to end of line to handle terminal resize artifacts
+                print("\u{001B}[K")
             }
 
-            // Cursor at end of line
-            if isCurrentLine && displayLine.count == state.cursor.position.column
-                && state.cursor.position.column < maxLineLength
-            {
-                print("\u{001B}[7m \u{001B}[0m", terminator: "")
+            // Fill remaining lines with dim tildes (Neovim-style)
+            for _ in totalLines..<availableLines {
+                print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
             }
-
-            // Clear to end of line to handle terminal resize artifacts
-            print("\u{001B}[K")
-        }
-
-        // Fill remaining lines with dim tildes (Neovim-style)
-        for _ in totalLines..<availableLines {
-            print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
 
         // Build status line (always shown)
@@ -223,7 +227,7 @@ class ViEditor {
 
         // Calculate position indicator (Top/All/Bot/percentage)
         let posIndicator: String
-        if totalLines <= availableLines {
+        if totalLines <= availableLines || state.showWelcomeMessage {
             posIndicator = "All"
         } else if cursorPos.line == 0 {
             posIndicator = "Top"
@@ -272,6 +276,43 @@ class ViEditor {
 
         fflush(stdout)
     }
+
+    private func renderWelcomeMessage(availableLines: Int) {
+        let terminalCols = Int(terminalSize.cols)
+
+        let message = [
+            "VITE v0.1.0",
+            "",
+            "Vite is open source and freely distributable",
+            "https://github.com/euxaristia/Vite",
+            "",
+            "type  :q<Enter>               to exit         ",
+            "type  :help<Enter>            for help        ",
+            "",
+            "Maintainer: euxaristia",
+        ]
+
+        let startRow = (availableLines - message.count) / 2
+
+        // Fill before message with tildes
+        for _ in 0..<startRow {
+            print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
+        }
+
+        // Render message centered
+        for line in message {
+            let padding = max(0, (terminalCols - line.count) / 2)
+            print("\u{001B}[2m~\u{001B}[0m", terminator: "")  // Gutter tilde
+            print(String(repeating: " ", count: padding - 1), terminator: "")
+            print(line, terminator: "")
+            print("\u{001B}[K")
+        }
+
+        // Fill after message with tildes
+        for _ in (startRow + message.count)..<availableLines {
+            print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
+        }
+    }
 }
 
 // MARK: - Input Handling
@@ -288,6 +329,9 @@ class InputDispatcher {
     }
 
     func dispatch(_ event: KeyEvent, editor: ViEditor) {
+        // Clear welcome message on any key press
+        state.showWelcomeMessage = false
+
         switch state.currentMode {
         case .normal:
             _ = editor.normalMode.handleInput(event.character)

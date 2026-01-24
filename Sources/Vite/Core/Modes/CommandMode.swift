@@ -121,6 +121,9 @@ class CommandMode: BaseModeHandler {
                 state.statusMessage = "E32: No file name"
             }
 
+        case "h", "help":
+            loadHelp()
+
         case "e", "edit":
             if !arg.isEmpty {
                 do {
@@ -154,6 +157,34 @@ class CommandMode: BaseModeHandler {
     private func handleSetCommand(_ arg: String) {
         // Placeholder for set commands
         state.statusMessage = "set command not yet implemented"
+    }
+
+    private func loadHelp() {
+        let helpText = """
+            VITE - help
+
+                Move around:  Use the cursor keys, or "h" to go left,
+                              "j" to go down, "k" to go up, "l" to go right.
+            Close this window: Use ":q<Enter>".
+              Get out of Vite: Use ":qa!<Enter>" (careful, all changes are lost!).
+
+            Get specific help: It is possible to go directly to whatever you want help
+                              on, by giving an argument to the :help command.
+                              (Not yet implemented in Vite)
+
+                   WHAT              EXAMPLE
+                   Normal mode       :help x
+                   Visual mode       :help v_u
+                   Insert mode       :help i_<Esc>
+                   Command-line      :help :quit
+
+            Maintainer: euxaristia
+            """
+        state.buffer = TextBuffer(helpText)
+        state.filePath = "help.txt"
+        state.cursor.moveToBeginningOfFile()
+        state.isDirty = false
+        state.statusMessage = "help.txt [Help][RO]"
     }
 
     override func enter() {
