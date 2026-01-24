@@ -53,6 +53,19 @@ Architecture highlights:
 - SIGWINCH signal handling for terminal resize events
 - POSIX terminal control via `termios` for raw input mode
 
+## Platform Support
+
+**Supported:**
+- ✅ macOS (13+)
+- ✅ Linux (any distro with Swift 5.9+)
+
+**Not Yet Supported:**
+- ❌ Windows - Uses POSIX APIs (`termios`, `ioctl`, ANSI escape sequences) not available on Windows
+- Future: Windows support would require either Windows Console API integration or a cross-platform terminal library
+
+**Technical Note:**
+Vite does **not** use SwiftTUI or any framework. It's pure Swift with direct POSIX terminal control for maximum performance and minimal dependencies.
+
 ## Install
 
 **Requirements:**
@@ -67,14 +80,14 @@ cd Vite
 swift build -c release
 ```
 
-The binary will be at `.build/release/ViEditor`.
+The binary will be at `.build/release/Vite`.
 
 **Optional: Install to PATH:**
 
 ```sh
-cp .build/release/ViEditor /usr/local/bin/vi
+cp .build/release/Vite /usr/local/bin/vi
 # or symlink:
-ln -s "$(pwd)/.build/release/ViEditor" /usr/local/bin/vi
+ln -s "$(pwd)/.build/release/Vite" /usr/local/bin/vi
 ```
 
 ## Usage
@@ -185,7 +198,7 @@ Vite implements core Vi behavior with high fidelity:
 ## Project Structure
 
 ```
-Sources/ViEditor/
+Sources/Vite/
 ├── main.swift                    # Entry point
 ├── UI/
 │   ├── EditorApp.swift          # Main editor loop & terminal control
@@ -211,6 +224,8 @@ Sources/ViEditor/
 
 ## Roadmap
 
+- [ ] Platform support
+  - [ ] Windows support (requires Windows Console API or cross-platform abstraction)
 - [ ] Extended motion support
   - [ ] `{` `}` paragraph motions
   - [ ] `%` matching bracket
@@ -232,11 +247,11 @@ Contributions welcome! If you're planning a significant change (e.g., new motion
 
 ```sh
 swift build
-swift run ViEditor test.txt
+swift run Vite test.txt
 
 # Run with release optimizations:
 swift build -c release
-.build/release/ViEditor test.txt
+.build/release/Vite test.txt
 ```
 
 **Coding guidelines:**
