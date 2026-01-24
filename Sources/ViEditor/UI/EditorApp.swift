@@ -167,7 +167,9 @@ class ViEditor {
         // Move to home and clear screen
         print("\u{001B}[H\u{001B}[2J", terminator: "")
 
-        let availableLines = Int(terminalSize.rows) - 1 // Reserve one line for status
+        // Reserve space for status line and command line
+        let reservedLines = state.currentMode == .command ? 2 : 1
+        let availableLines = Int(terminalSize.rows) - reservedLines
         let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false).count
 
         // Render buffer (limited to available screen lines)
@@ -207,51 +209,43 @@ class ViEditor {
             print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
 
-        // Build status line
-        let statusLine: String
+        // Build status line (always shown, inverted)
         let statusWidth = Int(terminalSize.cols)
+        let filename = state.filePath ?? "[No Name]"
+        let modifiedFlag = state.isDirty ? "[+]" : ""
+        let cursorPos = state.cursor.position
+        let lineCol = "\(cursorPos.line + 1),\(cursorPos.column + 1)"
 
-        // In Command mode, show the command being typed
-        if state.currentMode == .command {
-            statusLine = state.pendingCommand + String(repeating: " ", count: max(0, statusWidth - state.pendingCommand.count))
+        // Calculate position indicator (Top/All/Bot/percentage)
+        let posIndicator: String
+        if totalLines <= availableLines {
+            posIndicator = "All"
+        } else if cursorPos.line == 0 {
+            posIndicator = "Top"
+        } else if cursorPos.line >= totalLines - 1 {
+            posIndicator = "Bot"
         } else {
-            // Neovim-style status line for other modes
-            let filename = state.filePath ?? "[No Name]"
-            let modifiedFlag = state.isDirty ? "[+]" : ""
-            let cursorPos = state.cursor.position
-            let lineCol = "\(cursorPos.line + 1),\(cursorPos.column + 1)"
-
-            // Calculate position indicator (Top/All/Bot/percentage)
-            let posIndicator: String
-            if totalLines <= availableLines {
-                posIndicator = "All"
-            } else if cursorPos.line == 0 {
-                posIndicator = "Top"
-            } else if cursorPos.line >= totalLines - 1 {
-                posIndicator = "Bot"
-            } else {
-                let percentage = (cursorPos.line + 1) * 100 / totalLines
-                posIndicator = "\(percentage)%"
-            }
-
-            // Construct status line
-            let leftStatus = "\(filename)\(modifiedFlag)"
-            let rightStatus = "\(lineCol)  \(posIndicator)"
-            let padding = max(0, statusWidth - leftStatus.count - rightStatus.count)
-            statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
+            let percentage = (cursorPos.line + 1) * 100 / totalLines
+            posIndicator = "\(percentage)%"
         }
 
-        // Move to status line position and render
-        print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
+        // Construct status line
+        let leftStatus = "\(filename)\(modifiedFlag)"
+        let rightStatus = "\(lineCol)  \(posIndicator)"
+        let padding = max(0, statusWidth - leftStatus.count - rightStatus.count)
+        let statusLine = leftStatus + String(repeating: " ", count: padding) + rightStatus
 
+        // Render status line (second to last line)
+        let statusLineRow = state.currentMode == .command ? terminalSize.rows - 1 : terminalSize.rows
+        print("\u{001B}[\(statusLineRow);1H", terminator: "")
+        print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
+
+        // Render command line if in command mode (last line)
         if state.currentMode == .command {
-            // Command mode: plain text with cursor
+            print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
             print(state.pendingCommand, terminator: "")
             print("\u{001B}[7m \u{001B}[0m", terminator: "") // Block cursor
             print("\u{001B}[K") // Clear rest of line
-        } else {
-            // Other modes: inverted status line
-            print("\u{001B}[7m\(statusLine.prefix(statusWidth))\u{001B}[0m", terminator: "")
         }
 
         fflush(stdout)
