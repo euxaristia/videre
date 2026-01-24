@@ -255,11 +255,11 @@ class ViEditor {
             + segment3
 
         // Render status line (second to last line)
-        // Reverting to standard inverted (\u{001B}[7m) to automatically match user's terminal theme colors
+        // Using specific grey background (ANSI 250) and black text (ANSI 30) to match Neovim shading
         let statusLineRow = Int(terminalSize.rows) - 1
         print("\u{001B}[\(statusLineRow);1H", terminator: "")
         print(
-            "\u{001B}[7m\(statusLine.padding(toLength: statusWidth, withPad: " ", startingAt: 0))\u{001B}[0m",
+            "\u{001B}[48;5;250m\u{001B}[30m\(statusLine.padding(toLength: statusWidth, withPad: " ", startingAt: 0))\u{001B}[0m",
             terminator: "")
 
         // Render command line if in command mode (last line)
