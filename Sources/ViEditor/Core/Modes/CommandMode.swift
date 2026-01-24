@@ -14,7 +14,9 @@ class CommandMode: BaseModeHandler {
         case "\n":
             // Execute command
             executeCommand(state.pendingCommand)
-            state.setMode(.normal)
+            // Don't call setMode here as it will overwrite statusMessage
+            // Instead, just change mode directly without updating status
+            state.currentMode = .normal
             state.pendingCommand = ""
             return true
 
@@ -44,7 +46,7 @@ class CommandMode: BaseModeHandler {
         switch cmd {
         case "q", "quit":
             if state.isDirty {
-                state.statusMessage = "No write since last change (add ! to override)"
+                state.statusMessage = "E37: No write since last change (add ! to override)"
             } else {
                 state.shouldExit = true
             }
@@ -59,7 +61,7 @@ class CommandMode: BaseModeHandler {
                     state.isDirty = false
                     state.statusMessage = "\"\(filePath)\" \(state.buffer.lineCount) lines written"
                 } catch {
-                    state.statusMessage = "Error writing file: \(error)"
+                    state.statusMessage = "E212: Can't open file for writing: \(filePath)"
                 }
             } else if !arg.isEmpty {
                 do {
@@ -68,10 +70,10 @@ class CommandMode: BaseModeHandler {
                     state.isDirty = false
                     state.statusMessage = "\"\(arg)\" \(state.buffer.lineCount) lines written"
                 } catch {
-                    state.statusMessage = "Error writing file: \(error)"
+                    state.statusMessage = "E212: Can't open file for writing: \(arg)"
                 }
             } else {
-                state.statusMessage = "No file name"
+                state.statusMessage = "E32: No file name"
             }
 
         case "wq":
@@ -81,7 +83,7 @@ class CommandMode: BaseModeHandler {
                     state.isDirty = false
                     state.shouldExit = true
                 } catch {
-                    state.statusMessage = "Error writing file: \(error)"
+                    state.statusMessage = "E212: Can't open file for writing: \(filePath)"
                 }
             } else if !arg.isEmpty {
                 do {
@@ -90,10 +92,10 @@ class CommandMode: BaseModeHandler {
                     state.isDirty = false
                     state.shouldExit = true
                 } catch {
-                    state.statusMessage = "Error writing file: \(error)"
+                    state.statusMessage = "E212: Can't open file for writing: \(arg)"
                 }
             } else {
-                state.statusMessage = "No file name"
+                state.statusMessage = "E32: No file name"
             }
 
         case "e", "edit":
@@ -103,10 +105,12 @@ class CommandMode: BaseModeHandler {
                     state.filePath = arg
                     state.cursor.moveToBeginningOfFile()
                     state.isDirty = false
-                    state.statusMessage = "Loaded \(arg)"
+                    state.statusMessage = "\"\(arg)\" \(state.buffer.lineCount) lines"
                 } catch {
-                    state.statusMessage = "Error loading file: \(error)"
+                    state.statusMessage = "E211: File not found: \(arg)"
                 }
+            } else {
+                state.statusMessage = "E471: Argument required"
             }
 
         case "set":
