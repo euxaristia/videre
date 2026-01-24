@@ -2,7 +2,23 @@ import Foundation
 
 #if os(Linux)
 import Glibc
+#else
+import Darwin
 #endif
+
+/// Terminal window size structure
+struct TerminalSize {
+    var rows: UInt16 = 24
+    var cols: UInt16 = 80
+}
+
+/// Global flag for terminal resize signal
+private var terminalResized = false
+
+/// Signal handler for SIGWINCH
+private func handleResize(_ signal: Int32) {
+    terminalResized = true
+}
 
 /// Main editor application class
 class ViEditor {
@@ -14,6 +30,7 @@ class ViEditor {
     var visualMode: VisualMode
     var commandMode: CommandMode
     var shouldExit: Bool = false
+    var terminalSize: TerminalSize = TerminalSize()
 
     init(state: EditorState) {
         self.state = state
@@ -31,7 +48,19 @@ class ViEditor {
         setupTerminal()
         defer { restoreTerminal() }
 
+        // Set up signal handler for terminal resize
+        signal(SIGWINCH, handleResize)
+
+        // Get initial terminal size
+        updateTerminalSize()
+
         while true {
+            // Check if terminal was resized
+            if terminalResized {
+                terminalResized = false
+                updateTerminalSize()
+            }
+
             render()
 
             if let char = readCharacter() {
@@ -44,6 +73,24 @@ class ViEditor {
                 }
             }
         }
+    }
+
+    // MARK: - Terminal Size Management
+
+    private func updateTerminalSize() {
+        var ws = winsize()
+
+        #if os(Linux)
+        if ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &ws) == 0 {
+            terminalSize.rows = ws.ws_row
+            terminalSize.cols = ws.ws_col
+        }
+        #else
+        if ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 {
+            terminalSize.rows = ws.ws_row
+            terminalSize.cols = ws.ws_col
+        }
+        #endif
     }
 
     // MARK: - Terminal Control
@@ -83,19 +130,25 @@ class ViEditor {
     }
 
     private func render() {
-        // Clear screen
-        print("\u{001B}[2J\u{001B}[H", terminator: "")
+        // Move to home and clear screen
+        print("\u{001B}[H\u{001B}[2J", terminator: "")
 
-        // Render buffer
-        for (lineIndex, _) in state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+        let availableLines = Int(terminalSize.rows) - 1 // Reserve one line for status
+        let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false).count
+
+        // Render buffer (limited to available screen lines)
+        for lineIndex in 0..<min(totalLines, availableLines) {
             let line = state.buffer.line(lineIndex)
             let isCurrentLine = lineIndex == state.cursor.position.line
 
             // Line number
             print(String(format: "%4d ", lineIndex + 1), terminator: "")
 
-            // Line content with cursor
-            for (colIndex, char) in line.enumerated() {
+            // Line content with cursor (truncate if exceeds terminal width)
+            let maxLineLength = Int(terminalSize.cols) - 6 // Account for line numbers and margin
+            let displayLine = String(line.prefix(maxLineLength))
+
+            for (colIndex, char) in displayLine.enumerated() {
                 let isCursor = isCurrentLine && colIndex == state.cursor.position.column
                 if isCursor {
                     print("\u{001B}[7m\(char)\u{001B}[0m", terminator: "")
@@ -104,16 +157,24 @@ class ViEditor {
                 }
             }
 
-            // Cursor at end of empty line
-            if isCurrentLine && line.count == state.cursor.position.column {
+            // Cursor at end of line
+            if isCurrentLine && displayLine.count == state.cursor.position.column && state.cursor.position.column < maxLineLength {
                 print("\u{001B}[7m \u{001B}[0m", terminator: "")
             }
 
-            print()
+            // Clear to end of line to handle terminal resize artifacts
+            print("\u{001B}[K")
         }
 
-        // Status line
-        print("\u{001B}[7m\(state.statusMessage)\u{001B}[0m", terminator: "")
+        // Fill remaining lines with tildes (vim-style)
+        for _ in availableLines..<Int(terminalSize.rows) - 1 {
+            print("~\u{001B}[K")
+        }
+
+        // Move to status line position and render
+        print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
+        print("\u{001B}[7m\(state.statusMessage)\u{001B}[K\u{001B}[0m", terminator: "")
+
         fflush(stdout)
     }
 }
