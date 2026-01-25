@@ -8,3 +8,8 @@ Package.resolved
 *.swp
 *.swo
 *~
+
+# Benchmark artifacts
+__pycache__/
+benchmark/results/
+benchmark/benchmark/fixtures/

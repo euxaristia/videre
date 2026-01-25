@@ -337,8 +337,13 @@ class InputDispatcher {
     }
 
     func dispatch(_ event: KeyEvent, editor: ViEditor) {
-        // Clear welcome message on any key press
-        state.showWelcomeMessage = false
+        // Clear welcome message on editing actions, not on entering command mode
+        // This matches Neovim behavior where : doesn't dismiss the welcome screen
+        if state.currentMode == .normal && event.character != ":" {
+            state.showWelcomeMessage = false
+        } else if state.currentMode == .insert {
+            state.showWelcomeMessage = false
+        }
 
         switch state.currentMode {
         case .normal:
