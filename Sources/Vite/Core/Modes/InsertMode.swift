@@ -58,10 +58,16 @@ class InsertMode: BaseModeHandler {
     }
 
     override func enter() {
-        // Cursor styling can be changed here for insert mode
+        // Change cursor to thin bar for insert mode (ANSI: CSI 6 SP q)
+        print("\u{001B}[6 q", terminator: "")
+        fflush(stdout)
     }
 
     override func exit() {
+        // Restore block cursor for normal mode (ANSI: CSI 2 SP q)
+        print("\u{001B}[2 q", terminator: "")
+        fflush(stdout)
+
         // Move cursor back one position (vi behavior)
         if state.cursor.position.column > 0 {
             state.moveCursorLeft()

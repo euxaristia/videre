@@ -8,7 +8,7 @@ class NormalMode: BaseModeHandler {
     var countPrefix: Int = 0
     var searchChar: Character?
     var lastSearchChar: Character?
-    var lastSearchDirection: Character = "f" // f, F, t, T
+    var lastSearchDirection: Character = "f"  // f, F, t, T
 
     override init(state: EditorState) {
         self.motionEngine = MotionEngine(buffer: state.buffer, cursor: state.cursor)
@@ -18,7 +18,9 @@ class NormalMode: BaseModeHandler {
 
     override func handleInput(_ char: Character) -> Bool {
         // Collect count prefix
-        if char.isNumber && char != "0" && pendingCommand.isEmpty && operatorEngine.pendingOperator == .none {
+        if char.isNumber && char != "0" && pendingCommand.isEmpty
+            && operatorEngine.pendingOperator == .none
+        {
             countPrefix = countPrefix * 10 + Int(String(char))!
             return true
         }
@@ -317,6 +319,10 @@ class NormalMode: BaseModeHandler {
     }
 
     override func enter() {
+        // Set cursor to block for normal mode (ANSI: CSI 2 SP q)
+        print("\u{001B}[2 q", terminator: "")
+        fflush(stdout)
+
         pendingCommand = ""
         countPrefix = 0
     }
