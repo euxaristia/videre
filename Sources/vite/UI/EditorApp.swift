@@ -315,20 +315,24 @@ class ViEditor {
         if state.showWelcomeMessage {
             renderWelcomeMessage(availableLines: availableLines)
         } else {
-            let gutterWidth = String(totalLines).count
+            // Don't show line numbers for empty [No Name] buffer (matches Neovim behavior)
+            let isEmptyNoNameBuffer = state.filePath == nil && state.buffer.lineCount == 1 && state.buffer.line(0).isEmpty
+            let gutterWidth = isEmptyNoNameBuffer ? 0 : String(totalLines).count
             for screenLine in 0..<availableLines {
                 let lineIndex = state.scrollOffset + screenLine
 
                 if lineIndex < totalLines {
                     let line = state.buffer.line(lineIndex)
 
-                    // Line number (faint/dimmed)
-                    print("\u{001B}[2m", terminator: "")  // Dim mode
-                    print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
-                    print("\u{001B}[0m", terminator: "")  // Reset
+                    // Line number (faint/dimmed) - skip for empty [No Name] buffer
+                    if !isEmptyNoNameBuffer {
+                        print("\u{001B}[2m", terminator: "")  // Dim mode
+                        print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
+                        print("\u{001B}[0m", terminator: "")  // Reset
+                    }
 
                     // Line content with cursor (truncate if exceeds terminal width)
-                    let maxLineLength = max(1, Int(terminalSize.cols) - (gutterWidth + 1))  // Account for line numbers and space
+                    let maxLineLength = isEmptyNoNameBuffer ? Int(terminalSize.cols) : max(1, Int(terminalSize.cols) - (gutterWidth + 1))
                     let displayLine = String(line.prefix(maxLineLength))
 
                     // Apply syntax highlighting
@@ -449,12 +453,19 @@ class ViEditor {
             // In search mode, position cursor after the search pattern
             let searchCursorCol = state.searchPattern.count + 2  // +1 for "/" prefix, +1 for 1-based
             print("\u{001B}[\(terminalSize.rows);\(searchCursorCol)H", terminator: "")
-        } else if !state.showWelcomeMessage {
+        } else {
             // In normal/insert/visual modes, position cursor at the actual cursor position
             // Cursor row is relative to viewport (scroll offset)
-            let gutterWidth = String(totalLines).count
             let cursorRow = state.cursor.position.line - state.scrollOffset + 1
-            let cursorCol = gutterWidth + 1 + state.cursor.position.column + 1
+            // For welcome message/empty [No Name] buffer, cursor is at column 1 (no line numbers)
+            // Otherwise, account for line number gutter
+            let cursorCol: Int
+            if state.showWelcomeMessage || (state.filePath == nil && state.buffer.lineCount == 1 && state.buffer.line(0).isEmpty) {
+                cursorCol = state.cursor.position.column + 1
+            } else {
+                let gutterWidth = String(totalLines).count
+                cursorCol = gutterWidth + 1 + state.cursor.position.column + 1
+            }
             // Only position cursor if it's within the visible area
             if cursorRow >= 1 && cursorRow <= availableLines {
                 print("\u{001B}[\(cursorRow);\(cursorCol)H", terminator: "")
@@ -488,11 +499,14 @@ class ViEditor {
         ]
 
         // Handle case where terminal is too small to show full message
-        let linesToShow = min(message.count, availableLines)
-        let startRow = max(0, (availableLines - linesToShow) / 2)
+        let linesToShow = min(message.count, max(0, availableLines - 1))  // -1 for first line with cursor
+        let startRow = max(1, (availableLines - linesToShow) / 2)  // Start from row 1 (after cursor row)
 
-        // Fill before message with tildes
-        for _ in 0..<startRow {
+        // First line: empty line for cursor (like Neovim)
+        print("\u{001B}[K")
+
+        // Fill before message with tildes (starting from row 1)
+        for _ in 1..<startRow {
             print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
 

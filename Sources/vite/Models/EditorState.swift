@@ -19,6 +19,7 @@ class EditorState {
 
     var filePath: String?
     var isDirty: Bool = false
+    var isHelpBuffer: Bool = false
     var registerManager: RegisterManager
     var shouldExit: Bool = false
     var showWelcomeMessage: Bool = false

@@ -57,6 +57,14 @@ class CommandMode: BaseModeHandler {
                     "E162: No write since last change for buffer \"\(filename)\"",
                 ]
                 state.isWaitingForEnter = true
+            } else if state.isHelpBuffer {
+                // Return to empty buffer like Neovim does when closing help
+                state.buffer = TextBuffer()
+                state.filePath = nil
+                state.cursor.moveToBeginningOfFile()
+                state.isDirty = false
+                state.isHelpBuffer = false
+                state.statusMessage = ""
             } else {
                 state.shouldExit = true
             }
@@ -139,6 +147,7 @@ class CommandMode: BaseModeHandler {
                     state.filePath = arg
                     state.cursor.moveToBeginningOfFile()
                     state.isDirty = false
+                    state.isHelpBuffer = false
                     state.statusMessage = "\"\(arg)\" \(state.buffer.lineCount) lines"
                     // Update syntax highlighting for new file
                     let language = SyntaxHighlighter.shared.detectLanguage(from: arg)
@@ -195,6 +204,7 @@ class CommandMode: BaseModeHandler {
         state.filePath = "help.txt"
         state.cursor.moveToBeginningOfFile()
         state.isDirty = false
+        state.isHelpBuffer = true
         state.showWelcomeMessage = false
         state.statusMessage = "help.txt [Help][RO]"
     }
