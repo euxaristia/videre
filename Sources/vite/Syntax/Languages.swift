@@ -72,7 +72,10 @@ enum Languages {
             "@throw", "@autoreleasepool", "self", "super", "nil", "Nil", "YES",
             "NO", "id", "instancetype", "SEL", "IMP", "Class", "BOOL",
         ]),
-        types: c.types.union(["NSObject", "NSString", "NSArray", "NSDictionary", "NSNumber", "NSInteger", "NSUInteger", "CGFloat"]),
+        types: c.types.union([
+            "NSObject", "NSString", "NSArray", "NSDictionary", "NSNumber", "NSInteger",
+            "NSUInteger", "CGFloat",
+        ]),
         constants: c.constants.union(["nil", "Nil", "YES", "NO"]),
         lineComment: "//",
         blockCommentStart: "/*",
@@ -112,7 +115,11 @@ enum Languages {
         blockCommentStart: "/*",
         blockCommentEnd: "*/",
         stringDelimiters: ["\""],
-        specialIdentifiers: ["#selector", "#keyPath", "#available", "#if", "#else", "#elseif", "#endif", "#warning", "#error"]
+        preprocessorPrefix: "#",
+        specialIdentifiers: [
+            "#selector", "#keyPath", "#available", "#if", "#else", "#elseif", "#endif", "#warning",
+            "#error",
+        ]
     )
 
     // MARK: - JavaScript/TypeScript
@@ -186,7 +193,9 @@ enum Languages {
         blockCommentStart: nil,
         blockCommentEnd: nil,
         stringDelimiters: ["\"", "'"],
-        specialIdentifiers: ["self", "cls", "__init__", "__str__", "__repr__", "__name__", "__main__"]
+        specialIdentifiers: [
+            "self", "cls", "__init__", "__str__", "__repr__", "__name__", "__main__",
+        ]
     )
 
     // MARK: - Rust
@@ -468,7 +477,10 @@ enum Languages {
             "integer", "iterable", "mixed", "null", "numeric", "object",
             "resource", "string", "void", "never",
         ],
-        constants: ["true", "false", "null", "TRUE", "FALSE", "NULL", "__CLASS__", "__DIR__", "__FILE__", "__FUNCTION__", "__LINE__", "__METHOD__", "__NAMESPACE__", "__TRAIT__"],
+        constants: [
+            "true", "false", "null", "TRUE", "FALSE", "NULL", "__CLASS__", "__DIR__", "__FILE__",
+            "__FUNCTION__", "__LINE__", "__METHOD__", "__NAMESPACE__", "__TRAIT__",
+        ],
         lineComment: "//",
         blockCommentStart: "/*",
         blockCommentEnd: "*/",
@@ -894,7 +906,10 @@ enum Languages {
         blockCommentEnd: "*/",
         stringDelimiters: ["\"", "'"],
         preprocessorPrefix: "#",
-        specialIdentifiers: ["Print", "Sleep", "GetChar", "PutChar", "StrCpy", "StrCat", "StrLen", "MemCpy", "MemSet", "MAlloc", "Free", "Spawn", "Kill", "Exit"]
+        specialIdentifiers: [
+            "Print", "Sleep", "GetChar", "PutChar", "StrCpy", "StrCat", "StrLen", "MemCpy",
+            "MemSet", "MAlloc", "Free", "Spawn", "Kill", "Exit",
+        ]
     )
 
     // MARK: - V

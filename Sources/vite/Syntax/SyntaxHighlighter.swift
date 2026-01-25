@@ -322,7 +322,7 @@ class SyntaxHighlighter {
             }
 
             // Check for identifier (keyword, type, function, etc.)
-            if line[i].isLetter || line[i] == "_" || line[i] == "@" {
+            if line[i].isLetter || line[i] == "_" || line[i] == "@" || line[i] == "#" {
                 var idEnd = line.index(after: i)
                 while idEnd < end
                     && (line[idEnd].isLetter || line[idEnd].isNumber || line[idEnd] == "_")
