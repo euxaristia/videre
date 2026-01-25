@@ -22,6 +22,9 @@ class EditorState {
     var shouldExit: Bool = false
     var showWelcomeMessage: Bool = false
 
+    // Viewport scrolling - the first visible line
+    var scrollOffset: Int = 0
+
     // Mode handlers for lifecycle management
     var normalModeHandler: ModeHandler?
     var insertModeHandler: ModeHandler?

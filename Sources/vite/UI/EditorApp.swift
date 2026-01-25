@@ -198,8 +198,8 @@ class ViEditor {
         // Hide cursor during render to prevent flicker
         print("\u{001B}[?25l", terminator: "")
 
-        // Move to home and clear screen
-        print("\u{001B}[H\u{001B}[2J", terminator: "")
+        // Move to home position (no full screen clear to reduce flicker)
+        print("\u{001B}[H", terminator: "")
 
         // Reset syntax highlighter state for new render
         SyntaxHighlighter.shared.reset()
@@ -209,40 +209,53 @@ class ViEditor {
         let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false)
             .count
 
+        // Update scroll offset to keep cursor visible (viewport scrolling)
+        let cursorLine = state.cursor.position.line
+        if cursorLine < state.scrollOffset {
+            // Cursor moved above viewport
+            state.scrollOffset = cursorLine
+        } else if cursorLine >= state.scrollOffset + availableLines {
+            // Cursor moved below viewport
+            state.scrollOffset = cursorLine - availableLines + 1
+        }
+
+        // Clamp scroll offset to valid range
+        state.scrollOffset = max(0, min(state.scrollOffset, max(0, totalLines - availableLines)))
+
         // Render buffer (limited to available screen lines)
         if state.showWelcomeMessage {
             renderWelcomeMessage(availableLines: availableLines)
         } else {
             let gutterWidth = String(totalLines).count
-            for lineIndex in 0..<min(totalLines, availableLines) {
-                let line = state.buffer.line(lineIndex)
+            for screenLine in 0..<availableLines {
+                let lineIndex = state.scrollOffset + screenLine
 
-                // Line number (faint/dimmed)
-                print("\u{001B}[2m", terminator: "")  // Dim mode
-                print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
-                print("\u{001B}[0m", terminator: "")  // Reset
+                if lineIndex < totalLines {
+                    let line = state.buffer.line(lineIndex)
 
-                // Line content with cursor (truncate if exceeds terminal width)
-                let maxLineLength = max(1, Int(terminalSize.cols) - (gutterWidth + 1))  // Account for line numbers and space
-                let displayLine = String(line.prefix(maxLineLength))
+                    // Line number (faint/dimmed)
+                    print("\u{001B}[2m", terminator: "")  // Dim mode
+                    print(String(format: "%\(gutterWidth)d ", lineIndex + 1), terminator: "")
+                    print("\u{001B}[0m", terminator: "")  // Reset
 
-                // Apply syntax highlighting
-                let highlightedLine = SyntaxHighlighter.shared.highlightLine(displayLine)
+                    // Line content with cursor (truncate if exceeds terminal width)
+                    let maxLineLength = max(1, Int(terminalSize.cols) - (gutterWidth + 1))  // Account for line numbers and space
+                    let displayLine = String(line.prefix(maxLineLength))
 
-                // Apply search highlighting on top if there's an active search
-                let finalLine = highlightSearchMatches(in: highlightedLine, raw: displayLine)
-                print(finalLine, terminator: "")
-                print(SyntaxColor.reset.rawValue, terminator: "")
+                    // Apply syntax highlighting
+                    let highlightedLine = SyntaxHighlighter.shared.highlightLine(displayLine)
+
+                    // Apply search highlighting on top if there's an active search
+                    let finalLine = highlightSearchMatches(in: highlightedLine, raw: displayLine)
+                    print(finalLine, terminator: "")
+                    print(SyntaxColor.reset.rawValue, terminator: "")
+                } else {
+                    // Beyond file end - show tilde
+                    print("\u{001B}[2m~\u{001B}[0m", terminator: "")
+                }
 
                 // Clear to end of line to handle terminal resize artifacts
                 print("\u{001B}[K")
-            }
-
-            // Fill remaining lines with dim tildes (Neovim-style)
-            if totalLines < availableLines {
-                for _ in totalLines..<availableLines {
-                    print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
-                }
             }
         }
 
@@ -321,10 +334,14 @@ class ViEditor {
             print("\u{001B}[\(terminalSize.rows);\(searchCursorCol)H", terminator: "")
         } else if !state.showWelcomeMessage {
             // In normal/insert/visual modes, position cursor at the actual cursor position
+            // Cursor row is relative to viewport (scroll offset)
             let gutterWidth = String(totalLines).count
-            let cursorRow = state.cursor.position.line + 1
+            let cursorRow = state.cursor.position.line - state.scrollOffset + 1
             let cursorCol = gutterWidth + 1 + state.cursor.position.column + 1
-            print("\u{001B}[\(cursorRow);\(cursorCol)H", terminator: "")
+            // Only position cursor if it's within the visible area
+            if cursorRow >= 1 && cursorRow <= availableLines {
+                print("\u{001B}[\(cursorRow);\(cursorCol)H", terminator: "")
+            }
         }
 
         // Show cursor after render is complete
