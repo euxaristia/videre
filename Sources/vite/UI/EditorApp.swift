@@ -351,13 +351,13 @@ class ViEditor {
                         finalLine = highlightedLine
                     }
 
-                    // Apply bracket highlighting
-                    if !state.showWelcomeMessage {
+                    // Apply bracket highlighting (only when cursor is on a bracket)
+                    if !state.showWelcomeMessage, let match = state.matchingBracketPosition {
                         if lineIndex == state.cursor.position.line {
                             finalLine = applyBracketHighlighting(
                                 to: finalLine, col: state.cursor.position.column, raw: displayLine)
                         }
-                        if let match = state.matchingBracketPosition, lineIndex == match.line {
+                        if lineIndex == match.line {
                             finalLine = applyBracketHighlighting(
                                 to: finalLine, col: match.column, raw: displayLine)
                         }
