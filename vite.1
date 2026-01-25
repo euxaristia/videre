@@ -1,0 +1,218 @@
+.TH VITE 1 "2026-01-25" "vite" "User Commands"
+.SH NAME
+vite \- a lightning-fast, lightweight vi text editor
+.SH SYNOPSIS
+.B vite
+.RI [ file ]
+.SH DESCRIPTION
+.B vite
+is a modal text editor built in pure Swift, bringing the power of vi/Vim modal editing to the terminal with minimal dependencies and maximum performance.
+.PP
+It features true modal editing (Normal, Insert, Visual, and Command modes), classic vi keybindings with modern enhancements, efficient gap buffer text storage, rich motion and operator system, and a clean Neovim-inspired UI.
+.SH ARGUMENTS
+.TP
+.I file
+The file to open. If not specified, vite starts with an empty buffer.
+.SH MODES
+.SS Normal Mode
+Enter with ESC or at startup. Used for navigation and commands.
+.TP
+.B Navigation
+.IP "h, j, k, l"
+Move left, down, up, right
+.IP "w, b, e"
+Move to next word, previous word, end of word
+.IP "0, ^, $"
+Move to line start, first non-whitespace, line end
+.IP "gg, G"
+Move to file start, file end
+.IP "{n}G"
+Go to line number n
+.TP
+.B Character Search
+.IP "f{char}, F{char}"
+Find character forward/backward on current line
+.IP "t{char}, T{char}"
+Move until (till) character forward/backward
+.IP ";"
+Repeat last find or till command
+.TP
+.B Insert Commands
+.IP "i, a"
+Insert before/after cursor
+.IP "I, A"
+Insert at line start/end
+.IP "o, O"
+Open new line below/above
+.TP
+.B Delete/Edit
+.IP "x"
+Delete character at cursor
+.IP "d{motion}"
+Delete with motion (e.g., dw deletes word, dd deletes line, d$ deletes to end of line)
+.IP "c{motion}"
+Change (delete and insert) with motion
+.TP
+.B Copy/Paste
+.IP "y{motion}"
+Yank (copy) with motion
+.IP "p, P"
+Paste after/before cursor
+.TP
+.B Visual Mode
+.IP "v, V"
+Enter visual mode (character-wise or line-wise)
+.TP
+.B Count Prefixes
+Most commands accept numeric prefixes (e.g., 3j moves down 3 lines, 5w moves forward 5 words, 2dd deletes 2 lines)
+.TP
+.B Command Mode
+.IP ":"
+Enter command mode for file operations and editor commands
+.SS Insert Mode
+Enter with i, a, I, A, o, O. Used for text input.
+.TP
+.B ESC
+Return to Normal mode
+.TP
+.B Arrow Keys
+Navigate while in insert mode (Neovim-style)
+.TP
+.B Backspace
+Delete character before cursor
+.TP
+.B Enter
+Insert newline
+.TP
+.B Tab
+Insert 4 spaces
+.SS Command Mode
+Enter with colon (`:`) in Normal mode. Execute file and editor operations.
+.TP
+.B :w [file]
+Write (save) file. Optionally specify new filename.
+.TP
+.B :e file
+Edit (open) file
+.TP
+.B :q
+Quit editor (fails if unsaved changes exist)
+.TP
+.B :q!
+Quit without saving
+.TP
+.B :wq
+Write and quit
+.TP
+.B :{number}
+Go to line number
+.TP
+.B :h, :help
+Display help text
+.SS Visual Mode
+Enter with v or V in Normal mode. Select text.
+.TP
+.B v
+Character-wise visual mode
+.TP
+.B V
+Line-wise visual mode
+.TP
+.B ESC
+Exit visual mode
+.SH EXAMPLES
+.TP
+Open a file:
+.B vite myfile.txt
+.TP
+Start with empty buffer:
+.B vite
+.TP
+Edit a file, go to line 42:
+.B vite myfile.txt
+Then in Normal mode type:
+.B 42G
+.TP
+Delete a word:
+In Normal mode position cursor on a word, then type:
+.B dw
+.TP
+Copy and paste:
+In Normal mode, copy a line with:
+.B yy
+Then move to desired location and paste with:
+.B p
+.SH ARCHITECTURE
+.B vite
+implements several key components:
+.TP
+.B Gap Buffer
+Text is stored using a gap buffer—a dynamic array with an efficient gap at the cursor position, enabling O(1) character insertions and deletions.
+.TP
+.B Mode System
+Four distinct modes (Normal, Insert, Visual, Command) control how input is interpreted.
+.TP
+.B Motion Engine
+Dedicated engine for cursor movements supporting word boundaries, line positions, and character searches.
+.TP
+.B Operator Engine
+Handles operator-motion pairs (e.g., d3w) and executes them atomically.
+.SH PLATFORM SUPPORT
+.TP
+Supported:
+.IP "• macOS 13+"
+.IP "• Linux (any distro with Swift 5.9+)"
+.TP
+Not Supported:
+.IP "• Windows (requires POSIX APIs not available on Windows)"
+.SH FEATURES
+.TP
+.B True Modal Editing
+Normal, Insert, Visual, and Command modes with classic vi keybindings and modern enhancements
+.TP
+.B Efficient Text Storage
+Gap buffer data structure for O(1) insertions at cursor
+.TP
+.B Rich Motion & Operator System
+Word motions (w, b, e), character search (f, F, t, T, ;), line motions (0, ^, $, gg, G), and composable commands (dw, 3dd, y$, ct{char})
+.TP
+.B Neovim-Inspired UI
+Faint line numbers, clean status line showing filename/position/scroll indicator, responsive terminal rendering with resize support
+.TP
+.B Vim-Compatible File Operations
+Commands (:w, :e, :q, :wq, :q!), Vim-style error messages, unsaved change protection
+.TP
+.B Arrow Key Support
+Alongside hjkl navigation in all modes
+.SH TROUBLESHOOTING
+.TP
+.B Terminal echo stuck after crash?
+Run
+.B reset
+or
+.B stty sane
+in your shell. vite restores terminal state on clean exit, but hard kills may leave TTY misconfigured.
+.TP
+.B Arrow keys not working?
+Ensure your terminal emits standard escape sequences. Test with
+.B cat -v
+then press arrow keys—should see ^[[A/B/C/D
+.TP
+.B Line numbers not faint?
+Your terminal may not support ANSI dim mode. Try a modern terminal: iTerm2, Alacritty, kitty, or GNOME Terminal.
+.SH ENVIRONMENT
+.TP
+.B PATH
+vite should be in your PATH for easy access. The Makefile installs to ~/.local/bin by default.
+.SH FILES
+.TP
+.I file
+The file being edited. vite creates the file if it doesn't exist when using :w to save.
+.SH SEE ALSO
+.B vi(1), vim(1), ex(1)
+.SH AUTHOR
+euxaristia
+.SH LICENSE
+Copyright © 2026 euxaristia. All rights reserved.
+.PP
+vite is distributed under the BSD 3-Clause License.
