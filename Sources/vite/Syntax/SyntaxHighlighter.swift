@@ -16,8 +16,8 @@ enum SyntaxColor: String {
     case variable = "\u{001B}[38;5;252m"     // White for variables
     case attribute = "\u{001B}[38;5;114m"    // Light green for attributes
     case tag = "\u{001B}[38;5;167m"          // Red for HTML/XML tags
-    // Search highlight - yellow background with black text (like neovim)
-    case searchMatch = "\u{001B}[30;48;5;220m"  // Black text on yellow background
+    // Search highlight - tan/khaki background with black text (like neovim)
+    case searchMatch = "\u{001B}[30;48;5;179m"  // Black text on tan/khaki background
 }
 
 /// Token type for syntax highlighting
