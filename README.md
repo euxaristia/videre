@@ -1,12 +1,12 @@
 # vite ⚡
 
-A lightning-fast, lightweight Vi text editor built in pure Swift. vite brings the power of modal editing to the terminal with a clean, minimal design inspired by the legendary Vi/Vim editors.
+A lightning-fast, lightweight vi text editor built in pure Swift. vite brings the power of modal editing to the terminal with a clean, minimal design inspired by the legendary vi/Vim editors.
 
 <p align="center">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-5.9%2B-orange?logo=swift" />
   <img alt="Platforms" src="https://img.shields.io/badge/Platforms-macOS%20%7C%20Linux-4CAF50" />
   <img alt="SPM" src="https://img.shields.io/badge/Build-SPM-informational" />
-  <img alt="Editor" src="https://img.shields.io/badge/Editor-Vi%2FVim-brightgreen" />
+  <img alt="Editor" src="https://img.shields.io/badge/Editor-vi%2FVim-brightgreen" />
   <img alt="Architecture" src="https://img.shields.io/badge/Buffer-Gap%20Buffer-blue" />
 </p>
 
@@ -16,7 +16,7 @@ A lightning-fast, lightweight Vi text editor built in pure Swift. vite brings th
 
 - **True modal editing**
   - Normal, Insert, Visual, and Command modes
-  - Classic Vi keybindings with modern enhancements
+  - Classic vi keybindings with modern enhancements
   - Arrow key support alongside hjkl navigation
 - **Efficient text storage**
   - Gap buffer data structure for O(1) insertions at cursor
@@ -39,7 +39,7 @@ A lightning-fast, lightweight Vi text editor built in pure Swift. vite brings th
 
 ## How it works
 
-vite implements a classic Vi-style editor with modern refinements:
+vite implements a classic vi-style editor with modern refinements:
 
 - **Gap Buffer**: Text is stored using a gap buffer—a dynamic array with an efficient "gap" at the cursor position, enabling O(1) character insertions
 - **Mode System**: Four distinct modes (Normal, Insert, Visual, Command) control input interpretation
@@ -187,10 +187,10 @@ Benefits:
 - **Escape sequences**: Parses arrow keys (`ESC[A/B/C/D`) into navigation commands
 - **ANSI rendering**: Faint line numbers, inverse video cursor, clean status bar
 
-### Vi Compatibility
+### vi Compatibility
 
-vite implements core Vi behavior with high fidelity:
-- Cursor positioning follows Vi rules (e.g., moving left from insert mode)
+vite implements core vi behavior with high fidelity:
+- Cursor positioning follows vi rules (e.g., moving left from insert mode)
 - Operators compose with motions using the same grammar
 - Error messages match Vim's format (e.g., `E37`, `E212`)
 - Empty buffers show tildes (`~`) like Vim
@@ -259,7 +259,7 @@ swift build -c release
 - Motion calculations belong in `MotionEngine`
 - Operator execution belongs in `OperatorEngine`
 - Use protocols for extensibility
-- Follow existing Vi semantics where possible
+- Follow existing vi semantics where possible
 
 ## Troubleshooting
 
@@ -281,4 +281,4 @@ Copyright © 2025 euxaristia. All rights reserved.
 
 ---
 
-Built with Swift, inspired by Vi, powered by gap buffers. ⚡✨
+Built with Swift, inspired by vi, powered by gap buffers. ⚡✨
