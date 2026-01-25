@@ -12,6 +12,11 @@ class VisualMode: BaseModeHandler {
             state.setMode(.normal)
             return true
 
+        case "\u{01}":
+            // Ctrl+A: Select All
+            state.selectAll()
+            return true
+
         case "h":
             state.moveCursorLeft()
             return true

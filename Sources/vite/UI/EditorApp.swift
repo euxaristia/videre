@@ -1,9 +1,13 @@
 import Foundation
 
-#if os(Linux)
-    import Glibc
-#else
+#if canImport(Darwin)
     import Darwin
+#elseif canImport(FreeBSD)
+    import FreeBSD
+#elseif canImport(Musl)
+    import Musl
+#elseif canImport(Glibc)
+    import Glibc
 #endif
 
 /// Terminal window size structure
@@ -32,6 +36,10 @@ class ViEditor {
     var searchMode: SearchMode
     var shouldExit: Bool = false
     var terminalSize: TerminalSize = TerminalSize()
+
+    // ESC spam detection
+    private var escPressCount = 0
+    private var lastEscPressTime: Date = Date.distantPast
 
     init(state: EditorState) {
         self.state = state
@@ -77,6 +85,25 @@ class ViEditor {
             render()
 
             if let char = readCharacter() {
+                // Handle ESC spam detection
+                if char == "\u{1B}" {
+                    let now = Date()
+                    if now.timeIntervalSince(lastEscPressTime) < 0.5 {
+                        escPressCount += 1
+                    } else {
+                        escPressCount = 1
+                    }
+                    lastEscPressTime = now
+
+                    if escPressCount >= 5 {
+                        state.showExitHint = true
+                    }
+                } else if char != Character(UnicodeScalar(0)) {
+                    // Any other key clears the hint and count
+                    escPressCount = 0
+                    state.showExitHint = false
+                }
+
                 let keyEvent = KeyEvent(character: char)
                 inputDispatcher.dispatch(keyEvent, editor: self)
 
@@ -93,7 +120,7 @@ class ViEditor {
     private func updateTerminalSize() {
         var ws = winsize()
 
-        #if os(Linux)
+        #if canImport(Glibc) || canImport(Musl)
             if ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &ws) == 0 {
                 terminalSize.rows = ws.ws_row
                 terminalSize.cols = ws.ws_col
@@ -117,6 +144,8 @@ class ViEditor {
 
         // Enter alternate screen buffer (saves current terminal content)
         print("\u{001B}[?1049h", terminator: "")
+        // Enable mouse tracking (SGR mode)
+        print("\u{001B}[?1000h\u{001B}[?1006h", terminator: "")
         // Clear screen and show cursor
         print("\u{001B}[2J", terminator: "")
         print("\u{001B}[H", terminator: "")
@@ -131,6 +160,8 @@ class ViEditor {
         settings.c_lflag |= tcflag_t(ICANON | ECHO)
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
+        // Disable mouse tracking
+        print("\u{001B}[?1006l\u{001B}[?1000l", terminator: "")
         // Leave alternate screen buffer (restores original terminal content)
         print("\u{001B}[?1049l", terminator: "")
         fflush(stdout)
@@ -175,6 +206,8 @@ class ViEditor {
                         }
                     case 0x48: return "↖"  // Home (ESC [ H)
                     case 0x46: return "↘"  // End (ESC [ F)
+                    case 0x3C:  // SGR Mouse Protocol (ESC [ < ...)
+                        return readMouseSequence()
                     default: break
                     }
                 }
@@ -184,6 +217,54 @@ class ViEditor {
         }
 
         return Character(UnicodeScalar(byte))
+    }
+
+    private func readMouseSequence() -> Character? {
+        var seq = ""
+        var buffer: [UInt8] = [0]
+        while true {
+            let n = read(STDIN_FILENO, &buffer, 1)
+            guard n > 0 else { break }
+            let char = Character(UnicodeScalar(buffer[0]))
+            seq.append(char)
+            if char == "m" || char == "M" { break }
+        }
+
+        // Format is <button>;<x>;<y><m/M>
+        let parts = seq.dropLast().split(separator: ";")
+        guard parts.count == 3,
+            let button = Int(parts[0]),
+            let x = Int(parts[1]),
+            let y = Int(parts[2])
+        else { return nil }
+
+        let isRelease = seq.last == "m"
+        if button == 0 && !isRelease {
+            // Left click press
+            handleMouseClick(x: x, y: y)
+        }
+
+        return nil
+    }
+
+    private func handleMouseClick(x: Int, y: Int) {
+        let terminalRows = Int(terminalSize.rows)
+        let gutterWidth = String(state.buffer.lineCount).count
+
+        // Check if click is within the buffer area (not status/command lines)
+        let availableLines = max(1, terminalRows - 2)
+        if y >= 1 && y <= availableLines {
+            let bufferLine = state.scrollOffset + y - 1
+            if bufferLine < state.buffer.lineCount {
+                let bufferCol = max(0, x - (gutterWidth + 1) - 1)
+                let lineLength = state.buffer.lineLength(bufferLine)
+                state.cursor.move(
+                    to: Position(
+                        line: bufferLine, column: min(bufferCol, max(0, lineLength - 1))))
+                state.showWelcomeMessage = false
+                state.updateStatusMessage()
+            }
+        }
     }
 
     private func render() {
@@ -298,9 +379,17 @@ class ViEditor {
         let flexiblePadding = String(repeating: " ", count: flexiblePaddingSize)
 
         // Final status line construction (no trailing space to ensure flush right)
-        let statusLine =
+        var statusLine =
             segment1 + flexiblePadding + segment2 + String(repeating: " ", count: gapBetween2And3)
             + segment3
+
+        // Overlay exit hint if needed
+        if state.showExitHint {
+            let exitHint = " press :q or ^C to exit "
+            if statusLine.count > exitHint.count {
+                statusLine = String(statusLine.dropLast(exitHint.count)) + exitHint
+            }
+        }
 
         // Render status line (second to last line)
         // Using specific grey background (ANSI 250) and black text (ANSI 30) to match Neovim shading

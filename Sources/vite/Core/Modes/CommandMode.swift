@@ -186,6 +186,7 @@ class CommandMode: BaseModeHandler {
         state.filePath = "help.txt"
         state.cursor.moveToBeginningOfFile()
         state.isDirty = false
+        state.showWelcomeMessage = false
         state.statusMessage = "help.txt [Help][RO]"
     }
 
