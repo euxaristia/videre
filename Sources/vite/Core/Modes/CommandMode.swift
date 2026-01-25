@@ -47,7 +47,12 @@ class CommandMode: BaseModeHandler {
         switch cmd {
         case "q", "quit":
             if state.isDirty {
-                state.statusMessage = "E37: No write since last change (add ! to override)"
+                let filename = state.filePath ?? "[No Name]"
+                state.multiLineMessage = [
+                    "E37: No write since last change",
+                    "E162: No write since last change for buffer \"\(filename)\"",
+                ]
+                state.isWaitingForEnter = true
             } else {
                 state.shouldExit = true
             }

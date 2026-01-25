@@ -85,6 +85,13 @@ class ViEditor {
             render()
 
             if let char = readCharacter() {
+                // If waiting for enter, any key (or just enter) clears it
+                if state.isWaitingForEnter {
+                    state.isWaitingForEnter = false
+                    state.multiLineMessage = []
+                    continue
+                }
+
                 // Handle ESC spam detection
                 if char == "\u{1B}" {
                     let now = Date()
@@ -442,6 +449,11 @@ class ViEditor {
             }
         }
 
+        // Render multi-line messages if waiting for enter
+        if state.isWaitingForEnter {
+            renderHitEnterPrompt()
+        }
+
         // Show cursor after render is complete
         print("\u{001B}[?25h", terminator: "")
 
@@ -569,6 +581,25 @@ class ViEditor {
         }
 
         return result
+    }
+
+    private func renderHitEnterPrompt() {
+        let rows = Int(terminalSize.rows)
+        let messages = state.multiLineMessage
+
+        // Position at the bottom, above the last line if possible, or just start from bottom
+        var currentRow = rows - messages.count
+        if currentRow < 1 { currentRow = 1 }
+
+        for msg in messages {
+            print("\u{001B}[\(currentRow);1H\u{001B}[K\(msg)")
+            currentRow += 1
+        }
+
+        // Final prompt
+        print("\u{001B}[\(rows);1H\u{001B}[K", terminator: "")
+        print("\u{001B}[1;32mPress ENTER or type command to continue\u{001B}[0m", terminator: "")
+        fflush(stdout)
     }
 
     private func applySelectionHighlighting(

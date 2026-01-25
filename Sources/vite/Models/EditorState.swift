@@ -23,6 +23,8 @@ class EditorState {
     var shouldExit: Bool = false
     var showWelcomeMessage: Bool = false
     var showExitHint: Bool = false
+    var isWaitingForEnter: Bool = false
+    var multiLineMessage: [String] = []
 
     // Viewport scrolling - the first visible line
     var scrollOffset: Int = 0
@@ -237,5 +239,71 @@ class EditorState {
         cursor.position.line += 1
         cursor.position.column = 0
         isDirty = true
+    }
+
+    // MARK: - Number Operations
+
+    func incrementNextNumber(count: Int) {
+        let lineIdx = cursor.position.line
+        let line = buffer.line(lineIdx)
+        let colIdx = cursor.position.column
+
+        // Look for number starting at or after cursor
+        var searchIdx = line.index(line.startIndex, offsetBy: colIdx)
+        var numberStartIdx: String.Index?
+        var numberEndIdx: String.Index?
+
+        // Special case: if we are on a digit or on a minus followed by a digit
+        func isNumberChar(_ idx: String.Index) -> Bool {
+            if line[idx].isNumber { return true }
+            if line[idx] == "-" {
+                let nextIdx = line.index(after: idx)
+                if nextIdx < line.endIndex && line[nextIdx].isNumber {
+                    return true
+                }
+            }
+            return false
+        }
+
+        // Search for the start of a number
+        var i = searchIdx
+        while i < line.endIndex {
+            if line[i].isNumber
+                || (line[i] == "-" && line.index(after: i) < line.endIndex
+                    && line[line.index(after: i)].isNumber)
+            {
+                numberStartIdx = i
+                break
+            }
+            i = line.index(after: i)
+        }
+
+        guard let start = numberStartIdx else { return }
+
+        // Find the end of the number
+        var j = line.index(after: start)
+        while j < line.endIndex && line[j].isNumber {
+            j = line.index(after: j)
+        }
+        numberEndIdx = j
+
+        let numberStr = String(line[start..<numberEndIdx!])
+        if let num = Int(numberStr) {
+            let newNum = num + count
+            let newNumStr = String(newNum)
+
+            let startCol = line.distance(from: line.startIndex, to: start)
+            let endCol = line.distance(from: line.startIndex, to: numberEndIdx!)
+
+            buffer.replaceRange(
+                from: Position(line: lineIdx, column: startCol),
+                to: Position(line: lineIdx, column: endCol),
+                with: newNumStr)
+
+            // Move cursor to the end of the new number
+            cursor.position.column = startCol + newNumStr.count - 1
+            isDirty = true
+            updateStatusMessage()
+        }
     }
 }

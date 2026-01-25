@@ -48,6 +48,10 @@ class NormalMode: BaseModeHandler {
 
         // Single character commands
         switch char {
+        case "\u{01}":
+            // Ctrl+A: Increment number
+            state.incrementNextNumber(count: count)
+            return true
         // Cursor movement
         case "h", "←":
             state.moveCursorLeft(count: count)

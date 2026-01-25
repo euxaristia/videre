@@ -120,6 +120,12 @@ class TextBuffer {
         }
     }
 
+    /// Replace range with string
+    func replaceRange(from start: Position, to end: Position, with text: String) {
+        deleteRange(from: start, to: end)
+        insertString(text, at: start)
+    }
+
     /// Replace line
     func replaceLine(_ index: Int, with content: String) {
         guard index >= 0 && index < lines.count else { return }
@@ -192,7 +198,8 @@ class TextBuffer {
         while start > 0 && isWordCharacter(line[line.index(line.startIndex, offsetBy: start - 1)]) {
             start -= 1
         }
-        while end < line.count && isWordCharacter(line[line.index(line.startIndex, offsetBy: end)]) {
+        while end < line.count && isWordCharacter(line[line.index(line.startIndex, offsetBy: end)])
+        {
             end += 1
         }
 
