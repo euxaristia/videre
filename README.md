@@ -277,7 +277,7 @@ swift build -c release
 
 ## License
 
-Copyright © 2025 euxaristia. All rights reserved.
+Copyright © 2026 euxaristia. All rights reserved.
 
 ---
 
