@@ -195,6 +195,9 @@ class ViEditor {
             return
         }
 
+        // Hide cursor during render to prevent flicker
+        print("\u{001B}[?25l", terminator: "")
+
         // Move to home and clear screen
         print("\u{001B}[H\u{001B}[2J", terminator: "")
 
@@ -323,6 +326,9 @@ class ViEditor {
             let cursorCol = gutterWidth + 1 + state.cursor.position.column + 1
             print("\u{001B}[\(cursorRow);\(cursorCol)H", terminator: "")
         }
+
+        // Show cursor after render is complete
+        print("\u{001B}[?25h", terminator: "")
 
         fflush(stdout)
     }

@@ -87,6 +87,18 @@ struct LanguageDefinition {
         self.operators = operators
         self.specialIdentifiers = specialIdentifiers
     }
+
+    /// Returns true if this language has meaningful highlighting patterns
+    var hasHighlighting: Bool {
+        return !keywords.isEmpty ||
+               !types.isEmpty ||
+               !constants.isEmpty ||
+               lineComment != nil ||
+               blockCommentStart != nil ||
+               !stringDelimiters.isEmpty ||
+               preprocessorPrefix != nil ||
+               !specialIdentifiers.isEmpty
+    }
 }
 
 /// Main syntax highlighter class
@@ -134,6 +146,9 @@ class SyntaxHighlighter {
     /// Highlight a single line and return colorized string
     func highlightLine(_ line: String) -> String {
         guard let lang = language else { return line }
+
+        // Skip highlighting for languages without meaningful patterns (e.g., markdown)
+        guard lang.hasHighlighting else { return line }
 
         var result = ""
         var i = line.startIndex
