@@ -4,6 +4,7 @@ enum EditorMode {
     case normal
     case insert
     case visual
+    case visualLine
     case command
     case search
 }
@@ -90,35 +91,13 @@ class EditorState {
             return insertModeHandler
         case .visual:
             return visualModeHandler
+        case .visualLine:
+            return visualModeHandler
         case .command:
             return commandModeHandler
         case .search:
             return searchModeHandler
         }
-    }
-
-    func selectAll() {
-        // Return if buffer is empty
-        guard buffer.lineCount > 0 else { return }
-
-        // Start from the very beginning
-        cursor.moveToBeginningOfFile()
-        setMode(.visual)
-
-        // Set start position if visual mode handler exists
-        if let visualHandler = visualModeHandler as? VisualMode {
-            visualHandler.startPosition = Position(line: 0, column: 0)
-        }
-
-        // Move to the very end
-        moveCursorToEndOfFile()
-        // Ensure cursor is at the last character of the last line
-        let lastLine = max(0, buffer.lineCount - 1)
-        let lastLineLength = buffer.lineLength(lastLine)
-        cursor.position = Position(line: lastLine, column: max(0, lastLineLength - 1))
-
-        showWelcomeMessage = false
-        updateStatusMessage()
     }
 
     // MARK: - Status
@@ -137,6 +116,8 @@ class EditorState {
             return "INSERT"
         case .visual:
             return "VISUAL"
+        case .visualLine:
+            return "VISUAL LINE"
         case .command:
             return "COMMAND"
         case .search:

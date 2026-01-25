@@ -3,28 +3,30 @@ import Foundation
 /// ANSI color codes for syntax highlighting
 enum SyntaxColor: String {
     case reset = "\u{001B}[0m"
-    case keyword = "\u{001B}[38;5;204m"      // Pink/magenta for keywords
-    case type = "\u{001B}[38;5;81m"          // Cyan for types
-    case string = "\u{001B}[38;5;186m"       // Yellow for strings
-    case number = "\u{001B}[38;5;180m"       // Orange for numbers
-    case comment = "\u{001B}[38;5;102m"      // Gray for comments
-    case function = "\u{001B}[38;5;117m"     // Light blue for functions
-    case preprocessor = "\u{001B}[38;5;140m" // Purple for preprocessor
-    case operator_ = "\u{001B}[38;5;145m"    // Light gray for operators
-    case constant = "\u{001B}[38;5;173m"     // Brown/orange for constants
-    case special = "\u{001B}[38;5;149m"      // Green for special
-    case variable = "\u{001B}[38;5;252m"     // White for variables
-    case attribute = "\u{001B}[38;5;114m"    // Light green for attributes
-    case tag = "\u{001B}[38;5;167m"          // Red for HTML/XML tags
+    case keyword = "\u{001B}[38;5;204m"  // Pink/magenta for keywords
+    case type = "\u{001B}[38;5;81m"  // Cyan for types
+    case string = "\u{001B}[38;5;186m"  // Yellow for strings
+    case number = "\u{001B}[38;5;180m"  // Orange for numbers
+    case comment = "\u{001B}[38;5;102m"  // Gray for comments
+    case function = "\u{001B}[38;5;117m"  // Light blue for functions
+    case preprocessor = "\u{001B}[38;5;140m"  // Purple for preprocessor
+    case operator_ = "\u{001B}[38;5;145m"  // Light gray for operators
+    case constant = "\u{001B}[38;5;173m"  // Brown/orange for constants
+    case special = "\u{001B}[38;5;149m"  // Green for special
+    case variable = "\u{001B}[38;5;252m"  // White for variables
+    case attribute = "\u{001B}[38;5;114m"  // Light green for attributes
+    case tag = "\u{001B}[38;5;167m"  // Red for HTML/XML tags
     // Search highlight - tan/khaki background with black text (like neovim)
     case searchMatch = "\u{001B}[30;48;5;179m"  // Black text on tan/khaki background
+    // Visual selection - dark grey background (like neovim)
+    case visualSelection = "\u{001B}[48;5;242m"
     // Markdown-specific colors (using unique codes)
-    case mdHeader = "\u{001B}[1;38;5;117m"   // Bold light blue for headers
-    case mdBold = "\u{001B}[1m"              // Bold
-    case mdItalic = "\u{001B}[3m"            // Italic
-    case mdCode = "\u{001B}[38;5;187m"       // Light yellow for inline code
-    case mdLink = "\u{001B}[4;38;5;81m"      // Underline cyan for links/URLs
-    case mdListMarker = "\u{001B}[38;5;205m" // Pink for list markers
+    case mdHeader = "\u{001B}[1;38;5;117m"  // Bold light blue for headers
+    case mdBold = "\u{001B}[1m"  // Bold
+    case mdItalic = "\u{001B}[3m"  // Italic
+    case mdCode = "\u{001B}[38;5;187m"  // Light yellow for inline code
+    case mdLink = "\u{001B}[4;38;5;81m"  // Underline cyan for links/URLs
+    case mdListMarker = "\u{001B}[38;5;205m"  // Pink for list markers
 }
 
 /// Token type for syntax highlighting
@@ -97,14 +99,9 @@ struct LanguageDefinition {
 
     /// Returns true if this language has meaningful highlighting patterns
     var hasHighlighting: Bool {
-        return !keywords.isEmpty ||
-               !types.isEmpty ||
-               !constants.isEmpty ||
-               lineComment != nil ||
-               blockCommentStart != nil ||
-               !stringDelimiters.isEmpty ||
-               preprocessorPrefix != nil ||
-               !specialIdentifiers.isEmpty
+        return !keywords.isEmpty || !types.isEmpty || !constants.isEmpty || lineComment != nil
+            || blockCommentStart != nil || !stringDelimiters.isEmpty || preprocessorPrefix != nil
+            || !specialIdentifiers.isEmpty
     }
 }
 
@@ -169,7 +166,7 @@ class SyntaxHighlighter {
         // Check if we're continuing a block comment
         if inBlockComment {
             if let blockEnd = lang.blockCommentEnd,
-               let endRange = line.range(of: blockEnd)
+                let endRange = line.range(of: blockEnd)
             {
                 result += colorFor(.comment)
                 result += String(line[..<endRange.upperBound])
@@ -184,7 +181,7 @@ class SyntaxHighlighter {
         while i < end {
             // Check for line comment
             if let lineComment = lang.lineComment,
-               line[i...].hasPrefix(lineComment)
+                line[i...].hasPrefix(lineComment)
             {
                 result += colorFor(.comment)
                 result += String(line[i...])
@@ -194,11 +191,12 @@ class SyntaxHighlighter {
 
             // Check for block comment start
             if let blockStart = lang.blockCommentStart,
-               line[i...].hasPrefix(blockStart)
+                line[i...].hasPrefix(blockStart)
             {
                 if let blockEnd = lang.blockCommentEnd,
-                   let endRange = line[i...].range(of: blockEnd,
-                       range: line.index(i, offsetBy: blockStart.count)..<end)
+                    let endRange = line[i...].range(
+                        of: blockEnd,
+                        range: line.index(i, offsetBy: blockStart.count)..<end)
                 {
                     // Block comment on same line
                     result += colorFor(.comment)
@@ -219,7 +217,9 @@ class SyntaxHighlighter {
             // Check for preprocessor
             if let prefix = lang.preprocessorPrefix {
                 let trimmed = String(line[i...]).trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix(prefix) && (i == line.startIndex || line[line.index(before: i)].isWhitespace) {
+                if trimmed.hasPrefix(prefix)
+                    && (i == line.startIndex || line[line.index(before: i)].isWhitespace)
+                {
                     result += colorFor(.preprocessor)
                     result += String(line[i...])
                     result += SyntaxColor.reset.rawValue
@@ -253,7 +253,10 @@ class SyntaxHighlighter {
             }
 
             // Check for number
-            if line[i].isNumber || (line[i] == "." && i < line.index(before: end) && line[line.index(after: i)].isNumber) {
+            if line[i].isNumber
+                || (line[i] == "." && i < line.index(before: end)
+                    && line[line.index(after: i)].isNumber)
+            {
                 var numEnd = i
                 var hasDecimal = line[i] == "."
                 var hasExponent = false
@@ -274,7 +277,9 @@ class SyntaxHighlighter {
                     } else if next == "b" || next == "B" {
                         // Binary number
                         numEnd = line.index(numEnd, offsetBy: 2)
-                        while numEnd < end && (line[numEnd] == "0" || line[numEnd] == "1" || line[numEnd] == "_") {
+                        while numEnd < end
+                            && (line[numEnd] == "0" || line[numEnd] == "1" || line[numEnd] == "_")
+                        {
                             numEnd = line.index(after: numEnd)
                         }
                         result += colorFor(.number)
@@ -317,7 +322,9 @@ class SyntaxHighlighter {
             // Check for identifier (keyword, type, function, etc.)
             if line[i].isLetter || line[i] == "_" || line[i] == "@" {
                 var idEnd = line.index(after: i)
-                while idEnd < end && (line[idEnd].isLetter || line[idEnd].isNumber || line[idEnd] == "_") {
+                while idEnd < end
+                    && (line[idEnd].isLetter || line[idEnd].isNumber || line[idEnd] == "_")
+                {
                     idEnd = line.index(after: idEnd)
                 }
 
@@ -380,16 +387,20 @@ class SyntaxHighlighter {
                     break
                 }
             }
-            if hashCount <= 6 && (trimmed.count == hashCount || trimmed[trimmed.index(trimmed.startIndex, offsetBy: hashCount)] == " ") {
+            if hashCount <= 6
+                && (trimmed.count == hashCount
+                    || trimmed[trimmed.index(trimmed.startIndex, offsetBy: hashCount)] == " ")
+            {
                 return SyntaxColor.mdHeader.rawValue + line + SyntaxColor.reset.rawValue
             }
         }
 
         // Check for horizontal rule (---, ***, ___)
         let hrTrimmed = trimmed.filter { !$0.isWhitespace }
-        if hrTrimmed.count >= 3 && (hrTrimmed.allSatisfy { $0 == "-" } ||
-                                     hrTrimmed.allSatisfy { $0 == "*" } ||
-                                     hrTrimmed.allSatisfy { $0 == "_" }) {
+        if hrTrimmed.count >= 3
+            && (hrTrimmed.allSatisfy { $0 == "-" } || hrTrimmed.allSatisfy { $0 == "*" }
+                || hrTrimmed.allSatisfy { $0 == "_" })
+        {
             return SyntaxColor.comment.rawValue + line + SyntaxColor.reset.rawValue
         }
 
@@ -400,7 +411,8 @@ class SyntaxHighlighter {
                 let prefix = String(line[..<markerIdx])
                 let marker = String(line[markerIdx])
                 let rest = String(line[line.index(after: markerIdx)...])
-                return prefix + SyntaxColor.mdListMarker.rawValue + marker + SyntaxColor.reset.rawValue + highlightMarkdownInline(rest)
+                return prefix + SyntaxColor.mdListMarker.rawValue + marker
+                    + SyntaxColor.reset.rawValue + highlightMarkdownInline(rest)
             }
         }
 
@@ -410,7 +422,8 @@ class SyntaxHighlighter {
             if let numIdx = line.range(of: numPart) {
                 let prefix = String(line[..<numIdx.lowerBound])
                 let rest = String(line[numIdx.upperBound...])
-                return prefix + SyntaxColor.mdListMarker.rawValue + numPart + SyntaxColor.reset.rawValue + highlightMarkdownInline(rest)
+                return prefix + SyntaxColor.mdListMarker.rawValue + numPart
+                    + SyntaxColor.reset.rawValue + highlightMarkdownInline(rest)
             }
         }
 
@@ -453,7 +466,9 @@ class SyntaxHighlighter {
                     let startIdx = line.index(i, offsetBy: 2)
                     if startIdx < end {
                         // Find closing **
-                        if let closeRange = line.range(of: String(repeating: marker, count: 2), range: startIdx..<end) {
+                        if let closeRange = line.range(
+                            of: String(repeating: marker, count: 2), range: startIdx..<end)
+                        {
                             result += SyntaxColor.mdBold.rawValue
                             result += String(line[i..<closeRange.upperBound])
                             result += SyntaxColor.reset.rawValue
@@ -476,7 +491,10 @@ class SyntaxHighlighter {
             }
 
             // Check for links [text](url) or images ![alt](url)
-            if line[i] == "[" || (line[i] == "!" && i < line.index(before: end) && line[line.index(after: i)] == "[") {
+            if line[i] == "["
+                || (line[i] == "!" && i < line.index(before: end)
+                    && line[line.index(after: i)] == "[")
+            {
                 let isImage = line[i] == "!"
                 let bracketStart = isImage ? line.index(after: i) : i
 
@@ -501,7 +519,9 @@ class SyntaxHighlighter {
                 if remaining.hasPrefix("http://") || remaining.hasPrefix("https://") {
                     // Find end of URL (space or end of line)
                     var urlEnd = i
-                    while urlEnd < end && !line[urlEnd].isWhitespace && line[urlEnd] != ")" && line[urlEnd] != ">" && line[urlEnd] != "\"" {
+                    while urlEnd < end && !line[urlEnd].isWhitespace && line[urlEnd] != ")"
+                        && line[urlEnd] != ">" && line[urlEnd] != "\""
+                    {
                         urlEnd = line.index(after: urlEnd)
                     }
                     result += SyntaxColor.mdLink.rawValue
@@ -519,7 +539,10 @@ class SyntaxHighlighter {
                     let tagContent = String(line[i...closeIdx])
                     // Basic check that it looks like a tag (starts with < followed by letter or /)
                     let afterOpen = line.index(after: i)
-                    if afterOpen < end && (line[afterOpen].isLetter || line[afterOpen] == "/" || line[afterOpen] == "!") {
+                    if afterOpen < end
+                        && (line[afterOpen].isLetter || line[afterOpen] == "/"
+                            || line[afterOpen] == "!")
+                    {
                         result += SyntaxColor.tag.rawValue
                         result += tagContent
                         result += SyntaxColor.reset.rawValue

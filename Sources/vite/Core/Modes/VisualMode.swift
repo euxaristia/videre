@@ -12,11 +12,6 @@ class VisualMode: BaseModeHandler {
             state.setMode(.normal)
             return true
 
-        case "\u{01}":
-            // Ctrl+A: Select All
-            state.selectAll()
-            return true
-
         case "h":
             state.moveCursorLeft()
             return true
@@ -88,21 +83,27 @@ class VisualMode: BaseModeHandler {
 
     override func enter() {
         startPosition = state.cursor.position
-        isLineVisual = state.currentMode == .visual
+        isLineVisual = state.currentMode == .visualLine
     }
 
     override func exit() {
         startPosition = Position()
     }
 
-    private func selectionRange() -> (Position, Position) {
+    func selectionRange() -> (Position, Position) {
         let start = startPosition
         let end = state.cursor.position
 
-        if start.line < end.line || (start.line == end.line && start.column < end.column) {
-            return (start, end)
-        } else {
-            return (end, start)
+        var (rangeStart, rangeEnd) =
+            start.line < end.line || (start.line == end.line && start.column < end.column)
+            ? (start, end) : (end, start)
+
+        if isLineVisual {
+            rangeStart.column = 0
+            let lastLineLength = state.buffer.lineLength(rangeEnd.line)
+            rangeEnd.column = max(0, lastLineLength - 1)
         }
+
+        return (rangeStart, rangeEnd)
     }
 }

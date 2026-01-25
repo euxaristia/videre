@@ -327,9 +327,22 @@ class ViEditor {
                     // Apply syntax highlighting
                     let highlightedLine = SyntaxHighlighter.shared.highlightLine(displayLine)
 
+                    // Apply visual selection if in visual mode
+                    let finalLine: String
+                    if let visualHandler = state.visualModeHandler as? VisualMode,
+                        state.currentMode == .visual || state.currentMode == .visualLine
+                    {
+                        let (start, end) = visualHandler.selectionRange()
+                        finalLine = applySelectionHighlighting(
+                            to: highlightedLine, line: lineIndex, raw: displayLine, start: start,
+                            end: end)
+                    } else {
+                        finalLine = highlightedLine
+                    }
+
                     // Apply search highlighting on top if there's an active search
-                    let finalLine = highlightSearchMatches(in: highlightedLine, raw: displayLine)
-                    print(finalLine, terminator: "")
+                    let searchedLine = highlightSearchMatches(in: finalLine, raw: displayLine)
+                    print(searchedLine, terminator: "")
                     print(SyntaxColor.reset.rawValue, terminator: "")
                 } else {
                     // Beyond file end - show tilde
@@ -557,6 +570,94 @@ class ViEditor {
 
         return result
     }
+
+    private func applySelectionHighlighting(
+        to highlighted: String, line: Int, raw: String, start: Position, end: Position
+    ) -> String {
+        // Find if this line is within the selection range
+        guard line >= start.line && line <= end.line else { return highlighted }
+
+        var result = ""
+        var rawIndex = raw.startIndex
+        var highlightedIndex = highlighted.startIndex
+
+        // Initial background if start of selection is at the beginning of this line
+        if isSelected(line: line, col: 0, start: start, end: end) {
+            result += SyntaxColor.visualSelection.rawValue
+        }
+
+        while rawIndex < raw.endIndex && highlightedIndex < highlighted.endIndex {
+            // Skip ANSI escape sequences in highlighted string
+            if highlighted[highlightedIndex] == "\u{001B}" {
+                var escEnd = highlighted.index(after: highlightedIndex)
+                while escEnd < highlighted.endIndex {
+                    let c = highlighted[escEnd]
+                    if c.isLetter || c == "m" {
+                        escEnd = highlighted.index(after: escEnd)
+                        break
+                    }
+                    escEnd = highlighted.index(after: escEnd)
+                }
+                let escSeq = String(highlighted[highlightedIndex..<escEnd])
+                result += escSeq
+
+                // If the escape sequence was a reset, re-apply selection background if we're still in selection
+                if escSeq == SyntaxColor.reset.rawValue || escSeq == "\u{001B}[0m" {
+                    let col = raw.distance(from: raw.startIndex, to: rawIndex)
+                    if isSelected(line: line, col: col, start: start, end: end) {
+                        result += SyntaxColor.visualSelection.rawValue
+                    }
+                }
+
+                highlightedIndex = escEnd
+                continue
+            }
+
+            let col = raw.distance(from: raw.startIndex, to: rawIndex)
+            let selected = isSelected(line: line, col: col, start: start, end: end)
+
+            // Check if selection changed state
+            if col > 0 {
+                let prevSelected = isSelected(line: line, col: col - 1, start: start, end: end)
+                if selected && !prevSelected {
+                    result += SyntaxColor.visualSelection.rawValue
+                } else if !selected && prevSelected {
+                    result += SyntaxColor.reset.rawValue
+                }
+            }
+
+            result += String(highlighted[highlightedIndex])
+
+            rawIndex = raw.index(after: rawIndex)
+            highlightedIndex = highlighted.index(after: highlightedIndex)
+        }
+
+        // Append remaining
+        if highlightedIndex < highlighted.endIndex {
+            result += String(highlighted[highlightedIndex...])
+        }
+
+        // Always reset at the end of the line if we were selecting
+        if isSelected(line: line, col: max(0, raw.count - 1), start: start, end: end) {
+            result += SyntaxColor.reset.rawValue
+        }
+
+        return result
+    }
+
+    private func isSelected(line: Int, col: Int, start: Position, end: Position) -> Bool {
+        if line < start.line || line > end.line { return false }
+        if line == start.line && line == end.line {
+            return col >= start.column && col <= end.column
+        }
+        if line == start.line {
+            return col >= start.column
+        }
+        if line == end.line {
+            return col <= end.column
+        }
+        return true
+    }
 }
 
 // MARK: - Input Handling
@@ -588,7 +689,7 @@ class InputDispatcher {
             _ = editor.normalMode.handleInput(event.character)
         case .insert:
             _ = editor.insertMode.handleInput(event.character)
-        case .visual:
+        case .visual, .visualLine:
             _ = editor.visualMode.handleInput(event.character)
         case .command:
             _ = editor.commandMode.handleInput(event.character)

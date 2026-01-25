@@ -48,11 +48,6 @@ class NormalMode: BaseModeHandler {
 
         // Single character commands
         switch char {
-        case "\u{01}":
-            // Ctrl+A: Select All
-            state.selectAll()
-            return true
-
         // Cursor movement
         case "h", "←":
             state.moveCursorLeft(count: count)
@@ -229,7 +224,7 @@ class NormalMode: BaseModeHandler {
             state.setMode(.visual)
             return true
         case "V":
-            state.setMode(.visual)
+            state.setMode(.visualLine)
             return true
 
         // Command mode
