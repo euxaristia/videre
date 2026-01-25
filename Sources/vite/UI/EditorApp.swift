@@ -365,7 +365,10 @@ class ViEditor {
 
         // Construct status line segments
         // Segment 1: "filename [+]"
-        let segment1 = " \(filename)\(modifiedFlag) "
+        var segment1 = " \(filename)\(modifiedFlag) "
+        if state.showExitHint {
+            segment1 += "[press :q or ^C to exit] "
+        }
         // Segment 2: "line,col-1"
         let segment2 = "\(lineCol)"
         // Segment 3: "All" (or percentage)
@@ -379,17 +382,9 @@ class ViEditor {
         let flexiblePadding = String(repeating: " ", count: flexiblePaddingSize)
 
         // Final status line construction (no trailing space to ensure flush right)
-        var statusLine =
+        let statusLine =
             segment1 + flexiblePadding + segment2 + String(repeating: " ", count: gapBetween2And3)
             + segment3
-
-        // Overlay exit hint if needed
-        if state.showExitHint {
-            let exitHint = " press :q or ^C to exit "
-            if statusLine.count > exitHint.count {
-                statusLine = String(statusLine.dropLast(exitHint.count)) + exitHint
-            }
-        }
 
         // Render status line (second to last line)
         // Using specific grey background (ANSI 250) and black text (ANSI 30) to match Neovim shading
