@@ -25,6 +25,10 @@ class CommandMode: BaseModeHandler {
             if state.pendingCommand.count > 1 {
                 state.pendingCommand.removeLast()
                 state.statusMessage = state.pendingCommand
+            } else {
+                state.setMode(.normal)
+                state.pendingCommand = ""
+                state.statusMessage = ""
             }
             return true
 

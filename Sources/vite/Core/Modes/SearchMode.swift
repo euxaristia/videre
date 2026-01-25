@@ -32,6 +32,8 @@ class SearchMode: BaseModeHandler {
             if !state.searchPattern.isEmpty {
                 state.searchPattern.removeLast()
                 updatePrompt()
+            } else {
+                state.setMode(.normal)
             }
             return true
 
