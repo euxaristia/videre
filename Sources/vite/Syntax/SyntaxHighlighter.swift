@@ -20,6 +20,8 @@ enum SyntaxColor: String {
     case searchMatch = "\u{001B}[30;48;5;179m"  // Black text on tan/khaki background
     // Visual selection - dark grey background (like neovim)
     case visualSelection = "\u{001B}[48;5;242m"
+    // Bracket matching - light grey background (like neovim)
+    case bracketMatch = "\u{001B}[48;5;248m"
     // Markdown-specific colors (using unique codes)
     case mdHeader = "\u{001B}[1;38;5;117m"  // Bold light blue for headers
     case mdBold = "\u{001B}[1m"  // Bold

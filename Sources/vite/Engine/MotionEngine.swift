@@ -3,9 +3,9 @@ import Foundation
 /// Motion types in vi
 enum MotionType {
     case characterMotion  // f, F, t, T
-    case wordMotion       // w, b, e, W, B, E
-    case lineMotion       // 0, ^, $, g_, j, k
-    case searchMotion     // /, ?
+    case wordMotion  // w, b, e, W, B, E
+    case lineMotion  // 0, ^, $, g_, j, k
+    case searchMotion  // /, ?
     case none
 }
 
@@ -42,12 +42,15 @@ class MotionEngine {
             var col = pos.column
 
             // Skip current word
-            while col < line.count && isWordCharacter(line[line.index(line.startIndex, offsetBy: col)]) {
+            while col < line.count
+                && isWordCharacter(line[line.index(line.startIndex, offsetBy: col)])
+            {
                 col += 1
             }
 
             // Skip whitespace
-            while col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)]) {
+            while col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
                 col += 1
             }
 
@@ -57,7 +60,10 @@ class MotionEngine {
                 pos.column = 0
                 // Skip whitespace on new line
                 let nextLine = buffer.line(pos.line)
-                while pos.column < nextLine.count && isWhitespace(nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)]) {
+                while pos.column < nextLine.count
+                    && isWhitespace(
+                        nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
+                {
                     pos.column += 1
                 }
             } else {
@@ -96,7 +102,9 @@ class MotionEngine {
             }
 
             // If we're not at a word character, we overshot - move forward one
-            if col < line.count && !isWordCharacter(line[line.index(line.startIndex, offsetBy: col)]) {
+            if col < line.count
+                && !isWordCharacter(line[line.index(line.startIndex, offsetBy: col)])
+            {
                 col += 1
             }
 
@@ -113,12 +121,15 @@ class MotionEngine {
             var col = pos.column
 
             // Skip to start of next word if on whitespace
-            while col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)]) {
+            while col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
                 col += 1
             }
 
             // Move to end of word
-            while col < line.count && isWordCharacter(line[line.index(line.startIndex, offsetBy: col)]) {
+            while col < line.count
+                && isWordCharacter(line[line.index(line.startIndex, offsetBy: col)])
+            {
                 col += 1
             }
 
@@ -133,7 +144,10 @@ class MotionEngine {
                 pos.column = 0
                 // Find first word on new line
                 let nextLine = buffer.line(pos.line)
-                while pos.column < nextLine.count && isWhitespace(nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)]) {
+                while pos.column < nextLine.count
+                    && isWhitespace(
+                        nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
+                {
                     pos.column += 1
                 }
             } else {
@@ -158,7 +172,9 @@ class MotionEngine {
         let line = buffer.line(pos.line)
 
         pos.column = 0
-        while pos.column < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: pos.column)]) {
+        while pos.column < line.count
+            && isWhitespace(line[line.index(line.startIndex, offsetBy: pos.column)])
+        {
             pos.column += 1
         }
         return pos
@@ -246,11 +262,69 @@ class MotionEngine {
 
     /// Find character backward, place cursor after it (T)
     func tillCharacterBackward(_ char: Character, count: Int = 1) -> Position? {
-        if let pos = findCharacterBackward(char, count: count), pos.column < buffer.lineLength(pos.line) - 1 {
+        if let pos = findCharacterBackward(char, count: count),
+            pos.column < buffer.lineLength(pos.line) - 1
+        {
             var result = pos
             result.column += 1
             return result
         }
+        return nil
+    }
+
+    /// Find the matching bracket for the character at position
+    func findMatchingBracket(at position: Position) -> Position? {
+        guard let char = buffer.characterAt(position) else { return nil }
+
+        let brackets: [Character: Character] = [
+            "(": ")", "[": "]", "{": "}", ")": "(", "]": "[", "}": "{",
+        ]
+        let openBrackets: Set<Character> = ["(", "[", "{"]
+        let closeBrackets: Set<Character> = [")", "]", "}"]
+
+        guard let targetBracket = brackets[char] else { return nil }
+
+        let isForward = openBrackets.contains(char)
+        var stack = 0
+
+        if isForward {
+            // Search forward
+            for line in position.line..<buffer.lineCount {
+                let lineStr = buffer.line(line)
+                let startCol = (line == position.line) ? position.column : 0
+
+                for col in startCol..<lineStr.count {
+                    let currentChar = lineStr[lineStr.index(lineStr.startIndex, offsetBy: col)]
+                    if currentChar == char {
+                        stack += 1
+                    } else if currentChar == targetBracket {
+                        stack -= 1
+                        if stack == 0 {
+                            return Position(line: line, column: col)
+                        }
+                    }
+                }
+            }
+        } else {
+            // Search backward
+            for line in stride(from: position.line, through: 0, by: -1) {
+                let lineStr = buffer.line(line)
+                let startCol = (line == position.line) ? position.column : lineStr.count - 1
+
+                for col in stride(from: startCol, through: 0, by: -1) {
+                    let currentChar = lineStr[lineStr.index(lineStr.startIndex, offsetBy: col)]
+                    if currentChar == char {
+                        stack += 1
+                    } else if currentChar == targetBracket {
+                        stack -= 1
+                        if stack == 0 {
+                            return Position(line: line, column: col)
+                        }
+                    }
+                }
+            }
+        }
+
         return nil
     }
 

@@ -335,7 +335,7 @@ class ViEditor {
                     let highlightedLine = SyntaxHighlighter.shared.highlightLine(displayLine)
 
                     // Apply visual selection if in visual mode
-                    let finalLine: String
+                    var finalLine: String
                     if let visualHandler = state.visualModeHandler as? VisualMode,
                         state.currentMode == .visual || state.currentMode == .visualLine
                     {
@@ -345,6 +345,18 @@ class ViEditor {
                             end: end)
                     } else {
                         finalLine = highlightedLine
+                    }
+
+                    // Apply bracket highlighting
+                    if !state.showWelcomeMessage {
+                        if lineIndex == state.cursor.position.line {
+                            finalLine = applyBracketHighlighting(
+                                to: finalLine, col: state.cursor.position.column, raw: displayLine)
+                        }
+                        if let match = state.matchingBracketPosition, lineIndex == match.line {
+                            finalLine = applyBracketHighlighting(
+                                to: finalLine, col: match.column, raw: displayLine)
+                        }
                     }
 
                     // Apply search highlighting on top if there's an active search
@@ -600,6 +612,50 @@ class ViEditor {
         print("\u{001B}[\(rows);1H\u{001B}[K", terminator: "")
         print("\u{001B}[1;32mPress ENTER or type command to continue\u{001B}[0m", terminator: "")
         fflush(stdout)
+    }
+
+    private func applyBracketHighlighting(to highlighted: String, col: Int, raw: String) -> String {
+        var result = ""
+        var rawIndex = raw.startIndex
+        var highlightedIndex = highlighted.startIndex
+        let targetCol = col
+
+        while rawIndex < raw.endIndex && highlightedIndex < highlighted.endIndex {
+            // Skip ANSI escape sequences
+            if highlighted[highlightedIndex] == "\u{001B}" {
+                var escEnd = highlighted.index(after: highlightedIndex)
+                while escEnd < highlighted.endIndex {
+                    let c = highlighted[escEnd]
+                    if c.isLetter || c == "m" {
+                        escEnd = highlighted.index(after: escEnd)
+                        break
+                    }
+                    escEnd = highlighted.index(after: escEnd)
+                }
+                result += String(highlighted[highlightedIndex..<escEnd])
+                highlightedIndex = escEnd
+                continue
+            }
+
+            let currentCol = raw.distance(from: raw.startIndex, to: rawIndex)
+            if currentCol == targetCol {
+                result += SyntaxColor.bracketMatch.rawValue
+                result += String(highlighted[highlightedIndex])
+                result += SyntaxColor.reset.rawValue
+            } else {
+                result += String(highlighted[highlightedIndex])
+            }
+
+            rawIndex = raw.index(after: rawIndex)
+            highlightedIndex = highlighted.index(after: highlightedIndex)
+        }
+
+        // Append remaining
+        if highlightedIndex < highlighted.endIndex {
+            result += String(highlighted[highlightedIndex...])
+        }
+
+        return result
     }
 
     private func applySelectionHighlighting(

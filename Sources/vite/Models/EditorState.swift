@@ -23,6 +23,7 @@ class EditorState {
     var shouldExit: Bool = false
     var showWelcomeMessage: Bool = false
     var showExitHint: Bool = false
+    var matchingBracketPosition: Position? = nil
     var isWaitingForEnter: Bool = false
     var multiLineMessage: [String] = []
 
@@ -108,6 +109,10 @@ class EditorState {
         let pos = cursor.position
         let modeStr = modeString()
         statusMessage = "[\(modeStr)] Line \(pos.line + 1), Col \(pos.column + 1)"
+
+        // Update matching bracket
+        let motionEngine = MotionEngine(buffer: buffer, cursor: cursor)
+        matchingBracketPosition = motionEngine.findMatchingBracket(at: pos)
     }
 
     private func modeString() -> String {
