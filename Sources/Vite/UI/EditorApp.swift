@@ -108,10 +108,10 @@ class ViEditor {
         settings.c_lflag &= ~tcflag_t(ICANON | ECHO)
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
-        // Clear screen and hide cursor
+        // Clear screen and show cursor
         print("\u{001B}[2J")
         print("\u{001B}[H")
-        print("\u{001B}[?25l", terminator: "")
+        print("\u{001B}[?25h", terminator: "")
         fflush(stdout)
     }
 
@@ -185,7 +185,6 @@ class ViEditor {
             let gutterWidth = String(totalLines).count
             for lineIndex in 0..<min(totalLines, availableLines) {
                 let line = state.buffer.line(lineIndex)
-                let isCurrentLine = lineIndex == state.cursor.position.line
 
                 // Line number (faint/dimmed)
                 print("\u{001B}[2m", terminator: "")  // Dim mode
@@ -196,21 +195,8 @@ class ViEditor {
                 let maxLineLength = Int(terminalSize.cols) - (gutterWidth + 1)  // Account for line numbers and space
                 let displayLine = String(line.prefix(maxLineLength))
 
-                for (colIndex, char) in displayLine.enumerated() {
-                    let isCursor = isCurrentLine && colIndex == state.cursor.position.column
-                    if isCursor {
-                        print("\u{001B}[7m\(char)\u{001B}[0m", terminator: "")
-                    } else {
-                        print(char, terminator: "")
-                    }
-                }
-
-                // Cursor at end of line
-                if isCurrentLine && displayLine.count == state.cursor.position.column
-                    && state.cursor.position.column < maxLineLength
-                {
-                    print("\u{001B}[7m \u{001B}[0m", terminator: "")
-                }
+                // Print line content without manual cursor rendering
+                print(displayLine, terminator: "")
 
                 // Clear to end of line to handle terminal resize artifacts
                 print("\u{001B}[K")
@@ -272,13 +258,29 @@ class ViEditor {
             "\u{001B}[48;5;250m\u{001B}[30m\(statusLine.padding(toLength: statusWidth, withPad: " ", startingAt: 0))\u{001B}[0m",
             terminator: "")
 
-        // Render command line if in command mode (last line)
+        // Render command line or mode indicator (last line)
         print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
         if state.currentMode == .command {
             print(state.pendingCommand, terminator: "")
-            print("\u{001B}[7m \u{001B}[0m", terminator: "")  // Block cursor
+        } else if state.currentMode == .insert {
+            print("-- INSERT --", terminator: "")
+        } else if state.currentMode == .visual {
+            print("-- VISUAL --", terminator: "")
         }
         print("\u{001B}[K", terminator: "")  // Clear rest of line
+
+        // Position the real terminal cursor
+        if state.currentMode == .command {
+            // In command mode, position cursor after the command text
+            let commandCursorCol = state.pendingCommand.count + 1
+            print("\u{001B}[\(terminalSize.rows);\(commandCursorCol)H", terminator: "")
+        } else if !state.showWelcomeMessage {
+            // In normal/insert/visual modes, position cursor at the actual cursor position
+            let gutterWidth = String(totalLines).count
+            let cursorRow = state.cursor.position.line + 1
+            let cursorCol = gutterWidth + 1 + state.cursor.position.column + 1
+            print("\u{001B}[\(cursorRow);\(cursorCol)H", terminator: "")
+        }
 
         fflush(stdout)
     }
