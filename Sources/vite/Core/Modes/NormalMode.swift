@@ -64,6 +64,18 @@ class NormalMode: BaseModeHandler {
             case .change:
                 operatorEngine.changeWithMotion(char)
                 return true
+            case .lowercase:
+                operatorEngine.lowercaseWithMotion(char)
+                return true
+            case .uppercase:
+                operatorEngine.uppercaseWithMotion(char)
+                return true
+            case .indent:
+                operatorEngine.indentWithMotion(char)
+                return true
+            case .unindent:
+                operatorEngine.unindentWithMotion(char)
+                return true
             case .none:
                 break
             }
@@ -77,6 +89,10 @@ class NormalMode: BaseModeHandler {
         case "\u{01}":
             // Ctrl+A: Increment number
             state.incrementNextNumber(count: count)
+            return true
+        case "\u{18}":  // Ctrl+X
+            // Ctrl+X: Decrement number
+            state.incrementNextNumber(count: -count)
             return true
         // Cursor movement
         case "h", "←":
@@ -289,6 +305,24 @@ class NormalMode: BaseModeHandler {
                 state.deleteCharacter()
             }
             return true
+        case "s":
+            // Substitute character (delete char + insert)
+            state.saveUndoState()
+            for _ in 0..<count {
+                state.deleteCharacter()
+            }
+            state.setMode(.insert)
+            return true
+        case "X":
+            // Delete backward
+            state.saveUndoState()
+            for _ in 0..<count {
+                if state.cursor.position.column > 0 {
+                    state.cursor.moveLeft()
+                    state.deleteCharacter()
+                }
+            }
+            return true
 
         // Undo/Redo
         case "u":
@@ -300,7 +334,32 @@ class NormalMode: BaseModeHandler {
 
         // Repeat last change
         case ".":
-            if !state.lastInsertedText.isEmpty {
+            // First try to repeat operator
+            if let op = state.lastOperation {
+                // Replay the operation
+                operatorEngine.pendingOperator = op.type
+                operatorEngine.pendingCount = op.count
+
+                switch op.type {
+                case .delete:
+                    operatorEngine.deleteWithMotion(op.motion)
+                case .yank:
+                    operatorEngine.yankWithMotion(op.motion)
+                case .change:
+                    operatorEngine.changeWithMotion(op.motion)
+                case .lowercase:
+                    operatorEngine.lowercaseWithMotion(op.motion)
+                case .uppercase:
+                    operatorEngine.uppercaseWithMotion(op.motion)
+                case .indent:
+                    operatorEngine.indentWithMotion(op.motion)
+                case .unindent:
+                    operatorEngine.unindentWithMotion(op.motion)
+                case .none:
+                    break
+                }
+            } else if !state.lastInsertedText.isEmpty {
+                // Fall back to insert text repeat
                 state.saveUndoState()
                 var pos = state.cursor.position
                 for char in state.lastInsertedText {
@@ -425,30 +484,46 @@ class NormalMode: BaseModeHandler {
 
         // Indentation
         case ">":
-            pendingIndentChar = char
+            // > can be an operator (>motion) or >>
+            operatorEngine.pendingOperator = .indent
+            operatorEngine.pendingCount = count
+            operatorEngine.pendingRegister = selectedRegisterName
+            selectedRegisterName = nil
             return true
         case "<":
-            pendingIndentChar = char
+            // < can be an operator (<motion) or <<
+            operatorEngine.pendingOperator = .unindent
+            operatorEngine.pendingCount = count
+            operatorEngine.pendingRegister = selectedRegisterName
+            selectedRegisterName = nil
             return true
 
         // Case toggle
         case "~":
             state.saveUndoState()
-            let pos = state.cursor.position
-            if let char = state.buffer.characterAt(pos) {
-                let toggled: Character
-                if char.isUppercase {
-                    toggled = Character(char.lowercased())
-                } else if char.isLowercase {
-                    toggled = Character(char.uppercased())
-                } else {
-                    toggled = char
+            var pos = state.cursor.position
+            for _ in 0..<count {
+                if let char = state.buffer.characterAt(pos) {
+                    let toggled: Character
+                    if char.isUppercase {
+                        toggled = Character(char.lowercased())
+                    } else if char.isLowercase {
+                        toggled = Character(char.uppercased())
+                    } else {
+                        toggled = char
+                    }
+                    state.buffer.deleteCharacter(at: pos)
+                    state.buffer.insertCharacter(toggled, at: pos)
+                    pos.column += 1
+                    if pos.column >= state.buffer.lineLength(pos.line) && pos.line < state.buffer.lineCount - 1 {
+                        pos.line += 1
+                        pos.column = 0
+                    }
+                    state.isDirty = true
                 }
-                state.buffer.deleteCharacter(at: pos)
-                state.buffer.insertCharacter(toggled, at: pos)
-                state.moveCursorRight()
-                state.isDirty = true
             }
+            state.cursor.move(to: pos)
+            state.updateStatusMessage()
             return true
 
         // Visual mode
@@ -457,6 +532,31 @@ class NormalMode: BaseModeHandler {
             return true
         case "V":
             state.setMode(.visualLine)
+            return true
+        case "\u{16}":  // Ctrl+V
+            state.setMode(.visualBlock)
+            return true
+
+        // Viewport positioning
+        case "z":
+            pendingCommand = "z"
+            return true
+        case "H":
+            // Jump to top of window (scroll to show cursor at top)
+            state.scrollOffset = state.cursor.position.line
+            state.updateStatusMessage()
+            return true
+        case "M":
+            // Jump to middle of window
+            let viewportHeight = 20  // Default reasonable height
+            state.scrollOffset = max(0, state.cursor.position.line - viewportHeight / 2)
+            state.updateStatusMessage()
+            return true
+        case "L":
+            // Jump to bottom of window
+            let viewportHeight = 20  // Default reasonable height
+            state.scrollOffset = max(0, state.cursor.position.line - viewportHeight + 1)
+            state.updateStatusMessage()
             return true
 
         // Command mode
@@ -559,9 +659,49 @@ class NormalMode: BaseModeHandler {
                 pendingCommand = ""
                 return true
             } else if pendingCommand == "g" {
-                // gg combination
+                // gg combination or case conversion or other g commands
                 if char == "g" {
                     state.moveCursorToBeginningOfFile()
+                } else if char == "u" {
+                    // gu - start lowercase operator
+                    operatorEngine.pendingOperator = .lowercase
+                    operatorEngine.pendingCount = count
+                    pendingCommand = ""
+                    return true
+                } else if char == "U" {
+                    // gU - start uppercase operator
+                    operatorEngine.pendingOperator = .uppercase
+                    operatorEngine.pendingCount = count
+                    pendingCommand = ""
+                    return true
+                } else if char == "_" {
+                    // g_ - go to last non-whitespace on line
+                    let line = state.buffer.line(state.cursor.position.line)
+                    var lastNonWS = line.count - 1
+                    while lastNonWS >= 0 && line[line.index(line.startIndex, offsetBy: lastNonWS)].isWhitespace {
+                        lastNonWS -= 1
+                    }
+                    if lastNonWS >= 0 {
+                        state.cursor.position.column = lastNonWS
+                    }
+                    state.updateStatusMessage()
+                } else if char == "J" {
+                    // gJ - join without spaces
+                    state.saveUndoState()
+                    let currentLine = state.cursor.position.line
+                    if currentLine < state.buffer.lineCount - 1 {
+                        let line1 = state.buffer.line(currentLine)
+                        let line2 = state.buffer.line(currentLine + 1)
+                        let joinedLine = line1 + line2
+                        state.buffer.replaceLine(currentLine, with: joinedLine)
+                        state.buffer.deleteLine(currentLine + 1)
+                        state.cursor.position.column = line1.count
+                        state.isDirty = true
+                    }
+                    state.updateStatusMessage()
+                } else if char == "v" {
+                    // gv - reselect last visual selection (simplified - just enter visual mode)
+                    state.setMode(.visual)
                 }
                 pendingCommand = ""
                 return true
@@ -622,6 +762,22 @@ class NormalMode: BaseModeHandler {
                 state.isDirty = true
                 state.updateStatusMessage()
                 pendingIndentChar = nil
+                return true
+            } else if pendingCommand == "z" {
+                // z commands for viewport positioning
+                let viewportHeight = 20  // Default reasonable height
+                if char == "z" {
+                    // zz - center cursor on screen
+                    state.scrollOffset = max(0, state.cursor.position.line - viewportHeight / 2)
+                } else if char == "t" {
+                    // zt - cursor to top of screen
+                    state.scrollOffset = state.cursor.position.line
+                } else if char == "b" {
+                    // zb - cursor to bottom of screen
+                    state.scrollOffset = max(0, state.cursor.position.line - viewportHeight + 1)
+                }
+                state.updateStatusMessage()
+                pendingCommand = ""
                 return true
             }
 

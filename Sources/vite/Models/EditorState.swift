@@ -5,6 +5,7 @@ enum EditorMode {
     case insert
     case visual
     case visualLine
+    case visualBlock  // Ctrl+V block mode
     case command
     case search
 }
@@ -49,6 +50,14 @@ class EditorState {
     var lastInsertedText: String = ""
     var currentInsertText: String = ""
     var lastChangeCommand: Character? = nil
+
+    // Repeatable operation state (for . with operators)
+    struct RepeatableOperation {
+        let type: OperatorType
+        let motion: Character
+        let count: Int
+    }
+    var lastOperation: RepeatableOperation? = nil
 
     // Marks (a-z)
     var marks: [Character: Position] = [:]
@@ -106,6 +115,8 @@ class EditorState {
             return visualModeHandler
         case .visualLine:
             return visualModeHandler
+        case .visualBlock:
+            return visualModeHandler
         case .command:
             return commandModeHandler
         case .search:
@@ -135,6 +146,8 @@ class EditorState {
             return "VISUAL"
         case .visualLine:
             return "VISUAL LINE"
+        case .visualBlock:
+            return "VISUAL BLOCK"
         case .command:
             return "COMMAND"
         case .search:

@@ -4,6 +4,7 @@ import Foundation
 class VisualMode: BaseModeHandler {
     var startPosition: Position = Position()
     var isLineVisual: Bool = false
+    var isBlockVisual: Bool = false
 
     override func handleInput(_ char: Character) -> Bool {
         switch char {
@@ -88,6 +89,7 @@ class VisualMode: BaseModeHandler {
     override func enter() {
         startPosition = state.cursor.position
         isLineVisual = state.currentMode == .visualLine
+        isBlockVisual = state.currentMode == .visualBlock
     }
 
     override func exit() {
@@ -106,6 +108,10 @@ class VisualMode: BaseModeHandler {
             rangeStart.column = 0
             let lastLineLength = state.buffer.lineLength(rangeEnd.line)
             rangeEnd.column = max(0, lastLineLength - 1)
+        } else if isBlockVisual {
+            // In block mode, return corners of the rectangular selection
+            // The actual block operations will need special handling in each operator
+            // For now, just return the corners
         }
 
         return (rangeStart, rangeEnd)

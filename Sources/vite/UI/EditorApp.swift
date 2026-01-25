@@ -782,7 +782,7 @@ class InputDispatcher {
             handled = editor.normalMode.handleInput(event.character)
         case .insert:
             handled = editor.insertMode.handleInput(event.character)
-        case .visual, .visualLine:
+        case .visual, .visualLine, .visualBlock:
             handled = editor.visualMode.handleInput(event.character)
         case .command:
             handled = editor.commandMode.handleInput(event.character)

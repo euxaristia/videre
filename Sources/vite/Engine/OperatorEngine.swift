@@ -5,6 +5,10 @@ enum OperatorType {
     case delete      // d
     case yank        // y
     case change      // c
+    case lowercase   // gu
+    case uppercase   // gU
+    case indent      // >
+    case unindent    // <
     case none
 }
 
@@ -84,6 +88,18 @@ class OperatorEngine {
             executeDelete(from: start, to: end)
             state.isDirty = true
             state.setMode(.insert)
+        case .lowercase:
+            lowercaseRange(from: start, to: end)
+            state.isDirty = true
+        case .uppercase:
+            uppercaseRange(from: start, to: end)
+            state.isDirty = true
+        case .indent:
+            // Indent/unindent with text objects not supported
+            break
+        case .unindent:
+            // Indent/unindent with text objects not supported
+            break
         case .none:
             break
         }
@@ -137,6 +153,7 @@ class OperatorEngine {
 
     func deleteWithMotion(_ char: Character) {
         state.saveUndoState()
+        let opCount = pendingCount  // Save count before we reset it
         switch char {
         case "d":
             // dd - delete entire line
@@ -186,9 +203,31 @@ class OperatorEngine {
             let end = motionEngine.nextParagraph(pendingCount)
             executeDelete(from: state.cursor.position, to: end)
             pendingCount = 1
+        case "j":
+            // Delete lines down (line-wise)
+            let endLine = min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1)
+            for _ in state.cursor.position.line...endLine {
+                state.deleteCurrentLine()
+            }
+            pendingCount = 1
+        case "k":
+            // Delete lines up (line-wise)
+            let startLine = max(0, state.cursor.position.line - pendingCount)
+            state.cursor.position.line = startLine
+            for _ in startLine...state.cursor.position.line {
+                state.deleteCurrentLine()
+            }
+            pendingCount = 1
         default:
             pendingCount = 1
         }
+
+        // Track the operation for repeat (.)
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .delete,
+            motion: char,
+            count: opCount
+        )
 
         pendingRegister = nil
         pendingOperator = .none
@@ -196,6 +235,7 @@ class OperatorEngine {
 
     func yankWithMotion(_ char: Character) {
         var content: RegisterContent = .characters("")
+        let opCount = pendingCount  // Save count before reset
 
         switch char {
         case "y":
@@ -229,11 +269,39 @@ class OperatorEngine {
             let start = motionEngine.firstNonWhitespace()
             content = executeYank(from: start, to: state.cursor.position)
         case "{":
+            // Yank to previous paragraph (line-wise)
             let start = motionEngine.previousParagraph(pendingCount)
-            content = executeYank(from: start, to: state.cursor.position)
+            var lines: [String] = []
+            for i in start.line...state.cursor.position.line {
+                lines.append(state.buffer.line(i))
+            }
+            content = .lines(lines)
         case "}":
+            // Yank to next paragraph (line-wise)
             let end = motionEngine.nextParagraph(pendingCount)
-            content = executeYank(from: state.cursor.position, to: end)
+            var lines: [String] = []
+            for i in state.cursor.position.line...end.line {
+                lines.append(state.buffer.line(i))
+            }
+            content = .lines(lines)
+        case "j":
+            // Yank lines down (line-wise)
+            var lines: [String] = []
+            let startLine = state.cursor.position.line
+            let endLine = min(startLine + pendingCount, state.buffer.lineCount - 1)
+            for i in startLine...endLine {
+                lines.append(state.buffer.line(i))
+            }
+            content = .lines(lines)
+        case "k":
+            // Yank lines up (line-wise)
+            var lines: [String] = []
+            let endLine = state.cursor.position.line
+            let startLine = max(0, endLine - pendingCount)
+            for i in startLine...endLine {
+                lines.append(state.buffer.line(i))
+            }
+            content = .lines(lines)
         default:
             break
         }
@@ -247,6 +315,13 @@ class OperatorEngine {
             }
         }
 
+        // Track the operation for repeat (.)
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .yank,
+            motion: char,
+            count: opCount
+        )
+
         pendingCount = 1
         pendingRegister = nil
         pendingOperator = .none
@@ -254,6 +329,7 @@ class OperatorEngine {
 
     func changeWithMotion(_ char: Character) {
         state.saveUndoState()
+        let opCount = pendingCount  // Save count before reset
         switch char {
         case "c":
             // cc - change entire line
@@ -304,11 +380,241 @@ class OperatorEngine {
             let end = motionEngine.nextParagraph(pendingCount)
             executeChange(from: state.cursor.position, to: end)
             pendingCount = 1
+        case "j":
+            // Change lines down
+            let endLine = min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1)
+            for _ in state.cursor.position.line...endLine {
+                state.deleteCurrentLine()
+            }
+            state.setMode(.insert)
+            pendingCount = 1
+        case "k":
+            // Change lines up
+            let startLine = max(0, state.cursor.position.line - pendingCount)
+            state.cursor.position.line = startLine
+            for _ in startLine...state.cursor.position.line {
+                state.deleteCurrentLine()
+            }
+            state.setMode(.insert)
+            pendingCount = 1
         default:
             pendingCount = 1
         }
 
+        // Track the operation for repeat (.)
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .change,
+            motion: char,
+            count: opCount
+        )
+
         pendingRegister = nil
+        pendingOperator = .none
+    }
+
+    // MARK: - Case Conversion Functions
+
+    func lowercaseWithMotion(_ char: Character) {
+        state.saveUndoState()
+        let opCount = pendingCount
+        switch char {
+        case "u":
+            // uu - lowercase entire line
+            let line = state.buffer.line(state.cursor.position.line)
+            state.buffer.replaceLine(state.cursor.position.line, with: line.lowercased())
+            pendingCount = 1
+        case "w":
+            let end = motionEngine.nextWord(pendingCount)
+            lowercaseRange(from: state.cursor.position, to: end)
+            pendingCount = 1
+        case "b":
+            let end = motionEngine.previousWord(pendingCount)
+            lowercaseRange(from: end, to: state.cursor.position)
+            pendingCount = 1
+        case "e":
+            let end = motionEngine.endOfWord(pendingCount)
+            lowercaseRange(from: state.cursor.position, to: end)
+            pendingCount = 1
+        case "j":
+            // Lowercase lines down
+            for i in state.cursor.position.line...min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1) {
+                let line = state.buffer.line(i)
+                state.buffer.replaceLine(i, with: line.lowercased())
+            }
+            pendingCount = 1
+        case "k":
+            // Lowercase lines up
+            let startLine = max(0, state.cursor.position.line - pendingCount)
+            for i in startLine...state.cursor.position.line {
+                let line = state.buffer.line(i)
+                state.buffer.replaceLine(i, with: line.lowercased())
+            }
+            pendingCount = 1
+        default:
+            pendingCount = 1
+        }
+
+        state.isDirty = true
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .lowercase,
+            motion: char,
+            count: opCount
+        )
+        pendingOperator = .none
+    }
+
+    func uppercaseWithMotion(_ char: Character) {
+        state.saveUndoState()
+        let opCount = pendingCount
+        switch char {
+        case "U":
+            // UU - uppercase entire line
+            let line = state.buffer.line(state.cursor.position.line)
+            state.buffer.replaceLine(state.cursor.position.line, with: line.uppercased())
+            pendingCount = 1
+        case "w":
+            let end = motionEngine.nextWord(pendingCount)
+            uppercaseRange(from: state.cursor.position, to: end)
+            pendingCount = 1
+        case "b":
+            let end = motionEngine.previousWord(pendingCount)
+            uppercaseRange(from: end, to: state.cursor.position)
+            pendingCount = 1
+        case "e":
+            let end = motionEngine.endOfWord(pendingCount)
+            uppercaseRange(from: state.cursor.position, to: end)
+            pendingCount = 1
+        case "j":
+            // Uppercase lines down
+            for i in state.cursor.position.line...min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1) {
+                let line = state.buffer.line(i)
+                state.buffer.replaceLine(i, with: line.uppercased())
+            }
+            pendingCount = 1
+        case "k":
+            // Uppercase lines up
+            let startLine = max(0, state.cursor.position.line - pendingCount)
+            for i in startLine...state.cursor.position.line {
+                let line = state.buffer.line(i)
+                state.buffer.replaceLine(i, with: line.uppercased())
+            }
+            pendingCount = 1
+        default:
+            pendingCount = 1
+        }
+
+        state.isDirty = true
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .uppercase,
+            motion: char,
+            count: opCount
+        )
+        pendingOperator = .none
+    }
+
+    private func lowercaseRange(from start: Position, to end: Position) {
+        var current = start
+        while current.line < end.line || (current.line == end.line && current.column < end.column) {
+            if let char = state.buffer.characterAt(current) {
+                let lowercased = Character(String(char).lowercased())
+                state.buffer.deleteCharacter(at: current)
+                state.buffer.insertCharacter(lowercased, at: current)
+            }
+            current.column += 1
+            if current.column >= state.buffer.lineLength(current.line) {
+                current.line += 1
+                current.column = 0
+            }
+        }
+    }
+
+    private func uppercaseRange(from start: Position, to end: Position) {
+        var current = start
+        while current.line < end.line || (current.line == end.line && current.column < end.column) {
+            if let char = state.buffer.characterAt(current) {
+                let uppercased = Character(String(char).uppercased())
+                state.buffer.deleteCharacter(at: current)
+                state.buffer.insertCharacter(uppercased, at: current)
+            }
+            current.column += 1
+            if current.column >= state.buffer.lineLength(current.line) {
+                current.line += 1
+                current.column = 0
+            }
+        }
+    }
+
+    // MARK: - Indentation Functions
+
+    func indentWithMotion(_ char: Character) {
+        state.saveUndoState()
+        let opCount = pendingCount
+        switch char {
+        case ">":
+            // >> - indent current line
+            for i in state.cursor.position.line...min(state.cursor.position.line + pendingCount - 1, state.buffer.lineCount - 1) {
+                state.buffer.indentLine(i)
+            }
+            pendingCount = 1
+        case "j":
+            // Indent lines down
+            for i in state.cursor.position.line...min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1) {
+                state.buffer.indentLine(i)
+            }
+            pendingCount = 1
+        case "k":
+            // Indent lines up
+            let startLine = max(0, state.cursor.position.line - pendingCount)
+            for i in startLine...state.cursor.position.line {
+                state.buffer.indentLine(i)
+            }
+            pendingCount = 1
+        default:
+            pendingCount = 1
+        }
+
+        state.isDirty = true
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .indent,
+            motion: char,
+            count: opCount
+        )
+        pendingOperator = .none
+    }
+
+    func unindentWithMotion(_ char: Character) {
+        state.saveUndoState()
+        let opCount = pendingCount
+        switch char {
+        case "<":
+            // << - unindent current line
+            for i in state.cursor.position.line...min(state.cursor.position.line + pendingCount - 1, state.buffer.lineCount - 1) {
+                state.buffer.unindentLine(i)
+            }
+            pendingCount = 1
+        case "j":
+            // Unindent lines down
+            for i in state.cursor.position.line...min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1) {
+                state.buffer.unindentLine(i)
+            }
+            pendingCount = 1
+        case "k":
+            // Unindent lines up
+            let startLine = max(0, state.cursor.position.line - pendingCount)
+            for i in startLine...state.cursor.position.line {
+                state.buffer.unindentLine(i)
+            }
+            pendingCount = 1
+        default:
+            pendingCount = 1
+        }
+
+        state.isDirty = true
+        state.lastOperation = EditorState.RepeatableOperation(
+            type: .unindent,
+            motion: char,
+            count: opCount
+        )
         pendingOperator = .none
     }
 

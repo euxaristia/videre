@@ -323,6 +323,27 @@ class MotionEngine {
         return Position(line: clampedLine, column: 0)
     }
 
+    // MARK: - Line Down/Up Motions (j/k)
+
+    /// Move down by lines (j)
+    func lineDown(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        pos.line = min(pos.line + count, buffer.lineCount - 1)
+        // Preserve column or clamp to line length
+        pos.column = min(pos.column, buffer.lineLength(pos.line) - 1)
+        pos.column = max(0, pos.column)
+        return pos
+    }
+
+    /// Move up by lines (k)
+    func lineUp(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        pos.line = max(0, pos.line - count)
+        pos.column = min(pos.column, buffer.lineLength(pos.line) - 1)
+        pos.column = max(0, pos.column)
+        return pos
+    }
+
     // MARK: - Paragraph Motions
 
     /// Move to next paragraph ({ boundary - jump to blank line)
