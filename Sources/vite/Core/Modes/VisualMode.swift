@@ -54,9 +54,11 @@ class VisualMode: BaseModeHandler {
 
         case "d", "x":
             // Delete selection
+            state.saveUndoState()
             let (start, end) = selectionRange()
             state.buffer.deleteRange(from: start, to: end)
             state.cursor.move(to: start)
+            state.isDirty = true
             state.setMode(.normal)
             return true
 
@@ -70,9 +72,11 @@ class VisualMode: BaseModeHandler {
 
         case "c":
             // Change selection
+            state.saveUndoState()
             let (start, end) = selectionRange()
             state.buffer.deleteRange(from: start, to: end)
             state.cursor.move(to: start)
+            state.isDirty = true
             state.setMode(.insert)
             return true
 

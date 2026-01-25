@@ -14,10 +14,79 @@ class OperatorEngine {
     let motionEngine: MotionEngine
     var pendingOperator: OperatorType = .none
     var pendingCount: Int = 1
+    var pendingTextObjectPrefix: Character? = nil  // 'i' for inner, 'a' for a/around
 
     init(state: EditorState) {
         self.state = state
         self.motionEngine = MotionEngine(buffer: state.buffer, cursor: state.cursor)
+    }
+
+    // MARK: - Text Object Support
+
+    /// Handle text object prefix (i or a)
+    func handleTextObjectPrefix(_ char: Character) -> Bool {
+        if char == "i" || char == "a" {
+            pendingTextObjectPrefix = char
+            return true
+        }
+        return false
+    }
+
+    /// Execute operator with text object
+    func executeWithTextObject(_ objectChar: Character) -> Bool {
+        guard let prefix = pendingTextObjectPrefix else { return false }
+
+        let textObjectEngine = TextObjectEngine(buffer: state.buffer, cursor: state.cursor)
+        var range: (Position, Position)? = nil
+
+        switch objectChar {
+        case "w":
+            range = prefix == "i" ? textObjectEngine.innerWord() : textObjectEngine.aWord()
+        case "\"":
+            range = prefix == "i" ? textObjectEngine.innerQuotes("\"") : textObjectEngine.aQuotes("\"")
+        case "'":
+            range = prefix == "i" ? textObjectEngine.innerQuotes("'") : textObjectEngine.aQuotes("'")
+        case "`":
+            range = prefix == "i" ? textObjectEngine.innerQuotes("`") : textObjectEngine.aQuotes("`")
+        case "(", ")", "b":
+            range = prefix == "i" ? textObjectEngine.innerBrackets("(") : textObjectEngine.aBrackets("(")
+        case "[", "]":
+            range = prefix == "i" ? textObjectEngine.innerBrackets("[") : textObjectEngine.aBrackets("[")
+        case "{", "}", "B":
+            range = prefix == "i" ? textObjectEngine.innerBrackets("{") : textObjectEngine.aBrackets("{")
+        case "<", ">":
+            range = prefix == "i" ? textObjectEngine.innerBrackets("<") : textObjectEngine.aBrackets("<")
+        default:
+            break
+        }
+
+        guard let (start, end) = range else {
+            pendingTextObjectPrefix = nil
+            pendingOperator = .none
+            return false
+        }
+
+        state.saveUndoState()
+
+        switch pendingOperator {
+        case .delete:
+            executeDelete(from: start, to: end)
+            state.isDirty = true
+        case .yank:
+            let content = executeYank(from: start, to: end)
+            state.registerManager.setUnnamedRegister(content)
+        case .change:
+            executeDelete(from: start, to: end)
+            state.isDirty = true
+            state.setMode(.insert)
+        case .none:
+            break
+        }
+
+        pendingTextObjectPrefix = nil
+        pendingOperator = .none
+        pendingCount = 1
+        return true
     }
 
     // MARK: - Operator Execution
@@ -61,6 +130,7 @@ class OperatorEngine {
     // MARK: - Operator + Motion Combinations
 
     func deleteWithMotion(_ char: Character) {
+        state.saveUndoState()
         switch char {
         case "d":
             // dd - delete entire line
@@ -136,6 +206,7 @@ class OperatorEngine {
     }
 
     func changeWithMotion(_ char: Character) {
+        state.saveUndoState()
         switch char {
         case "c":
             // cc - change entire line

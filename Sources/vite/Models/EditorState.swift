@@ -21,6 +21,7 @@ class EditorState {
     var isDirty: Bool = false
     var isHelpBuffer: Bool = false
     var registerManager: RegisterManager
+    var undoManager: UndoManager = UndoManager()
     var shouldExit: Bool = false
     var showWelcomeMessage: Bool = false
     var showExitHint: Bool = false
@@ -43,6 +44,11 @@ class EditorState {
     var searchDirection: SearchDirection = .forward
     var lastSearchPattern: String = ""
     var lastSearchDirection: SearchDirection = .forward
+
+    // Repeat command state (for .)
+    var lastInsertedText: String = ""
+    var currentInsertText: String = ""
+    var lastChangeCommand: Character? = nil
 
     enum SearchDirection {
         case forward  // /
@@ -247,9 +253,45 @@ class EditorState {
         isDirty = true
     }
 
+    // MARK: - Undo/Redo Operations
+
+    /// Save current state before making changes
+    func saveUndoState() {
+        undoManager.saveState(text: buffer.text, cursor: cursor.position)
+    }
+
+    /// Undo the last change
+    func undo() -> Bool {
+        guard let previousState = undoManager.undo(currentText: buffer.text, currentCursor: cursor.position) else {
+            statusMessage = "Already at oldest change"
+            return false
+        }
+
+        buffer = TextBuffer(previousState.text)
+        cursor.move(to: buffer.clampPosition(previousState.cursorPosition))
+        isDirty = undoManager.undoCount > 0
+        updateStatusMessage()
+        return true
+    }
+
+    /// Redo the last undone change
+    func redo() -> Bool {
+        guard let redoState = undoManager.redo(currentText: buffer.text, currentCursor: cursor.position) else {
+            statusMessage = "Already at newest change"
+            return false
+        }
+
+        buffer = TextBuffer(redoState.text)
+        cursor.move(to: buffer.clampPosition(redoState.cursorPosition))
+        isDirty = true
+        updateStatusMessage()
+        return true
+    }
+
     // MARK: - Number Operations
 
     func incrementNextNumber(count: Int) {
+        saveUndoState()
         let lineIdx = cursor.position.line
         let line = buffer.line(lineIdx)
         let colIdx = cursor.position.column

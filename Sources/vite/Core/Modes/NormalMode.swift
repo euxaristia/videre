@@ -31,6 +31,24 @@ class NormalMode: BaseModeHandler {
 
         // Handle pending operators
         if operatorEngine.pendingOperator != .none {
+            // Check for text object prefix (i or a)
+            if operatorEngine.pendingTextObjectPrefix != nil {
+                // Execute text object operation
+                if operatorEngine.executeWithTextObject(char) {
+                    return true
+                }
+                // If text object failed, reset and continue
+                operatorEngine.pendingTextObjectPrefix = nil
+                operatorEngine.pendingOperator = .none
+                return true
+            }
+
+            // Check if this is a text object prefix
+            if char == "i" || char == "a" {
+                operatorEngine.pendingTextObjectPrefix = char
+                return true
+            }
+
             switch operatorEngine.pendingOperator {
             case .delete:
                 operatorEngine.deleteWithMotion(char)
@@ -180,13 +198,48 @@ class NormalMode: BaseModeHandler {
 
         // Delete commands
         case "x":
+            state.saveUndoState()
             for _ in 0..<count {
                 state.deleteCharacter()
             }
             return true
 
+        // Undo/Redo
+        case "u":
+            _ = state.undo()
+            return true
+        case "\u{12}":  // Ctrl+R
+            _ = state.redo()
+            return true
+
+        // Repeat last change
+        case ".":
+            if !state.lastInsertedText.isEmpty {
+                state.saveUndoState()
+                var pos = state.cursor.position
+                for char in state.lastInsertedText {
+                    if char == "\n" {
+                        let line = state.buffer.line(pos.line)
+                        let before = String(line.prefix(pos.column))
+                        let after = String(line.dropFirst(pos.column))
+                        state.buffer.replaceLine(pos.line, with: before)
+                        state.buffer.insertLine(after, at: pos.line + 1)
+                        pos.line += 1
+                        pos.column = 0
+                    } else {
+                        state.buffer.insertCharacter(char, at: pos)
+                        pos.column += 1
+                    }
+                }
+                state.cursor.move(to: pos)
+                state.isDirty = true
+                state.updateStatusMessage()
+            }
+            return true
+
         // Paste
         case "p":
+            state.saveUndoState()
             let content = state.registerManager.getUnnamedRegister()
             switch content {
             case .characters(let str):
@@ -197,17 +250,20 @@ class NormalMode: BaseModeHandler {
                     pos.column += 1
                 }
                 state.cursor.move(to: pos)
+                state.isDirty = true
             case .lines(let lines):
                 var insertLine = state.cursor.position.line + 1
                 for line in lines {
                     state.buffer.insertLine(line, at: insertLine)
                     insertLine += 1
                 }
+                state.isDirty = true
             }
             state.updateStatusMessage()
             return true
 
         case "P":
+            state.saveUndoState()
             let content = state.registerManager.getUnnamedRegister()
             switch content {
             case .characters(let str):
@@ -216,14 +272,58 @@ class NormalMode: BaseModeHandler {
                     state.buffer.insertCharacter(char, at: pos)
                     pos.column += 1
                 }
+                state.isDirty = true
             case .lines(let lines):
                 var insertLine = state.cursor.position.line
                 for line in lines {
                     state.buffer.insertLine(line, at: insertLine)
                     insertLine += 1
                 }
+                state.isDirty = true
             }
             state.updateStatusMessage()
+            return true
+
+        // Replace character
+        case "r":
+            pendingCommand = "r"
+            return true
+
+        // Join lines
+        case "J":
+            state.saveUndoState()
+            let currentLine = state.cursor.position.line
+            if currentLine < state.buffer.lineCount - 1 {
+                let line1 = state.buffer.line(currentLine)
+                let line2 = state.buffer.line(currentLine + 1).trimmingCharacters(in: .whitespaces)
+                let joinedLine = line1.isEmpty ? line2 : (line2.isEmpty ? line1 : line1 + " " + line2)
+                state.buffer.replaceLine(currentLine, with: joinedLine)
+                state.buffer.deleteLine(currentLine + 1)
+                // Position cursor at the join point
+                state.cursor.position.column = line1.count
+                state.isDirty = true
+            }
+            state.updateStatusMessage()
+            return true
+
+        // Case toggle
+        case "~":
+            state.saveUndoState()
+            let pos = state.cursor.position
+            if let char = state.buffer.characterAt(pos) {
+                let toggled: Character
+                if char.isUppercase {
+                    toggled = Character(char.lowercased())
+                } else if char.isLowercase {
+                    toggled = Character(char.uppercased())
+                } else {
+                    toggled = char
+                }
+                state.buffer.deleteCharacter(at: pos)
+                state.buffer.insertCharacter(toggled, at: pos)
+                state.moveCursorRight()
+                state.isDirty = true
+            }
             return true
 
         // Visual mode
@@ -313,6 +413,17 @@ class NormalMode: BaseModeHandler {
                 // gg combination
                 if char == "g" {
                     state.moveCursorToBeginningOfFile()
+                }
+                pendingCommand = ""
+                return true
+            } else if pendingCommand == "r" {
+                // Replace character under cursor
+                state.saveUndoState()
+                let pos = state.cursor.position
+                if state.buffer.characterAt(pos) != nil {
+                    state.buffer.deleteCharacter(at: pos)
+                    state.buffer.insertCharacter(char, at: pos)
+                    state.isDirty = true
                 }
                 pendingCommand = ""
                 return true

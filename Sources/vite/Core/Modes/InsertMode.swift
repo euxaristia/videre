@@ -24,6 +24,7 @@ class InsertMode: BaseModeHandler {
         case "\n":
             // Enter
             state.insertNewLine()
+            state.currentInsertText.append("\n")
             state.updateStatusMessage()
             return true
 
@@ -32,6 +33,7 @@ class InsertMode: BaseModeHandler {
             for _ in 0..<4 {
                 state.insertCharacter(" ")
                 state.moveCursorRight(count: 1)
+                state.currentInsertText.append(" ")
             }
             state.updateStatusMessage()
             return true
@@ -57,6 +59,7 @@ class InsertMode: BaseModeHandler {
         default:
             // Regular character
             state.insertCharacter(char)
+            state.currentInsertText.append(char)
             state.moveCursorRight(count: 1)
             state.updateStatusMessage()
             return true
@@ -64,12 +67,23 @@ class InsertMode: BaseModeHandler {
     }
 
     override func enter() {
+        // Save state for undo before starting insert
+        state.saveUndoState()
+
+        // Clear current insert text tracking
+        state.currentInsertText = ""
+
         // Change cursor to thin bar for insert mode (ANSI: CSI 6 SP q)
         print("\u{001B}[6 q", terminator: "")
         fflush(stdout)
     }
 
     override func exit() {
+        // Save the inserted text for repeat command
+        if !state.currentInsertText.isEmpty {
+            state.lastInsertedText = state.currentInsertText
+        }
+
         // Restore block cursor for normal mode (ANSI: CSI 2 SP q)
         print("\u{001B}[2 q", terminator: "")
         fflush(stdout)
