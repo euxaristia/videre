@@ -104,7 +104,6 @@ class CommandMode: BaseModeHandler {
                 do {
                     try state.buffer.text.write(toFile: filePath, atomically: true, encoding: .utf8)
                     state.isDirty = false
-                    state.shouldExit = true
                 } catch {
                     state.statusMessage = "E212: Can't open file for writing: \(filePath)"
                 }
@@ -113,13 +112,13 @@ class CommandMode: BaseModeHandler {
                     try state.buffer.text.write(toFile: arg, atomically: true, encoding: .utf8)
                     state.filePath = arg
                     state.isDirty = false
-                    state.shouldExit = true
                 } catch {
                     state.statusMessage = "E212: Can't open file for writing: \(arg)"
                 }
             } else {
                 state.statusMessage = "E32: No file name"
             }
+            state.shouldExit = true
 
         case "h", "help":
             loadHelp()
