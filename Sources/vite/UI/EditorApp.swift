@@ -223,9 +223,12 @@ class ViEditor {
                 let maxLineLength = max(1, Int(terminalSize.cols) - (gutterWidth + 1))  // Account for line numbers and space
                 let displayLine = String(line.prefix(maxLineLength))
 
-                // Apply syntax highlighting and print
+                // Apply syntax highlighting
                 let highlightedLine = SyntaxHighlighter.shared.highlightLine(displayLine)
-                print(highlightedLine, terminator: "")
+
+                // Apply search highlighting on top if there's an active search
+                let finalLine = highlightSearchMatches(in: highlightedLine, raw: displayLine)
+                print(finalLine, terminator: "")
                 print(SyntaxColor.reset.rawValue, terminator: "")
 
                 // Clear to end of line to handle terminal resize artifacts
@@ -365,6 +368,80 @@ class ViEditor {
                 print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
             }
         }
+    }
+
+    /// Apply search match highlighting to a line
+    /// - Parameters:
+    ///   - highlighted: The syntax-highlighted line (with ANSI codes)
+    ///   - raw: The raw line without any highlighting
+    /// - Returns: The line with search matches highlighted
+    private func highlightSearchMatches(in highlighted: String, raw: String) -> String {
+        // Only highlight if there's an active search pattern
+        guard !state.lastSearchPattern.isEmpty else { return highlighted }
+
+        let pattern = state.lastSearchPattern
+
+        // Find all match positions in the raw line
+        var matches: [Range<String.Index>] = []
+        var searchStart = raw.startIndex
+        while let range = raw.range(of: pattern, range: searchStart..<raw.endIndex) {
+            matches.append(range)
+            searchStart = range.upperBound
+            if searchStart >= raw.endIndex { break }
+        }
+
+        guard !matches.isEmpty else { return highlighted }
+
+        // Build a new string with search highlighting
+        // We need to map raw positions to highlighted positions, accounting for ANSI codes
+        var result = ""
+        var rawIndex = raw.startIndex
+        var highlightedIndex = highlighted.startIndex
+        var matchIndex = 0
+
+        while rawIndex < raw.endIndex && highlightedIndex < highlighted.endIndex {
+            // Skip ANSI escape sequences in highlighted string
+            if highlighted[highlightedIndex] == "\u{001B}" {
+                // Find end of escape sequence (ends with letter)
+                var escEnd = highlighted.index(after: highlightedIndex)
+                while escEnd < highlighted.endIndex {
+                    let c = highlighted[escEnd]
+                    if c.isLetter || c == "m" {
+                        escEnd = highlighted.index(after: escEnd)
+                        break
+                    }
+                    escEnd = highlighted.index(after: escEnd)
+                }
+                result += String(highlighted[highlightedIndex..<escEnd])
+                highlightedIndex = escEnd
+                continue
+            }
+
+            // Check if we're at a match start
+            if matchIndex < matches.count && rawIndex == matches[matchIndex].lowerBound {
+                // Start search highlight
+                result += SyntaxColor.searchMatch.rawValue
+            }
+
+            // Add the character
+            result += String(highlighted[highlightedIndex])
+            rawIndex = raw.index(after: rawIndex)
+            highlightedIndex = highlighted.index(after: highlightedIndex)
+
+            // Check if we're at a match end
+            if matchIndex < matches.count && rawIndex == matches[matchIndex].upperBound {
+                // End search highlight and restore
+                result += SyntaxColor.reset.rawValue
+                matchIndex += 1
+            }
+        }
+
+        // Append any remaining highlighted content
+        if highlightedIndex < highlighted.endIndex {
+            result += String(highlighted[highlightedIndex...])
+        }
+
+        return result
     }
 }
 
