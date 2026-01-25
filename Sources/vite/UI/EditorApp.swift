@@ -115,9 +115,11 @@ class ViEditor {
         settings.c_lflag &= ~tcflag_t(ICANON | ECHO)
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
+        // Enter alternate screen buffer (saves current terminal content)
+        print("\u{001B}[?1049h", terminator: "")
         // Clear screen and show cursor
-        print("\u{001B}[2J")
-        print("\u{001B}[H")
+        print("\u{001B}[2J", terminator: "")
+        print("\u{001B}[H", terminator: "")
         print("\u{001B}[?25h", terminator: "")
         fflush(stdout)
     }
@@ -129,9 +131,8 @@ class ViEditor {
         settings.c_lflag |= tcflag_t(ICANON | ECHO)
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
-        // Move cursor to bottom of screen and show cursor (Neovim-style, no clear)
-        print("\u{001B}[\(terminalSize.rows);1H")  // Move to last row
-        print("\u{001B}[?25h", terminator: "")  // Show cursor
+        // Leave alternate screen buffer (restores original terminal content)
+        print("\u{001B}[?1049l", terminator: "")
         fflush(stdout)
     }
 
