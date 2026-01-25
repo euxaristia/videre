@@ -211,6 +211,29 @@ class TextBuffer {
         return nil
     }
 
+    // MARK: - Indentation
+
+    /// Add indentation (spaces) to a line
+    func indentLine(_ lineIndex: Int, spaces: Int = 4) {
+        guard lineIndex >= 0 && lineIndex < lines.count else { return }
+        let indent = String(repeating: " ", count: spaces)
+        lines[lineIndex] = indent + lines[lineIndex]
+    }
+
+    /// Remove indentation from a line
+    func unindentLine(_ lineIndex: Int, spaces: Int = 4) {
+        guard lineIndex >= 0 && lineIndex < lines.count else { return }
+        var line = lines[lineIndex]
+        for _ in 0..<spaces {
+            if line.first?.isWhitespace == true {
+                line.removeFirst()
+            } else {
+                break
+            }
+        }
+        lines[lineIndex] = line
+    }
+
     // MARK: - Private Helpers
 
     private func isWordCharacter(_ char: Character) -> Bool {

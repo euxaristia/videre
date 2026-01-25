@@ -50,6 +50,9 @@ class EditorState {
     var currentInsertText: String = ""
     var lastChangeCommand: Character? = nil
 
+    // Marks (a-z)
+    var marks: [Character: Position] = [:]
+
     enum SearchDirection {
         case forward  // /
         case backward  // ?

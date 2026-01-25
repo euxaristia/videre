@@ -15,6 +15,7 @@ class OperatorEngine {
     var pendingOperator: OperatorType = .none
     var pendingCount: Int = 1
     var pendingTextObjectPrefix: Character? = nil  // 'i' for inner, 'a' for a/around
+    var pendingRegister: Character? = nil  // Named register for this operation
 
     init(state: EditorState) {
         self.state = state
@@ -74,7 +75,11 @@ class OperatorEngine {
             state.isDirty = true
         case .yank:
             let content = executeYank(from: start, to: end)
-            state.registerManager.setUnnamedRegister(content)
+            if let registerName = pendingRegister {
+                state.registerManager.set(registerName, content)
+            } else {
+                state.registerManager.setUnnamedRegister(content)
+            }
         case .change:
             executeDelete(from: start, to: end)
             state.isDirty = true
@@ -86,6 +91,7 @@ class OperatorEngine {
         pendingTextObjectPrefix = nil
         pendingOperator = .none
         pendingCount = 1
+        pendingRegister = nil
         return true
     }
 
@@ -148,6 +154,18 @@ class OperatorEngine {
             let end = motionEngine.endOfWord(pendingCount)
             executeDelete(from: state.cursor.position, to: end)
             pendingCount = 1
+        case "W":
+            let end = motionEngine.nextWORD(pendingCount)
+            executeDelete(from: state.cursor.position, to: end)
+            pendingCount = 1
+        case "B":
+            let end = motionEngine.previousWORD(pendingCount)
+            executeDelete(from: end, to: state.cursor.position)
+            pendingCount = 1
+        case "E":
+            let end = motionEngine.endOfWORD(pendingCount)
+            executeDelete(from: state.cursor.position, to: end)
+            pendingCount = 1
         case "0":
             let start = motionEngine.lineStart()
             executeDelete(from: start, to: state.cursor.position)
@@ -160,10 +178,19 @@ class OperatorEngine {
             let start = motionEngine.firstNonWhitespace()
             executeDelete(from: start, to: state.cursor.position)
             pendingCount = 1
+        case "{":
+            let start = motionEngine.previousParagraph(pendingCount)
+            executeDelete(from: start, to: state.cursor.position)
+            pendingCount = 1
+        case "}":
+            let end = motionEngine.nextParagraph(pendingCount)
+            executeDelete(from: state.cursor.position, to: end)
+            pendingCount = 1
         default:
             pendingCount = 1
         }
 
+        pendingRegister = nil
         pendingOperator = .none
     }
 
@@ -183,6 +210,15 @@ class OperatorEngine {
         case "e":
             let end = motionEngine.endOfWord(pendingCount)
             content = executeYank(from: state.cursor.position, to: end)
+        case "W":
+            let end = motionEngine.nextWORD(pendingCount)
+            content = executeYank(from: state.cursor.position, to: end)
+        case "B":
+            let end = motionEngine.previousWORD(pendingCount)
+            content = executeYank(from: end, to: state.cursor.position)
+        case "E":
+            let end = motionEngine.endOfWORD(pendingCount)
+            content = executeYank(from: state.cursor.position, to: end)
         case "0":
             let start = motionEngine.lineStart()
             content = executeYank(from: start, to: state.cursor.position)
@@ -192,16 +228,27 @@ class OperatorEngine {
         case "^":
             let start = motionEngine.firstNonWhitespace()
             content = executeYank(from: start, to: state.cursor.position)
+        case "{":
+            let start = motionEngine.previousParagraph(pendingCount)
+            content = executeYank(from: start, to: state.cursor.position)
+        case "}":
+            let end = motionEngine.nextParagraph(pendingCount)
+            content = executeYank(from: state.cursor.position, to: end)
         default:
             break
         }
 
         // Store in register
         if !content.isEmpty {
-            state.registerManager.setUnnamedRegister(content)
+            if let registerName = pendingRegister {
+                state.registerManager.set(registerName, content)
+            } else {
+                state.registerManager.setUnnamedRegister(content)
+            }
         }
 
         pendingCount = 1
+        pendingRegister = nil
         pendingOperator = .none
     }
 
@@ -225,6 +272,18 @@ class OperatorEngine {
             let end = motionEngine.endOfWord(pendingCount)
             executeChange(from: state.cursor.position, to: end)
             pendingCount = 1
+        case "W":
+            let end = motionEngine.nextWORD(pendingCount)
+            executeChange(from: state.cursor.position, to: end)
+            pendingCount = 1
+        case "B":
+            let end = motionEngine.previousWORD(pendingCount)
+            executeChange(from: end, to: state.cursor.position)
+            pendingCount = 1
+        case "E":
+            let end = motionEngine.endOfWORD(pendingCount)
+            executeChange(from: state.cursor.position, to: end)
+            pendingCount = 1
         case "0":
             let start = motionEngine.lineStart()
             executeChange(from: start, to: state.cursor.position)
@@ -237,10 +296,19 @@ class OperatorEngine {
             let start = motionEngine.firstNonWhitespace()
             executeChange(from: start, to: state.cursor.position)
             pendingCount = 1
+        case "{":
+            let start = motionEngine.previousParagraph(pendingCount)
+            executeChange(from: start, to: state.cursor.position)
+            pendingCount = 1
+        case "}":
+            let end = motionEngine.nextParagraph(pendingCount)
+            executeChange(from: state.cursor.position, to: end)
+            pendingCount = 1
         default:
             pendingCount = 1
         }
 
+        pendingRegister = nil
         pendingOperator = .none
     }
 

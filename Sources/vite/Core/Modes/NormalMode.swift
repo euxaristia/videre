@@ -9,6 +9,11 @@ class NormalMode: BaseModeHandler {
     var searchChar: Character?
     var lastSearchChar: Character?
     var lastSearchDirection: Character = "f"  // f, F, t, T
+    var waitingForRegisterName: Bool = false
+    var selectedRegisterName: Character? = nil
+    var waitingForMarkName: Bool = false
+    var markMode: Character? = nil  // ' for linewise, ` for exact
+    var pendingIndentChar: Character? = nil  // > or <
 
     override init(state: EditorState) {
         self.motionEngine = MotionEngine(buffer: state.buffer, cursor: state.cursor)
@@ -104,6 +109,23 @@ class NormalMode: BaseModeHandler {
             state.updateStatusMessage()
             return true
 
+        // WORD motions
+        case "W":
+            let pos = motionEngine.nextWORD(count)
+            state.cursor.move(to: pos)
+            state.updateStatusMessage()
+            return true
+        case "B":
+            let pos = motionEngine.previousWORD(count)
+            state.cursor.move(to: pos)
+            state.updateStatusMessage()
+            return true
+        case "E":
+            let pos = motionEngine.endOfWORD(count)
+            state.cursor.move(to: pos)
+            state.updateStatusMessage()
+            return true
+
         // Line motions
         case "0":
             state.cursor.moveToLineStart()
@@ -152,6 +174,44 @@ class NormalMode: BaseModeHandler {
                 executeFindMotion(lastSearchDirection, char, count)
             }
             return true
+        case ",":
+            // Repeat last find in reverse direction
+            if let char = lastSearchChar {
+                let reverseDirection: Character
+                switch lastSearchDirection {
+                case "f":
+                    reverseDirection = "F"
+                case "F":
+                    reverseDirection = "f"
+                case "t":
+                    reverseDirection = "T"
+                case "T":
+                    reverseDirection = "t"
+                default:
+                    return true
+                }
+                executeFindMotion(reverseDirection, char, count)
+            }
+            return true
+        case "%":
+            // Jump to matching bracket
+            if let matchPos = motionEngine.findMatchingBracket(at: state.cursor.position) {
+                state.cursor.move(to: matchPos)
+                state.updateStatusMessage()
+            }
+            return true
+
+        // Paragraph motions
+        case "{":
+            let pos = motionEngine.previousParagraph(count)
+            state.cursor.move(to: pos)
+            state.updateStatusMessage()
+            return true
+        case "}":
+            let pos = motionEngine.nextParagraph(count)
+            state.cursor.move(to: pos)
+            state.updateStatusMessage()
+            return true
 
         // Insert mode entry
         case "i":
@@ -186,14 +246,40 @@ class NormalMode: BaseModeHandler {
         case "d":
             operatorEngine.pendingOperator = .delete
             operatorEngine.pendingCount = count
+            operatorEngine.pendingRegister = selectedRegisterName
+            selectedRegisterName = nil
             return true
         case "y":
             operatorEngine.pendingOperator = .yank
             operatorEngine.pendingCount = count
+            operatorEngine.pendingRegister = selectedRegisterName
+            selectedRegisterName = nil
             return true
         case "c":
             operatorEngine.pendingOperator = .change
             operatorEngine.pendingCount = count
+            operatorEngine.pendingRegister = selectedRegisterName
+            selectedRegisterName = nil
+            return true
+
+        // Operator shortcuts
+        case "C":
+            // C = c$ (change to end of line)
+            state.saveUndoState()
+            let endPos = motionEngine.lineEnd()
+            operatorEngine.executeChange(from: state.cursor.position, to: endPos)
+            return true
+        case "D":
+            // D = d$ (delete to end of line)
+            state.saveUndoState()
+            let endPos = motionEngine.lineEnd()
+            operatorEngine.executeDelete(from: state.cursor.position, to: endPos)
+            return true
+        case "S":
+            // S = cc (substitute line - delete and enter insert mode)
+            state.saveUndoState()
+            operatorEngine.executeDeleteLine(count)
+            state.setMode(.insert)
             return true
 
         // Delete commands
@@ -240,7 +326,13 @@ class NormalMode: BaseModeHandler {
         // Paste
         case "p":
             state.saveUndoState()
-            let content = state.registerManager.getUnnamedRegister()
+            let content: RegisterContent
+            if let registerName = selectedRegisterName {
+                content = state.registerManager.get(registerName) ?? .characters("")
+                selectedRegisterName = nil
+            } else {
+                content = state.registerManager.getUnnamedRegister()
+            }
             switch content {
             case .characters(let str):
                 var pos = state.cursor.position
@@ -264,7 +356,13 @@ class NormalMode: BaseModeHandler {
 
         case "P":
             state.saveUndoState()
-            let content = state.registerManager.getUnnamedRegister()
+            let content: RegisterContent
+            if let registerName = selectedRegisterName {
+                content = state.registerManager.get(registerName) ?? .characters("")
+                selectedRegisterName = nil
+            } else {
+                content = state.registerManager.getUnnamedRegister()
+            }
             switch content {
             case .characters(let str):
                 var pos = state.cursor.position
@@ -289,6 +387,25 @@ class NormalMode: BaseModeHandler {
             pendingCommand = "r"
             return true
 
+        // Named register selection
+        case "\"":
+            waitingForRegisterName = true
+            return true
+
+        // Marks
+        case "m":
+            waitingForMarkName = true
+            markMode = "m"
+            return true
+        case "'":
+            waitingForMarkName = true
+            markMode = "'"
+            return true
+        case "`":
+            waitingForMarkName = true
+            markMode = "`"
+            return true
+
         // Join lines
         case "J":
             state.saveUndoState()
@@ -304,6 +421,14 @@ class NormalMode: BaseModeHandler {
                 state.isDirty = true
             }
             state.updateStatusMessage()
+            return true
+
+        // Indentation
+        case ">":
+            pendingIndentChar = char
+            return true
+        case "<":
+            pendingIndentChar = char
             return true
 
         // Case toggle
@@ -361,6 +486,30 @@ class NormalMode: BaseModeHandler {
         case "N":
             if let searchMode = state.searchModeHandler as? SearchMode {
                 _ = searchMode.searchPrevious()
+            }
+            return true
+
+        // Word under cursor search
+        case "*":
+            if let word = state.buffer.word(at: state.cursor.position) {
+                state.searchPattern = word
+                state.searchDirection = .forward
+                state.lastSearchPattern = word
+                state.lastSearchDirection = .forward
+                if let searchMode = state.searchModeHandler as? SearchMode {
+                    _ = searchMode.searchNext()
+                }
+            }
+            return true
+        case "#":
+            if let word = state.buffer.word(at: state.cursor.position) {
+                state.searchPattern = word
+                state.searchDirection = .backward
+                state.lastSearchPattern = word
+                state.lastSearchDirection = .backward
+                if let searchMode = state.searchModeHandler as? SearchMode {
+                    _ = searchMode.searchPrevious()
+                }
             }
             return true
 
@@ -427,6 +576,53 @@ class NormalMode: BaseModeHandler {
                 }
                 pendingCommand = ""
                 return true
+            } else if waitingForRegisterName {
+                // Register name selection
+                let validNames = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+                if validNames.contains(char) {
+                    selectedRegisterName = char
+                }
+                waitingForRegisterName = false
+                return true
+            } else if waitingForMarkName {
+                // Mark name selection (a-z only)
+                let markNames = Set("abcdefghijklmnopqrstuvwxyz")
+                if markNames.contains(char) {
+                    if markMode == "m" {
+                        // Set a mark
+                        state.marks[char] = state.cursor.position
+                        state.updateStatusMessage()
+                    } else if markMode == "'" {
+                        // Jump to mark (linewise)
+                        if let markPos = state.marks[char] {
+                            state.cursor.move(to: Position(line: markPos.line, column: 0))
+                            state.updateStatusMessage()
+                        }
+                    } else if markMode == "`" {
+                        // Jump to mark (exact)
+                        if let markPos = state.marks[char] {
+                            state.cursor.move(to: markPos)
+                            state.updateStatusMessage()
+                        }
+                    }
+                }
+                waitingForMarkName = false
+                markMode = nil
+                return true
+            } else if let indentChar = pendingIndentChar, indentChar == char {
+                // Handle >> and <<
+                state.saveUndoState()
+                for _ in 0..<count {
+                    if indentChar == ">" {
+                        state.buffer.indentLine(state.cursor.position.line)
+                    } else {
+                        state.buffer.unindentLine(state.cursor.position.line)
+                    }
+                }
+                state.isDirty = true
+                state.updateStatusMessage()
+                pendingIndentChar = nil
+                return true
             }
 
             return false
@@ -473,5 +669,10 @@ class NormalMode: BaseModeHandler {
         pendingCommand = ""
         countPrefix = 0
         operatorEngine.pendingOperator = .none
+        waitingForRegisterName = false
+        selectedRegisterName = nil
+        waitingForMarkName = false
+        markMode = nil
+        pendingIndentChar = nil
     }
 }

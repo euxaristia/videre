@@ -157,6 +157,125 @@ class MotionEngine {
         return buffer.clampPosition(pos)
     }
 
+    /// Move to next WORD (W) - separated by whitespace
+    func nextWORD(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        for _ in 0..<count {
+            let line = buffer.line(pos.line)
+            var col = pos.column
+
+            // Skip current non-whitespace
+            while col < line.count && !isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
+                col += 1
+            }
+
+            // Skip whitespace
+            while col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
+                col += 1
+            }
+
+            // If we hit end of line, move to next line
+            if col >= line.count && pos.line < buffer.lineCount - 1 {
+                pos.line += 1
+                pos.column = 0
+                // Skip whitespace on new line
+                let nextLine = buffer.line(pos.line)
+                while pos.column < nextLine.count
+                    && isWhitespace(nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
+                {
+                    pos.column += 1
+                }
+            } else {
+                pos.column = col
+            }
+        }
+        return buffer.clampPosition(pos)
+    }
+
+    /// Move to previous WORD (B) - separated by whitespace
+    func previousWORD(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        for _ in 0..<count {
+            let line = buffer.line(pos.line)
+            var col = pos.column
+
+            if col == 0 && pos.line > 0 {
+                pos.line -= 1
+                pos.column = buffer.lineLength(pos.line)
+                col = pos.column
+            }
+
+            // Move back one to avoid staying on same word
+            if col > 0 {
+                col -= 1
+            }
+
+            // Skip whitespace backward
+            while col > 0 && isWhitespace(line[line.index(line.startIndex, offsetBy: col)]) {
+                col -= 1
+            }
+
+            // Skip WORD backward
+            while col > 0 && !isWhitespace(line[line.index(line.startIndex, offsetBy: col)]) {
+                col -= 1
+            }
+
+            // If we're on whitespace, we overshot - move forward one
+            if col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
+                col += 1
+            }
+
+            pos.column = col
+        }
+        return buffer.clampPosition(pos)
+    }
+
+    /// Move to end of WORD (E) - separated by whitespace
+    func endOfWORD(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        for _ in 0..<count {
+            let line = buffer.line(pos.line)
+            var col = pos.column
+
+            // Skip to start of next WORD if on whitespace
+            while col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
+                col += 1
+            }
+
+            // Move to end of WORD
+            while col < line.count
+                && !isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            {
+                col += 1
+            }
+
+            // Move back one to be on the last character of WORD
+            if col > 0 {
+                col -= 1
+            }
+
+            // If we hit end of line, move to next line
+            if col >= buffer.lineLength(pos.line) && pos.line < buffer.lineCount - 1 {
+                pos.line += 1
+                pos.column = 0
+                // Find first WORD on new line
+                let nextLine = buffer.line(pos.line)
+                while pos.column < nextLine.count
+                    && isWhitespace(nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
+                {
+                    pos.column += 1
+                }
+            } else {
+                pos.column = col
+            }
+        }
+        return buffer.clampPosition(pos)
+    }
+
     // MARK: - Line Motions
 
     /// Move to first character of line (0)
@@ -202,6 +321,74 @@ class MotionEngine {
     func goToLine(_ line: Int) -> Position {
         let clampedLine = max(0, min(line, buffer.lineCount - 1))
         return Position(line: clampedLine, column: 0)
+    }
+
+    // MARK: - Paragraph Motions
+
+    /// Move to next paragraph ({ boundary - jump to blank line)
+    func nextParagraph(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        for _ in 0..<count {
+            var line = pos.line
+
+            // Skip non-blank lines
+            while line < buffer.lineCount {
+                let currentLine = buffer.line(line)
+                if isBlankLine(currentLine) {
+                    break
+                }
+                line += 1
+            }
+
+            // Skip blank lines
+            while line < buffer.lineCount {
+                let currentLine = buffer.line(line)
+                if !isBlankLine(currentLine) {
+                    break
+                }
+                line += 1
+            }
+
+            pos.line = min(line, buffer.lineCount - 1)
+        }
+        pos.column = 0
+        return buffer.clampPosition(pos)
+    }
+
+    /// Move to previous paragraph (} boundary - jump to blank line)
+    func previousParagraph(_ count: Int = 1) -> Position {
+        var pos = cursor.position
+        for _ in 0..<count {
+            var line = pos.line
+
+            // Move back at least one line
+            if line > 0 {
+                line -= 1
+            }
+
+            // Skip blank lines backward
+            while line > 0 {
+                let currentLine = buffer.line(line)
+                if !isBlankLine(currentLine) {
+                    break
+                }
+                line -= 1
+            }
+
+            // Skip non-blank lines backward
+            while line > 0 {
+                let currentLine = buffer.line(line)
+                if isBlankLine(currentLine) {
+                    line += 1  // Move back to first non-blank
+                    break
+                }
+                line -= 1
+            }
+
+            pos.line = max(0, line)
+        }
+        pos.column = 0
+        return buffer.clampPosition(pos)
     }
 
     // MARK: - Character Search
@@ -335,5 +522,9 @@ class MotionEngine {
 
     private func isWhitespace(_ char: Character) -> Bool {
         char.isWhitespace && char != "\n"
+    }
+
+    private func isBlankLine(_ line: String) -> Bool {
+        line.trimmingCharacters(in: .whitespaces).isEmpty
     }
 }
