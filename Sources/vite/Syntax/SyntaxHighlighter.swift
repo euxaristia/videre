@@ -18,6 +18,13 @@ enum SyntaxColor: String {
     case tag = "\u{001B}[38;5;167m"          // Red for HTML/XML tags
     // Search highlight - tan/khaki background with black text (like neovim)
     case searchMatch = "\u{001B}[30;48;5;179m"  // Black text on tan/khaki background
+    // Markdown-specific colors (using unique codes)
+    case mdHeader = "\u{001B}[1;38;5;117m"   // Bold light blue for headers
+    case mdBold = "\u{001B}[1m"              // Bold
+    case mdItalic = "\u{001B}[3m"            // Italic
+    case mdCode = "\u{001B}[38;5;187m"       // Light yellow for inline code
+    case mdLink = "\u{001B}[4;38;5;81m"      // Underline cyan for links/URLs
+    case mdListMarker = "\u{001B}[38;5;205m" // Pink for list markers
 }
 
 /// Token type for syntax highlighting
@@ -147,7 +154,12 @@ class SyntaxHighlighter {
     func highlightLine(_ line: String) -> String {
         guard let lang = language else { return line }
 
-        // Skip highlighting for languages without meaningful patterns (e.g., markdown)
+        // Use special markdown highlighting
+        if lang.name == "Markdown" {
+            return highlightMarkdownLine(line)
+        }
+
+        // Skip highlighting for languages without meaningful patterns
         guard lang.hasHighlighting else { return line }
 
         var result = ""
@@ -341,6 +353,180 @@ class SyntaxHighlighter {
                 result += SyntaxColor.reset.rawValue
                 i = idEnd
                 continue
+            }
+
+            // Regular character
+            result += String(line[i])
+            i = line.index(after: i)
+        }
+
+        return result
+    }
+
+    /// Highlight a markdown line
+    private func highlightMarkdownLine(_ line: String) -> String {
+        guard !line.isEmpty else { return line }
+
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+        // Check for headers (# ## ### etc.)
+        if trimmed.hasPrefix("#") {
+            // Find how many # at the start
+            var hashCount = 0
+            for char in trimmed {
+                if char == "#" {
+                    hashCount += 1
+                } else {
+                    break
+                }
+            }
+            if hashCount <= 6 && (trimmed.count == hashCount || trimmed[trimmed.index(trimmed.startIndex, offsetBy: hashCount)] == " ") {
+                return SyntaxColor.mdHeader.rawValue + line + SyntaxColor.reset.rawValue
+            }
+        }
+
+        // Check for horizontal rule (---, ***, ___)
+        let hrTrimmed = trimmed.filter { !$0.isWhitespace }
+        if hrTrimmed.count >= 3 && (hrTrimmed.allSatisfy { $0 == "-" } ||
+                                     hrTrimmed.allSatisfy { $0 == "*" } ||
+                                     hrTrimmed.allSatisfy { $0 == "_" }) {
+            return SyntaxColor.comment.rawValue + line + SyntaxColor.reset.rawValue
+        }
+
+        // Check for list markers at start of line (-, *, +, or numbered)
+        if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ") {
+            // Find the marker position
+            if let markerIdx = line.firstIndex(where: { $0 == "-" || $0 == "*" || $0 == "+" }) {
+                let prefix = String(line[..<markerIdx])
+                let marker = String(line[markerIdx])
+                let rest = String(line[line.index(after: markerIdx)...])
+                return prefix + SyntaxColor.mdListMarker.rawValue + marker + SyntaxColor.reset.rawValue + highlightMarkdownInline(rest)
+            }
+        }
+
+        // Check for numbered list (1. 2. etc.)
+        if let match = trimmed.range(of: "^\\d+\\.", options: .regularExpression) {
+            let numPart = String(trimmed[match])
+            if let numIdx = line.range(of: numPart) {
+                let prefix = String(line[..<numIdx.lowerBound])
+                let rest = String(line[numIdx.upperBound...])
+                return prefix + SyntaxColor.mdListMarker.rawValue + numPart + SyntaxColor.reset.rawValue + highlightMarkdownInline(rest)
+            }
+        }
+
+        // Regular line - apply inline highlighting
+        return highlightMarkdownInline(line)
+    }
+
+    /// Highlight inline markdown elements (bold, italic, code, links, etc.)
+    private func highlightMarkdownInline(_ line: String) -> String {
+        guard !line.isEmpty else { return line }
+
+        var result = ""
+        var i = line.startIndex
+        let end = line.endIndex
+
+        while i < end {
+            // Check for inline code with backticks
+            if line[i] == "`" {
+                var codeEnd = line.index(after: i)
+                while codeEnd < end && line[codeEnd] != "`" {
+                    codeEnd = line.index(after: codeEnd)
+                }
+                if codeEnd < end {
+                    // Found closing backtick
+                    codeEnd = line.index(after: codeEnd)
+                    result += SyntaxColor.mdCode.rawValue
+                    result += String(line[i..<codeEnd])
+                    result += SyntaxColor.reset.rawValue
+                    i = codeEnd
+                    continue
+                }
+            }
+
+            // Check for bold with ** or __
+            if (line[i] == "*" || line[i] == "_") && i < line.index(before: end) {
+                let marker = line[i]
+                let nextIdx = line.index(after: i)
+                if line[nextIdx] == marker {
+                    // Double marker - bold
+                    let startIdx = line.index(i, offsetBy: 2)
+                    if startIdx < end {
+                        // Find closing **
+                        if let closeRange = line.range(of: String(repeating: marker, count: 2), range: startIdx..<end) {
+                            result += SyntaxColor.mdBold.rawValue
+                            result += String(line[i..<closeRange.upperBound])
+                            result += SyntaxColor.reset.rawValue
+                            i = closeRange.upperBound
+                            continue
+                        }
+                    }
+                } else if nextIdx < end && !line[nextIdx].isWhitespace {
+                    // Single marker - italic (only if not followed by space)
+                    if let closeIdx = line[nextIdx...].firstIndex(of: marker) {
+                        if closeIdx > nextIdx {
+                            result += SyntaxColor.mdItalic.rawValue
+                            result += String(line[i...closeIdx])
+                            result += SyntaxColor.reset.rawValue
+                            i = line.index(after: closeIdx)
+                            continue
+                        }
+                    }
+                }
+            }
+
+            // Check for links [text](url) or images ![alt](url)
+            if line[i] == "[" || (line[i] == "!" && i < line.index(before: end) && line[line.index(after: i)] == "[") {
+                let isImage = line[i] == "!"
+                let bracketStart = isImage ? line.index(after: i) : i
+
+                if let bracketClose = line[bracketStart...].firstIndex(of: "]") {
+                    let afterBracket = line.index(after: bracketClose)
+                    if afterBracket < end && line[afterBracket] == "(" {
+                        if let parenClose = line[afterBracket...].firstIndex(of: ")") {
+                            // Found complete link
+                            result += SyntaxColor.mdLink.rawValue
+                            result += String(line[i...parenClose])
+                            result += SyntaxColor.reset.rawValue
+                            i = line.index(after: parenClose)
+                            continue
+                        }
+                    }
+                }
+            }
+
+            // Check for URLs (http:// or https://)
+            if line[i] == "h" {
+                let remaining = String(line[i...])
+                if remaining.hasPrefix("http://") || remaining.hasPrefix("https://") {
+                    // Find end of URL (space or end of line)
+                    var urlEnd = i
+                    while urlEnd < end && !line[urlEnd].isWhitespace && line[urlEnd] != ")" && line[urlEnd] != ">" && line[urlEnd] != "\"" {
+                        urlEnd = line.index(after: urlEnd)
+                    }
+                    result += SyntaxColor.mdLink.rawValue
+                    result += String(line[i..<urlEnd])
+                    result += SyntaxColor.reset.rawValue
+                    i = urlEnd
+                    continue
+                }
+            }
+
+            // Check for HTML tags
+            if line[i] == "<" {
+                // Look for closing >
+                if let closeIdx = line[i...].firstIndex(of: ">") {
+                    let tagContent = String(line[i...closeIdx])
+                    // Basic check that it looks like a tag (starts with < followed by letter or /)
+                    let afterOpen = line.index(after: i)
+                    if afterOpen < end && (line[afterOpen].isLetter || line[afterOpen] == "/" || line[afterOpen] == "!") {
+                        result += SyntaxColor.tag.rawValue
+                        result += tagContent
+                        result += SyntaxColor.reset.rawValue
+                        i = line.index(after: closeIdx)
+                        continue
+                    }
+                }
             }
 
             // Regular character
