@@ -376,10 +376,16 @@ class ViEditor {
     ///   - raw: The raw line without any highlighting
     /// - Returns: The line with search matches highlighted
     private func highlightSearchMatches(in highlighted: String, raw: String) -> String {
-        // Only highlight if there's an active search pattern
-        guard !state.lastSearchPattern.isEmpty else { return highlighted }
-
-        let pattern = state.lastSearchPattern
+        // Use current search pattern during search mode (incremental search),
+        // otherwise use last search pattern
+        let pattern: String
+        if state.currentMode == .search && !state.searchPattern.isEmpty {
+            pattern = state.searchPattern
+        } else if !state.lastSearchPattern.isEmpty {
+            pattern = state.lastSearchPattern
+        } else {
+            return highlighted
+        }
 
         // Find all match positions in the raw line
         var matches: [Range<String.Index>] = []
