@@ -29,6 +29,7 @@ class ViEditor {
     var insertMode: InsertMode
     var visualMode: VisualMode
     var commandMode: CommandMode
+    var searchMode: SearchMode
     var shouldExit: Bool = false
     var terminalSize: TerminalSize = TerminalSize()
 
@@ -40,12 +41,18 @@ class ViEditor {
         self.insertMode = InsertMode(state: state)
         self.visualMode = VisualMode(state: state)
         self.commandMode = CommandMode(state: state)
+        self.searchMode = SearchMode(state: state)
 
         // Register mode handlers with state for lifecycle management
         state.normalModeHandler = normalMode
         state.insertModeHandler = insertMode
         state.visualModeHandler = visualMode
         state.commandModeHandler = commandMode
+        state.searchModeHandler = searchMode
+
+        // Initialize syntax highlighting based on file extension
+        let language = SyntaxHighlighter.shared.detectLanguage(from: state.filePath)
+        SyntaxHighlighter.shared.setLanguage(language)
 
         state.setMode(.normal)
     }
@@ -122,10 +129,9 @@ class ViEditor {
         settings.c_lflag |= tcflag_t(ICANON | ECHO)
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
-        // Clear screen and show cursor
-        print("\u{001B}[2J")
-        print("\u{001B}[H")
-        print("\u{001B}[?25h", terminator: "")
+        // Move cursor to bottom of screen and show cursor (Neovim-style, no clear)
+        print("\u{001B}[\(terminalSize.rows);1H")  // Move to last row
+        print("\u{001B}[?25h", terminator: "")  // Show cursor
         fflush(stdout)
     }
 
@@ -150,31 +156,53 @@ class ViEditor {
             _ = fcntl(STDIN_FILENO, F_SETFL, flags)
 
             if nextN > 0 && nextBuffer[0] == 0x5B {  // '['
-                // Read the final byte of the escape sequence
-                var finalBuffer: [UInt8] = [0]
-                let finalN = read(STDIN_FILENO, &finalBuffer, 1)
+                // Read the next byte of the escape sequence
+                var thirdBuffer: [UInt8] = [0]
+                let thirdN = read(STDIN_FILENO, &thirdBuffer, 1)
 
-                if finalN > 0 {
-                    switch finalBuffer[0] {
-                    case 0x41: return "↑"  // Up arrow
-                    case 0x42: return "↓"  // Down arrow
-                    case 0x43: return "→"  // Right arrow
-                    case 0x44: return "←"  // Left arrow
+                if thirdN > 0 {
+                    switch thirdBuffer[0] {
+                    case 0x41: return "↑"  // Up arrow (ESC [ A)
+                    case 0x42: return "↓"  // Down arrow (ESC [ B)
+                    case 0x43: return "→"  // Right arrow (ESC [ C)
+                    case 0x44: return "←"  // Left arrow (ESC [ D)
+                    case 0x33:  // Could be Delete (ESC [ 3 ~)
+                        var fourthBuffer: [UInt8] = [0]
+                        let fourthN = read(STDIN_FILENO, &fourthBuffer, 1)
+                        if fourthN > 0 && fourthBuffer[0] == 0x7E {  // '~'
+                            return "⌦"  // Delete key
+                        }
+                    case 0x48: return "↖"  // Home (ESC [ H)
+                    case 0x46: return "↘"  // End (ESC [ F)
                     default: break
                     }
                 }
             }
+            // If we got here, it's just a plain ESC
+            return "\u{1B}"
         }
 
         return Character(UnicodeScalar(byte))
     }
 
     private func render() {
+        // Guard against extremely small terminals that would cause crashes
+        guard terminalSize.rows >= 3 && terminalSize.cols >= 10 else {
+            // Terminal too small - just show a minimal message
+            print("\u{001B}[H\u{001B}[2J", terminator: "")
+            print("Terminal too small", terminator: "")
+            fflush(stdout)
+            return
+        }
+
         // Move to home and clear screen
         print("\u{001B}[H\u{001B}[2J", terminator: "")
 
+        // Reset syntax highlighter state for new render
+        SyntaxHighlighter.shared.reset()
+
         // Reserve space for status line and command line (always reserve 2 lines to match Neovim)
-        let availableLines = Int(terminalSize.rows) - 2
+        let availableLines = max(1, Int(terminalSize.rows) - 2)
         let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false)
             .count
 
@@ -192,19 +220,23 @@ class ViEditor {
                 print("\u{001B}[0m", terminator: "")  // Reset
 
                 // Line content with cursor (truncate if exceeds terminal width)
-                let maxLineLength = Int(terminalSize.cols) - (gutterWidth + 1)  // Account for line numbers and space
+                let maxLineLength = max(1, Int(terminalSize.cols) - (gutterWidth + 1))  // Account for line numbers and space
                 let displayLine = String(line.prefix(maxLineLength))
 
-                // Print line content without manual cursor rendering
-                print(displayLine, terminator: "")
+                // Apply syntax highlighting and print
+                let highlightedLine = SyntaxHighlighter.shared.highlightLine(displayLine)
+                print(highlightedLine, terminator: "")
+                print(SyntaxColor.reset.rawValue, terminator: "")
 
                 // Clear to end of line to handle terminal resize artifacts
                 print("\u{001B}[K")
             }
 
             // Fill remaining lines with dim tildes (Neovim-style)
-            for _ in totalLines..<availableLines {
-                print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
+            if totalLines < availableLines {
+                for _ in totalLines..<availableLines {
+                    print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
+                }
             }
         }
 
@@ -262,6 +294,9 @@ class ViEditor {
         print("\u{001B}[\(terminalSize.rows);1H", terminator: "")
         if state.currentMode == .command {
             print(state.pendingCommand, terminator: "")
+        } else if state.currentMode == .search {
+            let prefix = state.searchDirection == .forward ? "/" : "?"
+            print(prefix + state.searchPattern, terminator: "")
         } else if state.currentMode == .insert {
             print("-- INSERT --", terminator: "")
         } else if state.currentMode == .visual {
@@ -274,6 +309,10 @@ class ViEditor {
             // In command mode, position cursor after the command text
             let commandCursorCol = state.pendingCommand.count + 1
             print("\u{001B}[\(terminalSize.rows);\(commandCursorCol)H", terminator: "")
+        } else if state.currentMode == .search {
+            // In search mode, position cursor after the search pattern
+            let searchCursorCol = state.searchPattern.count + 2  // +1 for "/" prefix, +1 for 1-based
+            print("\u{001B}[\(terminalSize.rows);\(searchCursorCol)H", terminator: "")
         } else if !state.showWelcomeMessage {
             // In normal/insert/visual modes, position cursor at the actual cursor position
             let gutterWidth = String(totalLines).count
@@ -300,25 +339,31 @@ class ViEditor {
             "Maintainer: euxaristia",
         ]
 
-        let startRow = (availableLines - message.count) / 2
+        // Handle case where terminal is too small to show full message
+        let linesToShow = min(message.count, availableLines)
+        let startRow = max(0, (availableLines - linesToShow) / 2)
 
         // Fill before message with tildes
         for _ in 0..<startRow {
             print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
         }
 
-        // Render message centered
-        for line in message {
-            let padding = max(0, (terminalCols - line.count) / 2)
+        // Render message centered (only show what fits)
+        for i in 0..<linesToShow {
+            let line = message[i]
+            let padding = max(1, (terminalCols - line.count) / 2)
             print("\u{001B}[2m~\u{001B}[0m", terminator: "")  // Gutter tilde
-            print(String(repeating: " ", count: padding - 1), terminator: "")
-            print(line, terminator: "")
+            print(String(repeating: " ", count: max(0, padding - 1)), terminator: "")
+            print(String(line.prefix(max(1, terminalCols - padding))), terminator: "")
             print("\u{001B}[K")
         }
 
         // Fill after message with tildes
-        for _ in (startRow + message.count)..<availableLines {
-            print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
+        let endRow = startRow + linesToShow
+        if endRow < availableLines {
+            for _ in endRow..<availableLines {
+                print("\u{001B}[2m~\u{001B}[0m\u{001B}[K")
+            }
         }
     }
 }
@@ -338,8 +383,10 @@ class InputDispatcher {
 
     func dispatch(_ event: KeyEvent, editor: ViEditor) {
         // Clear welcome message on editing actions, not on entering command mode
-        // This matches Neovim behavior where : doesn't dismiss the welcome screen
-        if state.currentMode == .normal && event.character != ":" {
+        // This matches Neovim behavior where : and / don't dismiss the welcome screen
+        if state.currentMode == .normal && event.character != ":" && event.character != "/"
+            && event.character != "?"
+        {
             state.showWelcomeMessage = false
         } else if state.currentMode == .insert {
             state.showWelcomeMessage = false
@@ -354,6 +401,8 @@ class InputDispatcher {
             _ = editor.visualMode.handleInput(event.character)
         case .command:
             _ = editor.commandMode.handleInput(event.character)
+        case .search:
+            _ = editor.searchMode.handleInput(event.character)
         }
 
         // Check for exit condition from command mode

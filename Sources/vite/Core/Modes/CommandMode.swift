@@ -131,6 +131,9 @@ class CommandMode: BaseModeHandler {
                     state.cursor.moveToBeginningOfFile()
                     state.isDirty = false
                     state.statusMessage = "\"\(arg)\" \(state.buffer.lineCount) lines"
+                    // Update syntax highlighting for new file
+                    let language = SyntaxHighlighter.shared.detectLanguage(from: arg)
+                    SyntaxHighlighter.shared.setLanguage(language)
                 } catch {
                     state.statusMessage = "E211: File not found: \(arg)"
                 }

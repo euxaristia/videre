@@ -233,6 +233,30 @@ class NormalMode: BaseModeHandler {
             state.setMode(.command)
             return true
 
+        // Search mode
+        case "/":
+            state.searchDirection = .forward
+            state.searchPattern = ""
+            state.setMode(.search)
+            return true
+        case "?":
+            state.searchDirection = .backward
+            state.searchPattern = ""
+            state.setMode(.search)
+            return true
+
+        // Repeat search
+        case "n":
+            if let searchMode = state.searchModeHandler as? SearchMode {
+                _ = searchMode.searchNext()
+            }
+            return true
+        case "N":
+            if let searchMode = state.searchModeHandler as? SearchMode {
+                _ = searchMode.searchPrevious()
+            }
+            return true
+
         // Escape
         case "\u{1B}":
             pendingCommand = ""

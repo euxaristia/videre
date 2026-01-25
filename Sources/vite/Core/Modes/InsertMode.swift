@@ -15,6 +15,12 @@ class InsertMode: BaseModeHandler {
             state.updateStatusMessage()
             return true
 
+        case "⌦":
+            // Delete key - delete character at cursor (to the right)
+            state.deleteCharacter()
+            state.updateStatusMessage()
+            return true
+
         case "\n":
             // Enter
             state.insertNewLine()

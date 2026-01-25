@@ -179,6 +179,16 @@ class EditorDriver(ABC):
         else:
             self.send_keys("<ESC>:q<CR>", delay=0.02)
 
+        # Close PTY master to signal disconnect - some editors (like nvim)
+        # wait for the PTY to close before fully exiting
+        time.sleep(0.02)  # Brief delay to let command be processed
+        if self.master_fd is not None:
+            try:
+                os.close(self.master_fd)
+            except OSError:
+                pass
+            self.master_fd = None
+
         # Wait for process to exit
         max_wait = 5.0
         while time.perf_counter() - quit_start < max_wait:
@@ -194,7 +204,7 @@ class EditorDriver(ABC):
                 self.cleanup()
                 return quit_time
 
-            time.sleep(0.05)
+            time.sleep(0.01)  # Faster polling for more accurate timing
 
         # Force kill if not exited
         try:

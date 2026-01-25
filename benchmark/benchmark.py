@@ -14,7 +14,7 @@ sys.path.insert(0, str(benchmark_dir))
 
 from drivers.vite_driver import ViteDriver
 from drivers.nvim_driver import NvimDriver
-from scenarios import startup, insertion, movement, fileops
+from scenarios import startup, insertion, movement, fileops, exit
 from utils.test_data import generate_test_files, cleanup_test_files
 from utils.reporting import Reporter
 
@@ -92,6 +92,12 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
         results["fileops"]["vite"] = vite_fileops
         print("  ✓ File operation benchmarks complete")
 
+        print("Running exit benchmarks...")
+        results["exit"] = {}
+        vite_exit = exit.benchmark_exit(ViteDriver, iterations)
+        results["exit"]["vite"] = vite_exit
+        print("  ✓ Exit benchmarks complete")
+
     except Exception as e:
         print(f"✗ Error benchmarking vite: {e}", file=sys.stderr)
         import traceback
@@ -128,6 +134,11 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
             nvim_fileops = fileops.benchmark_fileops(NvimDriver, iterations)
             results["fileops"]["nvim"] = nvim_fileops
             print("  ✓ File operation benchmarks complete")
+
+            print("Running exit benchmarks...")
+            nvim_exit = exit.benchmark_exit(NvimDriver, iterations)
+            results["exit"]["nvim"] = nvim_exit
+            print("  ✓ Exit benchmarks complete")
 
         except Exception as e:
             print(f"✗ Error benchmarking nvim: {e}", file=sys.stderr)

@@ -5,6 +5,7 @@ enum EditorMode {
     case insert
     case visual
     case command
+    case search
 }
 
 /// Central state container for the editor
@@ -26,6 +27,18 @@ class EditorState {
     var insertModeHandler: ModeHandler?
     var visualModeHandler: ModeHandler?
     var commandModeHandler: ModeHandler?
+    var searchModeHandler: ModeHandler?
+
+    // Search state
+    var searchPattern: String = ""
+    var searchDirection: SearchDirection = .forward
+    var lastSearchPattern: String = ""
+    var lastSearchDirection: SearchDirection = .forward
+
+    enum SearchDirection {
+        case forward   // /
+        case backward  // ?
+    }
 
     init() {
         self.buffer = TextBuffer()
@@ -75,6 +88,8 @@ class EditorState {
             return visualModeHandler
         case .command:
             return commandModeHandler
+        case .search:
+            return searchModeHandler
         }
     }
 
@@ -96,6 +111,8 @@ class EditorState {
             return "VISUAL"
         case .command:
             return "COMMAND"
+        case .search:
+            return "SEARCH"
         }
     }
 
