@@ -1,6 +1,6 @@
-# Vite ⚡
+# vite ⚡
 
-A lightning-fast, lightweight Vi text editor built in pure Swift. Vite brings the power of modal editing to the terminal with a clean, minimal design inspired by the legendary Vi/Vim editors.
+A lightning-fast, lightweight Vi text editor built in pure Swift. vite brings the power of modal editing to the terminal with a clean, minimal design inspired by the legendary Vi/Vim editors.
 
 <p align="center">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-5.9%2B-orange?logo=swift" />
@@ -39,7 +39,7 @@ A lightning-fast, lightweight Vi text editor built in pure Swift. Vite brings th
 
 ## How it works
 
-Vite implements a classic Vi-style editor with modern refinements:
+vite implements a classic Vi-style editor with modern refinements:
 
 - **Gap Buffer**: Text is stored using a gap buffer—a dynamic array with an efficient "gap" at the cursor position, enabling O(1) character insertions
 - **Mode System**: Four distinct modes (Normal, Insert, Visual, Command) control input interpretation
@@ -64,7 +64,7 @@ Architecture highlights:
 - Future: Windows support would require either Windows Console API integration or a cross-platform terminal library
 
 **Technical Note:**
-Vite does **not** use SwiftTUI or any framework. It's pure Swift with direct POSIX terminal control for maximum performance and minimal dependencies.
+vite does **not** use SwiftTUI or any framework. It's pure Swift with direct POSIX terminal control for maximum performance and minimal dependencies.
 
 ## Install
 
@@ -75,19 +75,19 @@ Vite does **not** use SwiftTUI or any framework. It's pure Swift with direct POS
 **Build with Swift Package Manager:**
 
 ```sh
-git clone https://github.com/euxaristia/Vite.git
-cd Vite
+git clone https://github.com/euxaristia/vite.git
+cd vite
 swift build -c release
 ```
 
-The binary will be at `.build/release/Vite`.
+The binary will be at `.build/release/vite`.
 
 **Optional: Install to PATH:**
 
 ```sh
-cp .build/release/Vite /usr/local/bin/vi
+cp .build/release/vite /usr/local/bin/vi
 # or symlink:
-ln -s "$(pwd)/.build/release/Vite" /usr/local/bin/vi
+ln -s "$(pwd)/.build/release/vite" /usr/local/bin/vi
 ```
 
 ## Usage
@@ -163,7 +163,7 @@ Most commands accept numeric prefixes:
 
 ### Gap Buffer Text Storage
 
-Vite uses a gap buffer—a technique from classic editors like Emacs:
+vite uses a gap buffer—a technique from classic editors like Emacs:
 
 ```
 "Hello world"
@@ -189,7 +189,7 @@ Benefits:
 
 ### Vi Compatibility
 
-Vite implements core Vi behavior with high fidelity:
+vite implements core Vi behavior with high fidelity:
 - Cursor positioning follows Vi rules (e.g., moving left from insert mode)
 - Operators compose with motions using the same grammar
 - Error messages match Vim's format (e.g., `E37`, `E212`)
@@ -198,7 +198,7 @@ Vite implements core Vi behavior with high fidelity:
 ## Project Structure
 
 ```
-Sources/Vite/
+Sources/vite/
 ├── main.swift                    # Entry point
 ├── UI/
 │   ├── EditorApp.swift          # Main editor loop & terminal control
@@ -247,11 +247,11 @@ Contributions welcome! If you're planning a significant change (e.g., new motion
 
 ```sh
 swift build
-swift run Vite test.txt
+swift run vite test.txt
 
 # Run with release optimizations:
 swift build -c release
-.build/release/Vite test.txt
+.build/release/vite test.txt
 ```
 
 **Coding guidelines:**
@@ -265,7 +265,7 @@ swift build -c release
 
 **Terminal echo stuck after crash?**
 - Run `reset` or `stty sane` in your shell
-- Vite restores terminal state on clean exit and SIGINT, but hard kills can leave TTY misconfigured
+- vite restores terminal state on clean exit and SIGINT, but hard kills can leave TTY misconfigured
 
 **Arrow keys not working?**
 - Ensure your terminal emits standard escape sequences

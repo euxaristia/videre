@@ -291,8 +291,8 @@ class ViEditor {
         let message = [
             "VITE v0.1.0",
             "",
-            "Vite is open source and freely distributable",
-            "https://github.com/euxaristia/Vite",
+            "vite is open source and freely distributable",
+            "https://github.com/euxaristia/vite",
             "",
             "type  :q<Enter>               to exit         ",
             "type  :help<Enter>            for help        ",
