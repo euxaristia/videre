@@ -41,6 +41,12 @@ class ViEditor {
         self.visualMode = VisualMode(state: state)
         self.commandMode = CommandMode(state: state)
 
+        // Register mode handlers with state for lifecycle management
+        state.normalModeHandler = normalMode
+        state.insertModeHandler = insertMode
+        state.visualModeHandler = visualMode
+        state.commandModeHandler = commandMode
+
         state.setMode(.normal)
     }
 

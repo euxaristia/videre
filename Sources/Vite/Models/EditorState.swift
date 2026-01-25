@@ -21,6 +21,12 @@ class EditorState {
     var shouldExit: Bool = false
     var showWelcomeMessage: Bool = false
 
+    // Mode handlers for lifecycle management
+    var normalModeHandler: ModeHandler?
+    var insertModeHandler: ModeHandler?
+    var visualModeHandler: ModeHandler?
+    var commandModeHandler: ModeHandler?
+
     init() {
         self.buffer = TextBuffer()
         self.cursor = Cursor()
@@ -45,8 +51,31 @@ class EditorState {
     // MARK: - Mode Management
 
     func setMode(_ mode: EditorMode) {
+        // Call exit on current mode
+        let currentModeHandler = getModeHandler(currentMode)
+        currentModeHandler?.exit()
+
+        // Switch mode
         currentMode = mode
+
+        // Call enter on new mode
+        let newModeHandler = getModeHandler(mode)
+        newModeHandler?.enter()
+
         updateStatusMessage()
+    }
+
+    private func getModeHandler(_ mode: EditorMode) -> ModeHandler? {
+        switch mode {
+        case .normal:
+            return normalModeHandler
+        case .insert:
+            return insertModeHandler
+        case .visual:
+            return visualModeHandler
+        case .command:
+            return commandModeHandler
+        }
     }
 
     // MARK: - Status
