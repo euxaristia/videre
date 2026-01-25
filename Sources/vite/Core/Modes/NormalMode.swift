@@ -48,6 +48,9 @@ class NormalMode: BaseModeHandler {
 
         // Single character commands
         switch char {
+        case "\u{7F}", "\u{08}", "⌦":
+            // Backspace/delete are no-ops in normal mode
+            return false
         case "\u{01}":
             // Ctrl+A: Increment number
             state.incrementNextNumber(count: count)

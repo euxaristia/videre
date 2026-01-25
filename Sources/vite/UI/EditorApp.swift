@@ -761,27 +761,31 @@ class InputDispatcher {
     }
 
     func dispatch(_ event: KeyEvent, editor: ViEditor) {
-        // Clear welcome message on editing actions, not on entering command mode
-        // This matches Neovim behavior where : and / don't dismiss the welcome screen
-        if state.currentMode == .normal && event.character != ":" && event.character != "/"
-            && event.character != "?"
-        {
-            state.showWelcomeMessage = false
-        } else if state.currentMode == .insert {
-            state.showWelcomeMessage = false
-        }
-
+        let originalMode = state.currentMode
+        let handled: Bool
         switch state.currentMode {
         case .normal:
-            _ = editor.normalMode.handleInput(event.character)
+            handled = editor.normalMode.handleInput(event.character)
         case .insert:
-            _ = editor.insertMode.handleInput(event.character)
+            handled = editor.insertMode.handleInput(event.character)
         case .visual, .visualLine:
-            _ = editor.visualMode.handleInput(event.character)
+            handled = editor.visualMode.handleInput(event.character)
         case .command:
-            _ = editor.commandMode.handleInput(event.character)
+            handled = editor.commandMode.handleInput(event.character)
         case .search:
-            _ = editor.searchMode.handleInput(event.character)
+            handled = editor.searchMode.handleInput(event.character)
+        }
+
+        // Clear welcome message on editing actions, not on entering command mode
+        // This matches Neovim behavior where : and / don't dismiss the welcome screen
+        if handled && state.showWelcomeMessage {
+            if originalMode == .normal && event.character != ":" && event.character != "/"
+                && event.character != "?"
+            {
+                state.showWelcomeMessage = false
+            } else if originalMode == .insert {
+                state.showWelcomeMessage = false
+            }
         }
 
         // Check for exit condition from command mode
