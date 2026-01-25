@@ -280,7 +280,6 @@ class MotionEngine {
             "(": ")", "[": "]", "{": "}", ")": "(", "]": "[", "}": "{",
         ]
         let openBrackets: Set<Character> = ["(", "[", "{"]
-        let closeBrackets: Set<Character> = [")", "]", "}"]
 
         guard let targetBracket = brackets[char] else { return nil }
 

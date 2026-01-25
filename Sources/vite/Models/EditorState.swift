@@ -255,7 +255,7 @@ class EditorState {
         let colIdx = cursor.position.column
 
         // Look for number starting at or after cursor
-        var searchIdx = line.index(line.startIndex, offsetBy: colIdx)
+        let searchIdx = line.index(line.startIndex, offsetBy: colIdx)
         var numberStartIdx: String.Index?
         var numberEndIdx: String.Index?
 
