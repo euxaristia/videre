@@ -191,13 +191,13 @@ class ViEditor {
             var nextBuffer: [UInt8] = [0]
             let nextN = read(STDIN_FILENO, &nextBuffer, 1)
 
-            // Restore blocking mode
-            _ = fcntl(STDIN_FILENO, F_SETFL, flags)
-
             if nextN > 0 && nextBuffer[0] == 0x5B {  // '['
-                // Read the next byte of the escape sequence
+                // Read the next byte of the escape sequence (still in non-blocking mode)
                 var thirdBuffer: [UInt8] = [0]
                 let thirdN = read(STDIN_FILENO, &thirdBuffer, 1)
+
+                // Restore blocking mode after reading the sequence
+                _ = fcntl(STDIN_FILENO, F_SETFL, flags)
 
                 if thirdN > 0 {
                     switch thirdBuffer[0] {
@@ -218,6 +218,9 @@ class ViEditor {
                     default: break
                     }
                 }
+            } else {
+                // No escape sequence, restore blocking mode
+                _ = fcntl(STDIN_FILENO, F_SETFL, flags)
             }
             // If we got here, it's just a plain ESC
             return "\u{1B}"
