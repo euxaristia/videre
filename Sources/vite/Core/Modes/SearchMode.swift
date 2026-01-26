@@ -6,10 +6,15 @@ class SearchMode: BaseModeHandler {
         MotionEngine(buffer: state.buffer, cursor: state.cursor)
     }
 
+    private var initialCursorPosition: Position?
+
     override func handleInput(_ char: Character) -> Bool {
         switch char {
         case "\u{1B}":
             // Escape - cancel search
+            if let initialPos = initialCursorPosition {
+                state.cursor.move(to: initialPos)
+            }
             state.searchPattern = ""
             state.setMode(.normal)
             return true
@@ -19,8 +24,17 @@ class SearchMode: BaseModeHandler {
             if !state.searchPattern.isEmpty {
                 state.lastSearchPattern = state.searchPattern
                 state.lastSearchDirection = state.searchDirection
+
+                // Final search from initial position to ensure we land on the right match
+                if let initialPos = initialCursorPosition {
+                    state.cursor.move(to: initialPos)
+                }
+
                 if !executeSearch() {
                     state.statusMessage = "E486: Pattern not found: \(state.searchPattern)"
+                    // If not found, stay where we were (already restored in executeSearch if failure is handled)
+                    // But actually if performIncrementalSearch moved us, we might want to stay or revert.
+                    // Vim reverts if you cancel, but Enter stays.
                 }
             }
             state.searchPattern = ""
@@ -32,7 +46,11 @@ class SearchMode: BaseModeHandler {
             if !state.searchPattern.isEmpty {
                 state.searchPattern.removeLast()
                 updatePrompt()
+                performIncrementalSearch()
             } else {
+                if let initialPos = initialCursorPosition {
+                    state.cursor.move(to: initialPos)
+                }
                 state.setMode(.normal)
             }
             return true
@@ -41,8 +59,22 @@ class SearchMode: BaseModeHandler {
             // Add character to search pattern
             state.searchPattern.append(char)
             updatePrompt()
+            performIncrementalSearch()
             return true
         }
+    }
+
+    private func performIncrementalSearch() {
+        guard let initialPos = initialCursorPosition else { return }
+
+        // Always search from initial position for incremental search
+        state.cursor.move(to: initialPos)
+
+        if !state.searchPattern.isEmpty {
+            _ = executeSearch()
+        }
+
+        // rendering loop in EditorApp handles viewport visibility
     }
 
     private func updatePrompt() {
@@ -206,9 +238,12 @@ class SearchMode: BaseModeHandler {
 
         let prefix = state.searchDirection == .forward ? "/" : "?"
         state.statusMessage = prefix
+
+        initialCursorPosition = state.cursor.position
     }
 
     override func exit() {
         state.statusMessage = ""
+        initialCursorPosition = nil
     }
 }

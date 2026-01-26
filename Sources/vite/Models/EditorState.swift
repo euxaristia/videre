@@ -18,8 +18,19 @@ class EditorState {
     var statusMessage: String
     var pendingCommand: String
 
-    var filePath: String?
-    var isDirty: Bool = false
+    var filePath: String? {
+        didSet {
+            updateGitStatus()
+        }
+    }
+    var isDirty: Bool = false {
+        didSet {
+            // Update git status when dirty state changes (e.g. after save)
+            if oldValue != isDirty {
+                updateGitStatus()
+            }
+        }
+    }
     var isHelpBuffer: Bool = false
     var registerManager: RegisterManager
     var undoManager: UndoManager = UndoManager()
@@ -29,6 +40,61 @@ class EditorState {
     var matchingBracketPosition: Position? = nil
     var isWaitingForEnter: Bool = false
     var multiLineMessage: [String] = []
+
+    // git state
+    var gitStatus: String = ""
+
+    func updateGitStatus() {
+        guard let filePath = filePath else {
+            gitStatus = ""
+            return
+        }
+
+        let directory = (filePath as NSString).deletingLastPathComponent
+        let fileName = (filePath as NSString).lastPathComponent
+        let searchDir = directory.isEmpty ? "." : directory
+
+        // Get branch and status in one go
+        let output = executeShell("git status --porcelain -b -- \"\(fileName)\"", in: searchDir)
+        let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        
+        guard let firstLine = lines.first, firstLine.hasPrefix("## ") else {
+            gitStatus = ""
+            return
+        }
+
+        // Extract branch name (handles '## branch' or '## branch...remote')
+        let branchLine = String(firstLine.dropFirst(3))
+        let branch = branchLine.components(separatedBy: "...").first ?? branchLine
+        
+        // If there are more lines, the file itself has changes
+        let hasChanges = lines.count > 1
+        let indicator = hasChanges ? "*" : ""
+
+        gitStatus = "\(branch)\(indicator)"
+    }
+
+    private func executeShell(_ command: String, in directory: String) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["sh", "-c", command]
+        
+        let searchDir = directory.isEmpty ? "." : directory
+        process.currentDirectoryURL = URL(fileURLWithPath: searchDir)
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        } catch {
+            return ""
+        }
+    }
 
     // Viewport scrolling - the first visible line
     var scrollOffset: Int = 0
@@ -92,6 +158,7 @@ class EditorState {
         self.filePath = filePath
         self.isDirty = false
         self.registerManager = RegisterManager()
+        updateGitStatus()
     }
 
     // MARK: - Mode Management

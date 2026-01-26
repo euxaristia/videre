@@ -503,8 +503,9 @@ class ViEditor {
         }
 
         // Construct status line segments
-        // Segment 1: "filename [+]"
-        var segment1 = " \(filename)\(modifiedFlag) "
+        // Segment 1: "filename [+] [branch*]"
+        let gitInfo = state.gitStatus.isEmpty ? "" : " [\(state.gitStatus)]"
+        var segment1 = " \(filename)\(modifiedFlag)\(gitInfo) "
         if state.showExitHint {
             segment1 += "[press :q or ^C to exit] "
         }
