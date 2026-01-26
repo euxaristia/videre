@@ -327,31 +327,26 @@ class MotionEngine {
 
     /// Move down by lines (j)
     func lineDown(_ count: Int = 1) -> Position {
-        var pos = cursor.position
-        pos.line = min(pos.line + count, buffer.lineCount - 1)
-        // Preserve column or clamp to line length
-        pos.column = min(pos.column, buffer.lineLength(pos.line) - 1)
-        pos.column = max(0, pos.column)
-        return pos
+        let newLine = min(cursor.position.line + count, buffer.lineCount - 1)
+        let lineLength = buffer.lineLength(newLine)
+        let newCol = min(cursor.preferredColumn, max(0, lineLength - 1))
+        return Position(line: newLine, column: newCol)
     }
 
     /// Move up by lines (k)
     func lineUp(_ count: Int = 1) -> Position {
-        var pos = cursor.position
-        pos.line = max(0, pos.line - count)
-        pos.column = min(pos.column, buffer.lineLength(pos.line) - 1)
-        pos.column = max(0, pos.column)
-        return pos
+        let newLine = max(0, cursor.position.line - count)
+        let lineLength = buffer.lineLength(newLine)
+        let newCol = min(cursor.preferredColumn, max(0, lineLength - 1))
+        return Position(line: newLine, column: newCol)
     }
 
     // MARK: - Paragraph Motions
 
     /// Move to next paragraph ({ boundary - jump to blank line)
     func nextParagraph(_ count: Int = 1) -> Position {
-        var pos = cursor.position
+        var line = cursor.position.line
         for _ in 0..<count {
-            var line = pos.line
-
             // Skip non-blank lines
             while line < buffer.lineCount {
                 let currentLine = buffer.line(line)
@@ -369,47 +364,41 @@ class MotionEngine {
                 }
                 line += 1
             }
-
-            pos.line = min(line, buffer.lineCount - 1)
         }
-        pos.column = 0
-        return buffer.clampPosition(pos)
+        
+        let targetLine = min(line, buffer.lineCount - 1)
+        let lineLength = buffer.lineLength(targetLine)
+        let newCol = min(cursor.preferredColumn, max(0, lineLength - 1))
+        return Position(line: targetLine, column: newCol)
     }
 
     /// Move to previous paragraph (} boundary - jump to blank line)
     func previousParagraph(_ count: Int = 1) -> Position {
-        var pos = cursor.position
+        var line = cursor.position.line
         for _ in 0..<count {
-            var line = pos.line
-
-            // Move back at least one line
-            if line > 0 {
-                line -= 1
-            }
-
-            // Skip blank lines backward
+            // Skip blank lines
             while line > 0 {
+                line -= 1
                 let currentLine = buffer.line(line)
                 if !isBlankLine(currentLine) {
                     break
                 }
-                line -= 1
             }
 
-            // Skip non-blank lines backward
+            // Skip non-blank lines
             while line > 0 {
+                line -= 1
                 let currentLine = buffer.line(line)
                 if isBlankLine(currentLine) {
-                    line += 1  // Move back to first non-blank
                     break
                 }
-                line -= 1
             }
-
-            pos.line = max(0, line)
         }
-        pos.column = 0
-        return buffer.clampPosition(pos)
+        
+        let targetLine = max(0, line)
+        let lineLength = buffer.lineLength(targetLine)
+        let newCol = min(cursor.preferredColumn, max(0, lineLength - 1))
+        return Position(line: targetLine, column: newCol)
     }
 
     // MARK: - Character Search

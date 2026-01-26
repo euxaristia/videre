@@ -33,6 +33,12 @@ class EditorState {
     // Viewport scrolling - the first visible line
     var scrollOffset: Int = 0
 
+    // Mouse interaction state
+    var lastClickTime: Date = Date.distantPast
+    var lastClickPosition: Position? = nil
+    var clickCount: Int = 0
+    var isDragging: Bool = false
+
     // Mode handlers for lifecycle management
     var normalModeHandler: ModeHandler?
     var insertModeHandler: ModeHandler?
@@ -159,15 +165,19 @@ class EditorState {
 
     func moveCursorUp(count: Int = 1) {
         cursor.moveUp(count)
-        let clamped = buffer.clampPosition(cursor.position)
-        cursor.move(to: clamped)
+        let lineLength = buffer.lineLength(cursor.position.line)
+        let maxCol = currentMode == .insert ? lineLength : max(0, lineLength - 1)
+        let newCol = min(cursor.preferredColumn, maxCol)
+        cursor.move(to: Position(line: cursor.position.line, column: newCol), updatePreferredColumn: false)
         updateStatusMessage()
     }
 
     func moveCursorDown(count: Int = 1) {
         cursor.moveDown(count)
-        let clamped = buffer.clampPosition(cursor.position)
-        cursor.move(to: clamped)
+        let lineLength = buffer.lineLength(cursor.position.line)
+        let maxCol = currentMode == .insert ? lineLength : max(0, lineLength - 1)
+        let newCol = min(cursor.preferredColumn, maxCol)
+        cursor.move(to: Position(line: cursor.position.line, column: newCol), updatePreferredColumn: false)
         updateStatusMessage()
     }
 
@@ -192,7 +202,9 @@ class EditorState {
 
     func moveCursorToLineEnd() {
         let lineLength = buffer.lineLength(cursor.position.line)
-        cursor.position.column = max(0, lineLength - 1)
+        let newCol = currentMode == .insert ? lineLength : max(0, lineLength - 1)
+        cursor.move(to: Position(line: cursor.position.line, column: newCol))
+        cursor.preferredColumn = Int.max // Ensure vertical movement stays at end of line
         updateStatusMessage()
     }
 
@@ -200,7 +212,7 @@ class EditorState {
         let line = buffer.line(cursor.position.line)
         let firstNonWS = line.firstIndex { !$0.isWhitespace } ?? line.startIndex
         let column = line.distance(from: line.startIndex, to: firstNonWS)
-        cursor.position.column = column
+        cursor.move(to: Position(line: cursor.position.line, column: column))
         updateStatusMessage()
     }
 
@@ -382,5 +394,55 @@ class EditorState {
     func scroll(by lines: Int) {
         scrollOffset = max(0, scrollOffset + lines)
         // Upper bound is clamped in the render loop based on terminal size
+    }
+
+    // MARK: - Mouse Selection Helpers
+
+    func selectWord(at position: Position) {
+
+        // Find start of word
+        var start = position
+        let line = buffer.line(position.line)
+        if position.column < line.count {
+            // Move backward to start of word
+            var col = position.column
+            while col > 0 && isWordCharacter(line[line.index(line.startIndex, offsetBy: col - 1)]) {
+                col -= 1
+            }
+            start.column = col
+        }
+
+        // Find end of word
+        var end = position
+        if position.column < line.count {
+            var col = position.column
+            while col < line.count
+                && isWordCharacter(line[line.index(line.startIndex, offsetBy: col)])
+            {
+                col += 1
+            }
+            end.column = max(0, col - 1)
+        }
+
+        cursor.move(to: start)
+        setMode(.visual)
+        if let visualHandler = visualModeHandler as? VisualMode {
+            visualHandler.startPosition = start
+        }
+        cursor.move(to: end)
+        updateStatusMessage()
+    }
+
+    func selectLine(at position: Position) {
+        cursor.move(to: Position(line: position.line, column: 0))
+        setMode(.visualLine)
+        if let visualHandler = visualModeHandler as? VisualMode {
+            visualHandler.startPosition = cursor.position
+        }
+        updateStatusMessage()
+    }
+
+    private func isWordCharacter(_ char: Character) -> Bool {
+        char.isLetter || char.isNumber || char == "_"
     }
 }

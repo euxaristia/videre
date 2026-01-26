@@ -151,8 +151,8 @@ class ViEditor {
 
         // Enter alternate screen buffer (saves current terminal content)
         print("\u{001B}[?1049h", terminator: "")
-        // Enable mouse tracking (SGR mode)
-        print("\u{001B}[?1000h\u{001B}[?1006h", terminator: "")
+        // Enable mouse tracking (Button Event mode for dragging)
+        print("\u{001B}[?1002h\u{001B}[?1006h", terminator: "")
         // Clear screen and show cursor
         print("\u{001B}[2J", terminator: "")
         print("\u{001B}[H", terminator: "")
@@ -168,7 +168,7 @@ class ViEditor {
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
         // Disable mouse tracking
-        print("\u{001B}[?1006l\u{001B}[?1000l", terminator: "")
+        print("\u{001B}[?1006l\u{001B}[?1002l", terminator: "")
         // Leave alternate screen buffer (restores original terminal content)
         print("\u{001B}[?1049l", terminator: "")
         fflush(stdout)
@@ -249,6 +249,12 @@ class ViEditor {
         if button == 0 && !isRelease {
             // Left click press
             handleMouseClick(x: x, y: y)
+        } else if button == 0 && isRelease {
+            // Left click release
+            state.isDragging = false
+        } else if button == 32 {
+            // Drag event (Left button moved)
+            handleMouseDrag(x: x, y: y)
         } else if button == 64 {
             // Wheel Up
             handleMouseScroll(delta: -3)
@@ -277,9 +283,10 @@ class ViEditor {
             } else if cursorLine >= state.scrollOffset + availableLines {
                 state.cursor.position.line = state.scrollOffset + availableLines - 1
             }
-            // Clamp column in case new line is shorter
+            // Maintain horizontal position using preferredColumn, clamped to new line length
             let lineLength = state.buffer.lineLength(state.cursor.position.line)
-            state.cursor.position.column = min(state.cursor.position.column, max(0, lineLength - 1))
+            let maxCol = state.currentMode == .insert ? lineLength : max(0, lineLength - 1)
+            state.cursor.position.column = min(state.cursor.preferredColumn, maxCol)
             state.updateStatusMessage()
         }
     }
@@ -295,13 +302,72 @@ class ViEditor {
             if bufferLine < state.buffer.lineCount {
                 let bufferCol = max(0, x - (gutterWidth + 1) - 1)
                 let lineLength = state.buffer.lineLength(bufferLine)
-                state.cursor.move(
-                    to: Position(
-                        line: bufferLine, column: min(bufferCol, max(0, lineLength - 1))))
+                let clickPos = Position(
+                    line: bufferLine, column: min(bufferCol, max(0, lineLength - 1)))
+
+                // Handle multi-click detection
+                let now = Date()
+                if now.timeIntervalSince(state.lastClickTime) < 0.5
+                    && clickPos == state.lastClickPosition
+                {
+                    state.clickCount = (state.clickCount % 3) + 1
+                } else {
+                    state.clickCount = 1
+                }
+                state.lastClickTime = now
+                state.lastClickPosition = clickPos
+
+                // Process click based on count
+                switch state.clickCount {
+                case 1:
+                    // Single click: move cursor and start potential drag
+                    state.cursor.move(to: clickPos)
+                    if state.currentMode != .normal {
+                        state.setMode(.normal)
+                    }
+                    state.isDragging = true
+                case 2:
+                    // Double click: select word
+                    state.selectWord(at: clickPos)
+                    state.isDragging = true
+                case 3:
+                    // Triple click: select line
+                    state.selectLine(at: clickPos)
+                    state.isDragging = true
+                default:
+                    break
+                }
+
                 state.showWelcomeMessage = false
                 state.updateStatusMessage()
             }
         }
+    }
+
+    private func handleMouseDrag(x: Int, y: Int) {
+        guard state.isDragging else { return }
+
+        let gutterWidth = String(state.buffer.lineCount).count
+
+        // Determine destination position
+        var bufferLine = state.scrollOffset + y - 1
+        bufferLine = max(0, min(bufferLine, state.buffer.lineCount - 1))
+
+        let bufferCol = max(0, x - (gutterWidth + 1) - 1)
+        let lineLength = state.buffer.lineLength(bufferLine)
+        let targetPos = Position(line: bufferLine, column: min(bufferCol, max(0, lineLength - 1)))
+
+        // If not already in visual mode, enter visual mode
+        if state.currentMode == .normal {
+            state.setMode(.visual)
+            if let visualHandler = state.visualModeHandler as? VisualMode {
+                visualHandler.startPosition = state.cursor.position
+            }
+        }
+
+        // Move cursor to drag position
+        state.cursor.move(to: targetPos)
+        state.updateStatusMessage()
     }
 
     private func render() {
