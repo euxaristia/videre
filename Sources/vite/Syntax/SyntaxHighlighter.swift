@@ -397,6 +397,11 @@ class SyntaxHighlighter {
             }
         }
 
+        // Check for triple backticks (code blocks)
+        if trimmed.hasPrefix("```") {
+            return SyntaxColor.mdCode.rawValue + line + SyntaxColor.reset.rawValue
+        }
+
         // Check for horizontal rule (---, ***, ___)
         let hrTrimmed = trimmed.filter { !$0.isWhitespace }
         if hrTrimmed.count >= 3
@@ -442,19 +447,46 @@ class SyntaxHighlighter {
         let end = line.endIndex
 
         while i < end {
-            // Check for inline code with backticks
+            // Check for code with backticks (inline or block)
             if line[i] == "`" {
-                var codeEnd = line.index(after: i)
-                while codeEnd < end && line[codeEnd] != "`" {
-                    codeEnd = line.index(after: codeEnd)
+                // Count opening backticks
+                var openingBacktickCount = 0
+                var openingEnd = i
+                while openingEnd < end && line[openingEnd] == "`" {
+                    openingBacktickCount += 1
+                    openingEnd = line.index(after: openingEnd)
                 }
-                if codeEnd < end {
-                    // Found closing backtick
-                    codeEnd = line.index(after: codeEnd)
-                    result += SyntaxColor.mdCode.rawValue
-                    result += String(line[i..<codeEnd])
-                    result += SyntaxColor.reset.rawValue
-                    i = codeEnd
+
+                // Find closing backticks of the same count
+                var searchStart = openingEnd
+                var foundMatch = false
+                while searchStart < end {
+                    if line[searchStart] == "`" {
+                        var closingBacktickCount = 0
+                        var closingEnd = searchStart
+                        while closingEnd < end && line[closingEnd] == "`" {
+                            closingBacktickCount += 1
+                            closingEnd = line.index(after: closingEnd)
+                        }
+
+                        if closingBacktickCount == openingBacktickCount {
+                            // Found matching closing backticks
+                            result += SyntaxColor.mdCode.rawValue
+                            result += String(line[i..<closingEnd])
+                            result += SyntaxColor.reset.rawValue
+                            i = closingEnd
+                            foundMatch = true
+                            break
+                        } else {
+                            // Skip these backticks and keep searching
+                            searchStart = closingEnd
+                            continue
+                        }
+                    }
+                    searchStart = line.index(after: searchStart)
+                }
+
+                if foundMatch {
                     continue
                 }
             }

@@ -249,9 +249,39 @@ class ViEditor {
         if button == 0 && !isRelease {
             // Left click press
             handleMouseClick(x: x, y: y)
+        } else if button == 64 {
+            // Wheel Up
+            handleMouseScroll(delta: -3)
+        } else if button == 65 {
+            // Wheel Down
+            handleMouseScroll(delta: 3)
         }
 
         return nil
+    }
+
+    private func handleMouseScroll(delta: Int) {
+        let availableLines = max(1, Int(terminalSize.rows) - 2)
+        let totalLines = state.buffer.lineCount
+
+        // Update scroll offset
+        let oldOffset = state.scrollOffset
+        state.scrollOffset = max(
+            0, min(state.scrollOffset + delta, max(0, totalLines - availableLines)))
+
+        // If scroll offset changed, adjust cursor if it went out of bounds
+        if state.scrollOffset != oldOffset {
+            let cursorLine = state.cursor.position.line
+            if cursorLine < state.scrollOffset {
+                state.cursor.position.line = state.scrollOffset
+            } else if cursorLine >= state.scrollOffset + availableLines {
+                state.cursor.position.line = state.scrollOffset + availableLines - 1
+            }
+            // Clamp column in case new line is shorter
+            let lineLength = state.buffer.lineLength(state.cursor.position.line)
+            state.cursor.position.column = min(state.cursor.position.column, max(0, lineLength - 1))
+            state.updateStatusMessage()
+        }
     }
 
     private func handleMouseClick(x: Int, y: Int) {
@@ -316,7 +346,8 @@ class ViEditor {
             renderWelcomeMessage(availableLines: availableLines)
         } else {
             // Don't show line numbers for empty [No Name] buffer (matches Neovim behavior)
-            let isEmptyNoNameBuffer = state.filePath == nil && state.buffer.lineCount == 1 && state.buffer.line(0).isEmpty
+            let isEmptyNoNameBuffer =
+                state.filePath == nil && state.buffer.lineCount == 1 && state.buffer.line(0).isEmpty
             let gutterWidth = isEmptyNoNameBuffer ? 0 : String(totalLines).count
             for screenLine in 0..<availableLines {
                 let lineIndex = state.scrollOffset + screenLine
@@ -332,7 +363,10 @@ class ViEditor {
                     }
 
                     // Line content with cursor (truncate if exceeds terminal width)
-                    let maxLineLength = isEmptyNoNameBuffer ? Int(terminalSize.cols) : max(1, Int(terminalSize.cols) - (gutterWidth + 1))
+                    let maxLineLength =
+                        isEmptyNoNameBuffer
+                        ? Int(terminalSize.cols)
+                        : max(1, Int(terminalSize.cols) - (gutterWidth + 1))
                     let displayLine = String(line.prefix(maxLineLength))
 
                     // Apply syntax highlighting
@@ -460,7 +494,10 @@ class ViEditor {
             // For welcome message/empty [No Name] buffer, cursor is at column 1 (no line numbers)
             // Otherwise, account for line number gutter
             let cursorCol: Int
-            if state.showWelcomeMessage || (state.filePath == nil && state.buffer.lineCount == 1 && state.buffer.line(0).isEmpty) {
+            if state.showWelcomeMessage
+                || (state.filePath == nil && state.buffer.lineCount == 1
+                    && state.buffer.line(0).isEmpty)
+            {
                 cursorCol = state.cursor.position.column + 1
             } else {
                 let gutterWidth = String(totalLines).count

@@ -278,7 +278,10 @@ class EditorState {
 
     /// Undo the last change
     func undo() -> Bool {
-        guard let previousState = undoManager.undo(currentText: buffer.text, currentCursor: cursor.position) else {
+        guard
+            let previousState = undoManager.undo(
+                currentText: buffer.text, currentCursor: cursor.position)
+        else {
             statusMessage = "Already at oldest change"
             return false
         }
@@ -292,7 +295,10 @@ class EditorState {
 
     /// Redo the last undone change
     func redo() -> Bool {
-        guard let redoState = undoManager.redo(currentText: buffer.text, currentCursor: cursor.position) else {
+        guard
+            let redoState = undoManager.redo(
+                currentText: buffer.text, currentCursor: cursor.position)
+        else {
             statusMessage = "Already at newest change"
             return false
         }
@@ -369,5 +375,12 @@ class EditorState {
             isDirty = true
             updateStatusMessage()
         }
+    }
+
+    // MARK: - Viewport scrolling
+
+    func scroll(by lines: Int) {
+        scrollOffset = max(0, scrollOffset + lines)
+        // Upper bound is clamped in the render loop based on terminal size
     }
 }
