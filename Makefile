@@ -11,10 +11,14 @@ install:
 	@echo "$(BINARY_NAME) man page installed to $(MAN_DIR)/$(BINARY_NAME).1"
 	@echo "Make sure $(INSTALL_DIR) is in your \$$PATH"
 
+install-local: INSTALL_DIR = $(HOME)/.local/bin
+install-local: MAN_DIR = $(HOME)/.local/share/man/man1
+install-local: install
+
 release:
 	swift build -c release
 
 clean:
 	swift package clean
 
-.PHONY: install release clean
+.PHONY: install install-local release clean
