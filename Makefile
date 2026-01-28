@@ -1,6 +1,6 @@
 BINARY_NAME = vite
-INSTALL_DIR = $(HOME)/.local/bin
-MAN_DIR = $(HOME)/.local/share/man/man1
+INSTALL_DIR = /usr/local/bin
+MAN_DIR = /usr/local/share/man/man1
 
 install:
 	install -d $(INSTALL_DIR)
