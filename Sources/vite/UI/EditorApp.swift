@@ -545,6 +545,8 @@ class ViEditor {
             print("-- INSERT --", terminator: "")
         } else if state.currentMode == .visual {
             print("-- VISUAL --", terminator: "")
+        } else if !state.statusMessage.isEmpty {
+            print(state.statusMessage, terminator: "")
         }
         print("\u{001B}[K", terminator: "")  // Clear rest of line
 

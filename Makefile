@@ -2,7 +2,7 @@ BINARY_NAME = vite
 INSTALL_DIR = $(HOME)/.local/bin
 MAN_DIR = $(HOME)/.local/share/man/man1
 
-install: release
+install:
 	install -d $(INSTALL_DIR)
 	install -m 755 .build/release/$(BINARY_NAME) $(INSTALL_DIR)/
 	install -d $(MAN_DIR)

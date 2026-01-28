@@ -201,8 +201,9 @@ class EditorState {
 
     func updateStatusMessage() {
         let pos = cursor.position
-        let modeStr = modeString()
-        statusMessage = "[\(modeStr)] Line \(pos.line + 1), Col \(pos.column + 1)"
+        if !isWaitingForEnter && currentMode != .command && currentMode != .search {
+            statusMessage = ""
+        }
 
         // Update matching bracket
         let motionEngine = MotionEngine(buffer: buffer, cursor: cursor)

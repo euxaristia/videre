@@ -163,13 +163,15 @@ class CommandMode: BaseModeHandler {
             handleSetCommand(arg)
 
         default:
-            if let lineNum = Int(cmd) {
+            if cmd.isEmpty {
+                state.statusMessage = ""
+            } else if let lineNum = Int(cmd) {
                 let pos = MotionEngine(buffer: state.buffer, cursor: state.cursor).goToLine(
                     lineNum - 1)
                 state.cursor.move(to: pos)
                 state.statusMessage = ""
             } else {
-                state.statusMessage = "Unknown command: \(cmd)"
+                state.statusMessage = "E492: Not an editor command: \(cmd)"
             }
         }
     }
