@@ -90,6 +90,14 @@ class NormalMode: BaseModeHandler {
             // Ctrl+A: Increment number
             state.incrementNextNumber(count: count)
             return true
+        case "\u{02}":
+            // Ctrl+B: Page up (like vi/vim)
+            // Use a reasonable page size for terminal editors
+            let pageSize = 20
+            for _ in 0..<count {
+                state.moveCursorUp(count: pageSize)
+            }
+            return true
         case "\u{18}":  // Ctrl+X
             // Ctrl+X: Decrement number
             state.incrementNextNumber(count: -count)
