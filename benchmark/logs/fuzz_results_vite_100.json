@@ -1,0 +1,10 @@
+{
+  "total_sequences": 112,
+  "successful": 24,
+  "failed": 88,
+  "success_rate": 0.21428571428571427,
+  "average_execution_time": 0.08521866960714013,
+  "error_distribution": {
+    "byte must be in range(0, 256)": 88
+  }
+}

@@ -97,26 +97,29 @@ class TextBuffer {
     func deleteRange(from start: Position, to end: Position) {
         guard start.line >= 0 && start.line < lines.count else { return }
         guard end.line >= 0 && end.line < lines.count else { return }
-
-        if start.line == end.line {
-            var line = lines[start.line]
-            let startIdx = min(start.column, line.count)
-            let endIdx = min(end.column, line.count)
+        
+        // Ensure start is before end
+        let (finalStart, finalEnd) = normalizeRange(start: start, end: end)
+        
+        if finalStart.line == finalEnd.line {
+            var line = lines[finalStart.line]
+            let startIdx = min(finalStart.column, line.count)
+            let endIdx = min(finalEnd.column, line.count)
             if startIdx < endIdx {
                 let startStringIdx = line.index(line.startIndex, offsetBy: startIdx)
                 let endStringIdx = line.index(line.startIndex, offsetBy: endIdx)
                 line.removeSubrange(startStringIdx..<endStringIdx)
-                lines[start.line] = line
+                lines[finalStart.line] = line
             }
         } else {
-            let startLine = lines[start.line]
-            let endLine = lines[end.line]
+            let startLine = lines[finalStart.line]
+            let endLine = lines[finalEnd.line]
 
-            let startPart = String(startLine.prefix(start.column))
-            let endPart = String(endLine.dropFirst(end.column))
+            let startPart = String(startLine.prefix(finalStart.column))
+            let endPart = String(endLine.dropFirst(finalEnd.column))
 
-            lines[start.line] = startPart + endPart
-            lines.removeSubrange((start.line + 1)...end.line)
+            lines[finalStart.line] = startPart + endPart
+            lines.removeSubrange((finalStart.line + 1)...finalEnd.line)
         }
     }
 
@@ -235,6 +238,19 @@ class TextBuffer {
     }
 
     // MARK: - Private Helpers
+
+    private func normalizeRange(start: Position, end: Position) -> (Position, Position) {
+        var finalStart = start
+        var finalEnd = end
+        
+        // Ensure start is before end
+        if start.line > end.line || (start.line == end.line && start.column > end.column) {
+            finalStart = end
+            finalEnd = start
+        }
+        
+        return (finalStart, finalEnd)
+    }
 
     private func isWordCharacter(_ char: Character) -> Bool {
         char.isLetter || char.isNumber || char == "_"

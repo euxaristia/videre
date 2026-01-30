@@ -207,7 +207,9 @@ class OperatorEngine {
             // Delete lines down (line-wise)
             let endLine = min(state.cursor.position.line + pendingCount, state.buffer.lineCount - 1)
             for _ in state.cursor.position.line...endLine {
-                state.deleteCurrentLine()
+                if state.cursor.position.line < state.buffer.lineCount {
+                    state.deleteCurrentLine()
+                }
             }
             pendingCount = 1
         case "k":
@@ -215,7 +217,9 @@ class OperatorEngine {
             let startLine = max(0, state.cursor.position.line - pendingCount)
             state.cursor.position.line = startLine
             for _ in startLine...state.cursor.position.line {
-                state.deleteCurrentLine()
+                if state.cursor.position.line < state.buffer.lineCount {
+                    state.deleteCurrentLine()
+                }
             }
             pendingCount = 1
         default:

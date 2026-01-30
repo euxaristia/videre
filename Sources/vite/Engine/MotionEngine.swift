@@ -38,6 +38,7 @@ class MotionEngine {
     func nextWord(_ count: Int = 1) -> Position {
         var pos = cursor.position
         for _ in 0..<count {
+            guard pos.line >= 0 && pos.line < buffer.lineCount else { break }
             let line = buffer.line(pos.line)
             var col = pos.column
 
@@ -77,6 +78,7 @@ class MotionEngine {
     func previousWord(_ count: Int = 1) -> Position {
         var pos = cursor.position
         for _ in 0..<count {
+            guard pos.line >= 0 && pos.line < buffer.lineCount else { break }
             let line = buffer.line(pos.line)
             var col = pos.column
 
@@ -319,7 +321,13 @@ class MotionEngine {
 
     /// Move to specific line (G with count)
     func goToLine(_ line: Int) -> Position {
-        let clampedLine = max(0, min(line, buffer.lineCount - 1))
+        // Handle extremely large line numbers that could cause integer overflow
+        let clampedLine: Int
+        if line > Int.max / 2 {  // If line number is unreasonably large
+            clampedLine = max(0, buffer.lineCount - 1)
+        } else {
+            clampedLine = max(0, min(line, buffer.lineCount - 1))
+        }
         return Position(line: clampedLine, column: 0)
     }
 

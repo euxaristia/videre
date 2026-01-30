@@ -542,7 +542,9 @@ class NormalMode: BaseModeHandler {
             state.setMode(.visualLine)
             return true
         case "\u{16}":  // Ctrl+V
-            state.setMode(.visualBlock)
+            // TODO: Proper visual block mode implementation
+            // For now, use regular visual mode to prevent crashes
+            state.setMode(.visual)
             return true
 
         // Viewport positioning
