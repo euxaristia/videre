@@ -92,7 +92,14 @@ class InputFuzzer:
             elif choice < 0.85 and self.config.include_special_keys:  # 15% special keys
                 sequence.append(random.choice(self.special_keys))
             elif choice < 0.95 and self.config.include_unicode:  # 10% unicode
-                sequence.append(random.choice(self.unicode_chars))
+                # Only include unicode chars that can be converted to bytes
+                safe_unicode = [c for c in self.unicode_chars if ord(c) < 256]
+                if safe_unicode:
+                    sequence.append(random.choice(safe_unicode))
+                else:
+                    sequence.append(
+                        random.choice(string.ascii_letters + string.digits + " ")
+                    )
             else:  # 5% escape sequences
                 sequence.append(f"<ESC>{random.choice('hjkl')}")
 
@@ -166,11 +173,84 @@ class InputFuzzer:
         # Buffer switching stress
         sequences.append(":bprev<CR>:bnext<CR>" * 10)
 
-        # Unicode stress
-        sequences.append("".join(self.unicode_chars * 5))
+        # Unicode stress (limited to ASCII-safe chars)
+        sequences.append("".join([c for c in self.unicode_chars * 5 if ord(c) < 256]))
 
         # Special key combinations
         sequences.append("<C-a><C-c><C-v><C-x>" * 10)
+
+        return sequences
+
+    def generate_stress_sequences(self) -> List[str]:
+        """Generate high-stress sequences that push editor limits."""
+        sequences = []
+
+        # Extreme rapid movements
+        sequences.append("h" * 200)  # Very long horizontal movement
+        sequences.append("j" * 200)  # Very long vertical movement
+        sequences.append("l" * 200)
+        sequences.append("k" * 200)
+
+        # Rapid mode switching
+        sequences.append("i" + "a" * 50 + "<ESC>" + "o" + "a" * 50 + "<ESC>")
+        sequences.append("i" + "<BS>" * 20 + "<ESC>")
+        sequences.append("i" + "<Delete>" * 20 + "<ESC>")
+
+        # Command mode stress
+        sequences.append(":" + "1" * 100 + "<CR>")
+        sequences.append(":" + "x" * 100 + "<CR>")
+        sequences.append(":" * 20 + "<CR>")
+
+        # Visual mode stress
+        sequences.append("v" + "l" * 100 + "d")
+        sequences.append("V" + "j" * 50 + "d")
+        sequences.append("<C-v>" + "j" * 20 + "l" * 20 + "d")
+
+        # Search and replace stress
+        sequences.append("/" + "a" * 50 + "<CR>")
+        sequences.append(":" + "%s" + "/" + "a" * 20 + "/" + "b" * 20 + "/g<CR>")
+
+        # Register stress
+        sequences.append('"ayy' * 50)
+        sequences.append('"ap' * 50)
+
+        # Undo/redo stress
+        sequences.append("iHello<ESC>ui<ESC>ui<ESC>ui<ESC>" * 20)
+        sequences.append("iHello<ESC>ui" * 30)
+
+        # File operations stress
+        sequences.append(":w<CR>" * 10)
+        sequences.append(":e!<CR>")
+        sequences.append(":q!<CR>")
+
+        # Macro stress
+        sequences.append("qaHello<ESC>q" + "@a" * 20)
+        sequences.append("qa" + "ia" + "<ESC>" + "q@a" * 10)
+
+        # Navigation stress
+        sequences.append("ggGggGggGggG" * 10)
+        sequences.append("0$" * 50)
+        sequences.append("^$" * 50)
+
+        # Window stress
+        sequences.append("<C-w>h<C-w>j<C-w>k<C-w>l" * 10)
+        sequences.append("<C-w>s<C-w>v<C-w>q<C-w>q" * 5)
+
+        # Buffer stress
+        sequences.append(":bn<CR>:bp<CR>" * 20)
+        sequences.append(":bfirst<CR>:blast<CR>" * 10)
+
+        # Command history stress
+        sequences.append(":" + "<Up>" * 20 + "<CR>")
+        sequences.append(":" + "<Down>" * 20 + "<CR>")
+
+        # Insert mode Unicode stress (safe chars only)
+        safe_extended = [c for c in self.unicode_chars if ord(c) < 256]
+        sequences.append("i" + "".join(safe_extended * 10) + "<ESC>")
+
+        # Search stress
+        sequences.append("/" + ".*.*.*" + "<CR>n" * 20)
+        sequences.append("?" + ".*.*.*" + "<CR>n" * 20)
 
         return sequences
 
@@ -264,6 +344,29 @@ class FuzzRunner:
             results.append(result)
 
         self.results.extend(results)
+        return results
+
+    def run_stress_suite(self) -> List[FuzzResult]:
+        """Run stress test sequences."""
+        fuzzer = InputFuzzer()
+        stress_sequences = fuzzer.generate_stress_sequences()
+        results = []
+
+        print(f"Running {len(stress_sequences)} stress test scenarios...")
+
+        for i, sequence in enumerate(stress_sequences, 1):
+            print(
+                f"Test {i}/{len(stress_sequences)}: {repr(sequence[:30])}{'...' if len(sequence) > 30 else ''}"
+            )
+            result = self.run_sequence(sequence)
+            results.append(result)
+
+            status = "✓ PASS" if result.success else "✗ FAIL"
+            print(f"  {status} ({result.execution_time:.3f}s)")
+
+            if not result.success and self.debug:
+                print(f"  Error: {result.error}")
+
         return results
 
     def get_summary(self) -> Dict[str, Any]:

@@ -1,0 +1,802 @@
+{
+  "editor": "nvim",
+  "total_sequences": 132,
+  "successful": 132,
+  "failed": 0,
+  "success_rate": 1.0,
+  "failure_patterns": {},
+  "detailed_results": [
+    {
+      "sequence": "\u00b16y\u00a3Y<ESC>j<ESC><ESC>h2\u00e9<Down><Up>\"<C-v>ft?EO<Up>7PT1kg|)B<Delete>BD+U\u00f7lM8<Up>*<ESC>jt- YbC@;<C-z><C-z>Gf<ESC>k.YaKa<95h&\u00a5[QAw(x^<ESC>j<Tab><ESC>l;\u00e7\u00aew$pfn<Home>h<End>\u00b0&/}WOgA*<ESC>l>%e\u00b03]<Tab>TkE<PageUp>@<C-x>oP>\u00f8hnR+K*<C-a>\\\u00b10V<C-v>A\u00d7<Left>U)`T<C-a>@^\u00f8'3\u00a30<ESC>jP;vs_I<C-z>d{Q06A\u00b0<C-y>'1JO\u00fc\u00a5<Space>^i\u00f1!Yd4Rj<ESC>||\u00b1IW\u00f8\u00b1<Home>sRirJPU/\u00aebz2\u00aej#\u00fcn<Space>\u00a9,w;<PageDown>u\u00fcXq{&<ESC>h<ESC>j\u00aeMt\u00f1\u00e6OL<ESC>h<Tab>\u00a3_9&kv\u00f7<C-a>j5<ESC>l<C-a>v,(]\u00f7&&~<CR>\"5]",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6560610410001573
+    },
+    {
+      "sequence": "8hAM\u00f7|;ovD$<pj-<BS>;1<ESC>lj\u00e96es<Down><ESC>\u00f7`\u00b0=U<Delete>^<Space><C-v>u+'R1n+,{@\\$D<<Tab>\u00f7%_<Down><C-v>p<Right>\u00b1Qx<ESC>ls\u00f8btm<ESC>kU2\\%<ESC>h<Tab>C%A[3^}ri-<Tab>\u00a5Q<Tab>S$<PageDown>U?)K<Space>u YP\u00f18_4r82\u00b1F+/L<BS>?%|+y\u00e9bg.<C-c>f __6\u00a9<ESC>jl&9GSC\u00a3qv<Ts<ESC>h<ESC>jB<C-y>E<C-c>qo\u00a3<C-v>\u00b1v^9PyJ%x<Home>c(+D]\"4\u00f7V_Dld\u00f8l<CR>C?v\u00aeqdw9<C-v>\\i<ESC>k<Tab>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.588035027999922
+    },
+    {
+      "sequence": "B\u00d7IB(\u00aec=bV\u00a3GEO\u00e9<ESC>jacw\u00f8<C-v>~<C-y>WaV\\<Tab>lxXoiZ*\u00e9F}<CR>AyTLet(2<ESC>jT<C-z><Up>ks11<C-v>/G&k:N>#:|uj<Down>-J<C-v>Q3W[\u00b1\u00a3)bH<C-x><Right>s6]<C-x>\\}&1&<PageUp>w<ESC>j{\u00f7m<Delete>\"<ESC>l/<K\u00e7<Down>\u00a9\u00fc<Down>yRqB9C\u00e9<Right>47-<Delete>\u00b0V<ESC>kD9H<PageDown>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5326815420003186
+    },
+    {
+      "sequence": "\u00f7e%h7F<Right><Up>F<Up>\u00f70np!Iaw<C-z><C-c><ESC>h<C-z><ESC>jy<ESC>j\u00f8<End>&~\u00b0*<End>(6rmR<Right>=lF\u00f8uEeO1W@=Tws~uu\u00e9<Space>Nz<Tn<ESC>kiUkj!%`TvjZ<BS><C-a>s`.<ESC>hSe<C-x>n.oiDvh6Ec*<CR>pO-\u00f7)pNn<End><Space><Up>wm{?=\u00f8;vD];Yy\u00d7F~<Tab><Left><Tab>i<PageDown>c` AX<ESC>lT<CR>%6M9<BS><C-x>\u00f7\u00e6<ESC>jN<C-c>qG.WqY<BS><Down>yN.j`67<C-a><Tab>dC\u00b1<C-a><ESC>l*<C-z>r<Delete>X-\u00aePY<CR>^[\u00a32\u00b1xK<Right>o9XI<Delete>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6127906540000367
+    },
+    {
+      "sequence": "}gN;IB<C-a><Up>ZFM7<Space>V(m6<Left>^]f\u00ae$_\u00ae<ESC>jWPfA<ESC>hv\"<ESC>k0<C-a>!YQ\u00fc*><ESC>kX^4,\u00d7<Left>2@16\u00f7/<ESC>W|8Yr_\u00e6Ksfb<Left><ESC>}PwPa\u00a3P<C-z>$@kVC\u00f8C\u00b0\u00e6B<ESC>lq^Vaqru<Space>~Jtm$\u00a5\u00a5<Right>]L=<Space>D\u00b1juK/Hd7r&fv :VC9o\u00b1\u00fc*\u00f8-|<Down><ESC>kf<\u00f8<Delete>29<Space>sJ <C-a>U;D<C-y>!><Space>zze><ESC>h0 O=cs:fd'fx\u00f7dfV:VtB<Tab>>m<ESC>hm7L+<C-a>J+<End>@l:R}Opj)jtt\u00aeCOZ46S&\\pb<Right>81<Home>;k\u00a3,\u00a9\u00e6<CR>w\u00d7\u00fcKP<C-v>e9\u00a5/e<CR>o-A<ESC>j#y`<Space>&} mt\u00b1<C-z>\\Zm",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6674446609999904
+    },
+    {
+      "sequence": "c<ESC>ltCe<C-c>V<Right>X*:\">E/XY<k<ESC>lR\u00a3g/<PageUp>A6jgn@?<C-a><C-x>CX@M<PageDown>9<Left>+.dxH@W:v[kW\u00d7a\u00a3|I;3<C-y>~S<C-y><ESC>kg~+=Ua%H\u00f1M<C-z>TE<PageUp>q%\u00e6YUT\u00f1<Up>q <ESC>k\u00e7Bz<PageDown><C-x>\u00fccQ\u00e7P-E\u00d7\u00a5{<Right>:'S>O/sSD]/&\u00e9W\u00a3,<Delete>6}$UW<C-y>)c<PageUp>_j('N>\u00a9^<2<PageUp>-<\u00a3.{L-p#%e<C-x>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5509488639995652
+    },
+    {
+      "sequence": "<Home>)Q>0lRa<Down>b\\ka<C-a>\u00f8WDY<PageUp>J9q~<Down>c<\u00d7W y<CR><Delete>q\"\u00d7njYs]<ESC><ESC><C-a>dL2w<C-a><ESC>kp\u00b0\u00f1<ESC>kD\u00f1<ESC>k`[qdMU<ESC>h\u00f1}8q]t<PageUp>q\u00e9\u00fc/>xlzo\u00f7z=<PageUp><ESC>Ns ?<Home>w`tqV<C-c>qUSi<Right><C-y>fu\u00a5\u00ae<ESC>lb4w<Left>iRc)<CR><BS><C-x>T@w<BS>D<ESC>l<CR>iAkT)6\u00ae)\"/",
+      "success": true,
+      "error": null,
+      "execution_time": 0.540598664999834
+    },
+    {
+      "sequence": "N<Right><C-z>'n<Tab>K'M)G!q!yo<Down>`$/mW<ESC>k(2&g\u00e6<C-v>\u00a3P<BS><Right>5U^7XL@k&<Space>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4247929009998188
+    },
+    {
+      "sequence": "R<PageUp>\u00a3\u00a9'G<Up>}<C-v>,<CR>Xwnk=_`<C-y><End>gB<ESC>lU`P<C-c>I\u00b1^<ESC>jA<PageUp><C-c><ESC>l+<Left>1LQdS\u00b1_,@:]K<Space>\u00ae<ESC>k9<C-z>w`l`fde{<Space>~BF<Left>zprC<C-c><Space><ESC>kF(<C-z><C-c><C-x>`\u00b0]@<C-y>KBG<Left>mio%\u00a5e<Home>q<Up>O&>GC<PageUp>DO4<ESC>k<C-x>S-+<C-x>X$+4wd\u00a9s]\u00a3NarL*TU<C-v>/",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5429559630001677
+    },
+    {
+      "sequence": "o=adt<Up>\u00e7'\u00e7\u00d7mR<Space>uK?i<Down>CClj!cuC<BS>Ab?0ySw?q\u00e6.<Down>\\<C-x>hIS<Left>\\_5:h!~S<Right>BLe1oZH@0<Space>EW5<Delete>\u00b1<Left>JX<Delete>ke_\u00f71bwCryM<End>K#=<PageDown>`:w\u00a9?3$YiO<ESC>k.Df\u00d7jQc\u00b05[.\"hV4cv&[X<ESC>hZa0`m<PageUp>oz+=9Oq3<C-x>~<End>;x]L<ESC>j\u00fc\u00d7a1xb_sh}p",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5703336030001083
+    },
+    {
+      "sequence": "<Tab>xSW-t\u00e95ss<ESC>jb<PageUp>I}\u00e9`};s=\u00ae\u00e9",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40237523499990857
+    },
+    {
+      "sequence": ")@h/Qw\u00e9\u00ae+<CR>kxK=d#b\u00a9<ESC>5x<Tab>&v+<Home>2K\u00b1o^;@<End>G<C-v>+,p\u00e7u<ESC>j#<Up><CR>9y0\u00f1<PageDown>(<C-a><Up>pEc<CR>D)N}b\u00e6y=<ESC>kp-tJ ;`gQfvC\u00f8M\u00a5[u\u00f1/+<ESC>l<Down><Down>oOUn+$]r^=?0W!Y|Qn\u00b0Kqb<PageDown>\u00a9n<Delete><Home><ESC>kb<ESC>hsk5,7%G5w0\u00e9_YI\u00f7u-<=<Left>j\u00a9\u00b0O\u00b0-W<PageDown>o7<C-c>A}Q\u00a5r<Space>]<BS>\u00f8=A\u00f8<C-c>qDQOk~2<BS><CR>ia<PageDown><Right>\u00aeuZ`<\u00f7)'47<P.<Up>%<Delete>X!]v\u00ae|9v<ESC>j",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6148931830002766
+    },
+    {
+      "sequence": "s/<Home>i:?Us<Home>T:\u00e7<Left>_\u00f7,E\u00b1T\u00f7N<Tab>RnOM\u00a9M<ESC>j<C-y>\"\u00b1<C-a>8>c^EIA#qq%P?<Right>[[\u00fcg+6CMP~.8",
+      "success": true,
+      "error": null,
+      "execution_time": 0.44617772400033573
+    },
+    {
+      "sequence": "<ESC>'n3a.^<ESC>l SH<Up><ESC>!FV1ew\u00b1<ESC>kljnBkg<Tab>+(3CLX'<End>+*<Left>Z=\u00a3<ESC>k:hR<Left><Space>K<ESC>k1*e!+KU<Up>t0<CR>\"T,ah<C-z>l]\u00e6<Down><Up>LYeZ-4<ESC>h\u00e7<Delete><C-v>R<PageUp>\u00b1I\u00f8<C-x>-Vf<<Left>b(Vu$<CR>l6\u00e7]d*F>m$qz\u00d7<Down>qL<Home>3C<PageUp>v,rhin*e\u00e7]\u00fc#\u00b0\u00f8=m`OX\u00fc<Right>yXKB\u00a3<<C-c>\u00a330<C-a>kKa/u~M^lV<ESC>j'J\u00f7<PageDown>P0BgW_+|lV*A+|~<C-z>[xb91",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6075012870001046
+    },
+    {
+      "sequence": "CbJ\u00fct1h<ESC>lzs<ESC><C-x><C-y>/S,w<ESC>r-<ESC>h?t<C-c>E06&w.s-1+B<ESC>j!X}%)<Delete><C-a><C-c>jS&\u00f1M\u00fcvOz;!i<Delete>a\u00ae@P<<Left>}S(lvh\u00f7-<C-x><PageUp><ESC>jqK&UB4|RlT!\u00f8\"N<Delete>]xG\u00a99=\u00b0<End>\"+<C-z>J@1F2[Af<End>k'<ESC>lfx\u00d7;\u00f8\u00b0CFXn}IeB<C-c>ux\u00f1p{<BS>\u00ae]dR<C-a>\u00ae<ESC>hvt<PageDown>2<Up><Up><C-a>\u00b00<Up><Up>YVaJRWLj,<Space>;``\u00b0<BS>h\u00b0_uB",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5874570549995042
+    },
+    {
+      "sequence": "Qe\u00fc<Tab>0\u00a5S<ESC>k<Delete>)$#h<BS><ESC>lrb<ESC>h%VRz@L<ESC>j0H5K;Vz<PageUp>q<ESC>j0ii<ESC>h}H9G]7vuR)i\u00d7\u00b0Q^<4<End>d~Ra.]j^=\\Y$\u00e6 <ESC>t_PJ\u00f1,<ESC>l<End>*t^/<Home>$}P<Up><ESC>j{dZEk<Space>Gj<ESC>k#yIB %<ESC>kG<Up>m|7<Right>Ii(<C-c><C-v>0.u^<[TK\u00b1\u00f1X<ESC>j/\\ol2<C-a>v%<PageUp>JX<C-x>A$<C-x><BS>6I<Up>Ni{<ESC>ko$&ya_A<ESC>j<XAK+<Down><ESC>h\u00d7WlY<PageUp>u8r\\e\u00fc<ESC>kMXo8<Up>2`<PageUp><ESC>k}K&5Ej%%TJR<Right>jEg[f<ESC>lOn<C-x><ESC>j\u00f7v<BS><ESC>k >s\u00e9<ESC>k\u00e6k<\u00e7(\u00f1U[!p#",
+      "success": true,
+      "error": null,
+      "execution_time": 0.652692524000031
+    },
+    {
+      "sequence": "=<C-z>yV<Tab><ESC>l(T\u00e6F`'z:6<ESC><Tab>mx$pYT<End>W,<Delete>Q'<C-a>_\u00a3h<PageDown>G<ESC>hb<ESC>1?r<ESC>h<C-x>E=c\u00a9uz\u00a9^<Right>sF\u00a3\"lj8C!\\o`C/<ESC>jeGxHYu<End>,<ESC>j<Left>\u00e9C<CR>$C'zvs)(#2<PageDown>9Sn\u00aelq<C-c><C-x><C-a><C-a>4[\u00b1j,<ESC>k-9\u00f8W\u00e9Bj.;#P\u00ae<C-c>\u00aeU!rMq)\u00ae<PageDown><Tab>n\u00f8<w\u00b108<ESC>RhR6!mNWY\u00e6tk\u00e6<Tab>5<C-x>R<C-c><Right><Space>yO/Q<C-v>#R\"+u<C-x>\u00e94<PageUp>^% t<ESC>jWr6O\u00b1b<C-v>,CFrj_?#y<Up>]<Left>^P[L}<BS>L\u00e7Y<ESC>lB",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6258606569999756
+    },
+    {
+      "sequence": "\u00fcd`<Home>P<Home>P{tJ<ESC>l.-;L(7<ESC>hd<CR><PageDown>\u00b1 \u00b1<Right>|*90VVd<ESC>l<Tab>f{50<C-a>V-?!1\\J!{,\u00e77\u00a3l/B;W<C-v>]<Down>'YF\u00e9><C-x><ESC>k<PageUp>]vMe<C-v>:<<C-v><Home><C-v>w<ESC>kiB%<C-z>*gv/ML<ESC>hSg#<CR>_<End>UX<End>T%xnok\u00d7MI&<ESC>jy4G4<C-z>\u00a5",
+      "success": true,
+      "error": null,
+      "execution_time": 0.525698076000026
+    },
+    {
+      "sequence": "ZH_2<ESC>hr<ESC>j\u00e7Xo\u00e6-h\u00a5 BY<ESC>F<C-c>h8.\\o<PageDown><Left>Qs`<Left>E\u00a3\u00e9Wu{<Left>KL)MAz\u00f1<CR>y<Space>#X<C-c><C-v>5<End>&-k\u00e6C<Up>J<CR>9<}g&@NYto&I<ESC>j<Right>M|;/<PageUp><C-y>oq<BS><C-c>6C\u00b0\u00aecJ]<<Space><Left><C-z>A<Right><ESC>jaNA@<ESC>jQe5fQ<ESC>kC,C\u00e6]<C-c>8e\u00e7<ESC>l<ESC>ks9uz<Tab>\u00f71Ddk1\u00f8`%{n0t ])x[@__L^<PageUp><ESC>l<Tab><CR><C-y><Down>:Pl`<ESC>jdl<Up>F\u00f8hm3(<ESC>kh<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5904858090002563
+    },
+    {
+      "sequence": "<PageDown><Delete>g<ESC>h)\u00ae,u<ESC>j+F<ESC>h<Space>8ya2sS)\u00a9\u00b0m\u00b1Gm<*7(sa-\u00a3W\u00b1-1h<ESC>3pi~a<End>\u00f7j\"c_r{<End><Home>Ve:%\"gYx0\u00f1\u00e7q\u00d7}<Delete>\u00fcCKLf<CR><C-y>4<C-y><ESC>li6B[<Space>.5q8b'<C-x>W\u00fcKT\u00d71 ZzWbP<Home>C\u00e77\u00a9\u00ae<CR><k]f\u00f75c<Right><Left>\u00f7<C-c>r<CR>BsX)<CR>\u00e9CR>i\\M<ESC>k'V\u00a9<ESC>h0n<Right><Home>&A0>D\u00e6\u00fc<C-y>E<Tab>\u00a9>~m<Delete><C-a>:s<Space>^",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5631119079998825
+    },
+    {
+      "sequence": "0;\u00a9<ESC>L3\u00f7<}\u00aeXX<Tab>*\u00f7!]AdHb\u00d7<CR>b%zmu ,3y<<Up>:4<End>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40668029799962824
+    },
+    {
+      "sequence": "<ESC>lqCL<PageDown>B@vq!p+S60\u00b1&\u00e9<Tab>S_*Nn<C-v>\\p\u00fcZx<PageUp>8\u00fc:$,<Tab>fTZg>\u00a3`Lhve/Ad&>K~r\"%<ESC>h\u00a5o_06,e|<Down>\u00ae-<ESC>v\u00f7<ESC>h<C-x>F\u00f8<ESC>j&<Home>\u00f7<Tab><ESC>:<Delete>)64\u00d73$g<C-v><C-c>cE",
+      "success": true,
+      "error": null,
+      "execution_time": 0.49202361000016026
+    },
+    {
+      "sequence": "J]<PageDown><ESC>kV7<ESC>j<ESC>hI Z<C-x>sM99<Home>jg4q\u00f8p<Left>\u00e96\u00b1A|WoGAk:BE<Tab>h=~<Down>IjixAexW@c{<ESC>hr<ESC>j<C-y>g\u00f8 9!s\"$HiQV,lnz]}4_e<ESC>jO\u00fcz'tE\u00ae<BS>5<ESC>j9<ESC>k)d_<ESC>kZ<ESC>jG<Up>tc\u00a3c<End>1\u00a3~cUf;GGF7<C-y>\u00a9><ESC>hwc~\\<C-x>3e^Ux<ESC>lUs\u00a5<ESC>lJ;<ESC>lfeu0<ESC>hl\u00aeTqCn\u00f8=?1{uS\u00d7\u00a5#a)<C-x>q1L <ESC>B<CR>\u00fcoX(-<C-z><ESC>l<ESC>l17R<ESC>k1PO\u00f7!s*Pp<Left>E<Up>c\u00e9VpD36eix",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6237095589999626
+    },
+    {
+      "sequence": "7bB(<Left>~`<Delete>CmG<Space>6l'\u00f1\u00f1],fn<Space>~2ODmkm<PageUp>1<C-v>5W\u00e9\u00b0R\u00fc(;|<CR>g]F 8;kW]a-!$*8R%<C-v>`$<ESC>\u00f7Yvrs<PageDown><ESC>k`^x5]Ub:vZNJ\u00f1<\u00a5e<ESC>\u00f8 \u00d7\u00e9S`0\u00f7nR\u00b1\u00b0\\F 7<Left>D<BS>3<Tab>E\u00d7(<ESC>l-\"<Tab>#54u\u00e9t<ESC>lK\u00e9-<Delete>RQamVJ<C-a>]<Tab>ov<ESC>l}5q<C-z>c~:{f\u00a37<C-a>5D[?O:WU<Y-/}<ESC>k <C-y><C-y>/<Right>K<Down>'<Down>PGu\u00e92<BS>o\u00f82<C-z><C-v>_[47T<ESC>l<ESC>h<C-c>/K#\u00a9fM\"vl.O\u00f8M<C-z>Q\u00a9(3qk'i\u00e9f{:u62yEzT<ESC>8<ESC>j<Right>\u00ae<ESC>k<C-c><Down>\u00e7$Iz\u00a5\u00aeP5Xp<ESC>kq0<BS><ESC>hg<Up><ESC>c!\u00e6Tj{~0<ESC>Q_vwb<CR>5<ESC>b-<C-z><ESC>k0u<C-x>J}b<Right>POo<PageDown><ESC>l%<ESC>k",
+      "success": true,
+      "error": null,
+      "execution_time": 0.7144118530000014
+    },
+    {
+      "sequence": "\u00f1|<PageDown>( p3z\u00a9\\O[o<ESC>AR<C-x><C-a>\u00e95r<BS>RTrEZ+d\u00ae\u00f8}\u00f8Ddh,<ESC>l\u00ae<ESC>j&Fu<Home>3E\"x7PT%.\u00b0Mo}a\"Q&/\u00e711Nj\u00e7\u00aeP<C-a>B<CR>$c{;:\\<BS><ESC>lf<C-c>Fy@}D\u00e7L\\<ESC>h<ESC>h\u00f7><End><BS>.G6PW |\u00a3\u00d7E2<CR>O\u00a9xr$YAw$]\u00b0<C-y>=<C-y>'<Delete>ow\u00a5+<Home><End>f3`d<ESC>L",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5391161519996786
+    },
+    {
+      "sequence": "\u00fc\u00a3>PP%<C-v>>N!<C-x>|dCBNmFU4{sIEmS\u00e9\u00a3<ESC>jf#W\u00a5.<Down>dm\u00e7#<Up>in<ESC><C-v>^ .<C-x><ESC>k<PageUp>]qj?nO<ESC>k<r%=t92(3mmg$GABG,<C-v>\u00fc<Down>''#x><ESC>h-O\u00b1<Tab><Up>O<ESC>kBT[Ts<C-y>Rx2g\u00ae\u00f8m'~u<ESC>k<C-c>O<CR>+3+w<C-z>\u00a9T6<Down>:\u00e7WL\u00e9at{&q2z<ESC>kD\u00f7f`<Up>8l~T",
+      "success": true,
+      "error": null,
+      "execution_time": 0.528252276999865
+    },
+    {
+      "sequence": "1\u00a9\u00d7Kn~ <Right>E1F<ESC>,\u00e7`MH`5gdfn\u00a9<ESC>lh\u00d7<Right>\u00a9t<PageUp>\u00f71<End><Tab><Up>\u00f7;$d?<PageUp>{\u00e7^3:,qd2<ESC>h<PageUp>Ljj<PageDown>fq<ESC>h-_@<End>BP/='.(:\u00a3<ESC>l<ESC>k<ESC>l7`<Left>\u00b1pp\u00b0:&^<CR>;V+XJV<C-x>Y)\\7\u00d7<Delete><ESC>)<ESC>l3x0<Tab>f1_F\u00f1\u00b1H<C-z>&<CR>;V\"^<PageUp><Down>^z9#8<Right>|ur<ESC>l<Down><CR>Xcva2<C-x>uyM\u00d7B\u00a9<C-z>\u00f7\u00f8<Space>H\u00a3Q'~~f8\u00e6)ha+T 8<Home>@<Right>U\"sF Kp<_9yw+<PageDown>An<C-z><ESC>hW",
+      "success": true,
+      "error": null,
+      "execution_time": 0.6174669880001602
+    },
+    {
+      "sequence": "U\u00fc<C-a><PageUp>L",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3819504970001617
+    },
+    {
+      "sequence": "<ESC>j' Pd<Delete>\\3)G^\u00e9&\u00aem\u00b1$<ESC>h') 7e^zIK\u00b1\u00b1@/>)>zu]<CR>I<PageDown>~)Me\u00a9%r2!<C-x>A}|c<ESC>h<C-y>DyJ\u00d73puYG +Es<C-x>b<PageDown>br<BS>,_<Home><CR>1um<ESC>kj\u00f7ioXq<Delete>zyS+<ESC>b0\u00a9\"cE*D)ItX31Z,)\u00a3<BS>\u00e6t<ESC>k<PageDown><Left>L$d&~\u00e9,\"/<ESC>h1H8<Space>&$<ESC>h@5&>\u00a3o<ESC>h<PageDown>{p^p9<Tab>:%<ESC>j",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5675894309997602
+    },
+    {
+      "sequence": "<CR>U<CR>Xgqp<ESC>l<ESC><x\u00e6LI<ESC>h<C-y>?N\u00a9d<C-y><C-v>{O=)8X\"LF<Down>g\u00a5<End><C-v>^<\u00e6?'LRIZSi0<Home>\u00a9<Right><,c\u00d7Bee1y <ESC>j\u00f1\u00d7c<Down>`$ Sp<Tab>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.43111888200019166
+    },
+    {
+      "sequence": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4258697509999365
+    },
+    {
+      "sequence": "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4260946499998681
+    },
+    {
+      "sequence": "llllllllllllllllllllllllllllllllllllllllllllllllll",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42809500700013814
+    },
+    {
+      "sequence": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42526459999999133
+    },
+    {
+      "sequence": "GjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjggG",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4832817049996265
+    },
+    {
+      "sequence": "<C-f><C-f><C-f><C-f><C-f><C-f><C-f><C-f><C-f><C-f><C-b><C-b><C-b><C-b><C-b><C-b><C-b><C-b><C-b><C-b>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39467746799982706
+    },
+    {
+      "sequence": ":12345<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3799667089997456
+    },
+    {
+      "sequence": ":!<invalid><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3755149710000296
+    },
+    {
+      "sequence": ":w<CR>:q<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3796855109999342
+    },
+    {
+      "sequence": ":bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>:bprev<CR>:bnext<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.52110778999986
+    },
+    {
+      "sequence": "\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7",
+      "success": true,
+      "error": null,
+      "execution_time": 0.446483485999579
+    },
+    {
+      "sequence": "<C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x><C-a><C-c><C-v><C-x>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.41486224400023275
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3908532139998897
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40074924799955625
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4176097480003591
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3974678879999374
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3862109120000241
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3907587949997833
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42303455199999007
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3940744299998187
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38771764900047856
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42879830999982005
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4096079579999241
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4267999190001319
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR><End><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.43157618400027786
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40264552400003595
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR><End><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42960213300011674
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39338395299955664
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR><End><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4337603329995545
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3993029140001454
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40439733300036096
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39291870399983964
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4276034200001959
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39404345299954
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38700460600011866
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4015210720003779
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR><End><CR><PageUp><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4355140070001653
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4016766009995081
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3897883820000061
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR><End><CR><PageUp><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4372121659998811
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>b<CR>e<CR>ge<CR><Up><CR><Down><CR><Left><CR><Right><CR><Home><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4265518619999966
+    },
+    {
+      "sequence": "<CR><CR>h<CR>j<CR>k<CR>l<CR>gg<CR>G<CR>0<CR>$<CR>^<CR>w<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3977224390000629
+    },
+    {
+      "sequence": ":q!<CR>:0<CR>:execute<CR>:wq!<CR>:/garbage<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4067423050000798
+    },
+    {
+      "sequence": ":echo<CR>:;<CR>:999999<CR>:%s<CR>:map<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40017846799992185
+    },
+    {
+      "sequence": ":map<CR>:999999<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38638933499987616
+    },
+    {
+      "sequence": ":map<CR>:runtime<CR>::<CR>:s//g<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3968980609997743
+    },
+    {
+      "sequence": ":unmap<CR>:unab<CR>:/garbage<CR>:command<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4081850380002834
+    },
+    {
+      "sequence": ":qall!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3808990890001951
+    },
+    {
+      "sequence": ":packadd<CR>:<CR>:command<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3941635689998293
+    },
+    {
+      "sequence": ":colorscheme<CR>:qall!<CR>:;<CR>:%s<CR>:help<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40826953499981755
+    },
+    {
+      "sequence": ":echo<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3802503179999803
+    },
+    {
+      "sequence": ":mkview<CR>:unmap<CR>:;<CR>:packadd<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4029219990002275
+    },
+    {
+      "sequence": ":/garbage<CR>:mkview<CR>:;<CR>:?garbage<CR>:set all<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.41582536100031575
+    },
+    {
+      "sequence": ":command<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38232110399985686
+    },
+    {
+      "sequence": ":q!<CR>:colorscheme<CR>:!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39476708299935126
+    },
+    {
+      "sequence": ":let<CR>:/garbage<CR>:$<CR>:<CR>:<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3957122060000984
+    },
+    {
+      "sequence": ":%s<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.37815948800016486
+    },
+    {
+      "sequence": ":;;<CR>:!<CR>:99999<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3895819310000661
+    },
+    {
+      "sequence": ":0<CR>:version<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3856503659999362
+    },
+    {
+      "sequence": ":command<CR>:set all<CR>:set all<CR>:source<CR>:%<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.41239450099965325
+    },
+    {
+      "sequence": ":;;<CR>:mkview<CR>:execute<CR>:map<CR>:%s<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40459717700014153
+    },
+    {
+      "sequence": ":wq!<CR>:s//g<CR>:loadview<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39498700600006487
+    },
+    {
+      "sequence": ":call<CR>:mkview<CR>:wq!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3928168480001659
+    },
+    {
+      "sequence": ":echo<CR>:wq!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38425498200012953
+    },
+    {
+      "sequence": ":?garbage<CR>:0<CR>:echo<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39442253600054755
+    },
+    {
+      "sequence": ":<CR>:999999<CR>:x!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3884450669997932
+    },
+    {
+      "sequence": ":let<CR>:highlight<CR>:%<CR>:1<CR>:colorscheme<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.41085414799999853
+    },
+    {
+      "sequence": ":%s<CR>:qall!<CR>:/garbage<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3955954489997566
+    },
+    {
+      "sequence": ":0<CR>:packadd<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3866757180003333
+    },
+    {
+      "sequence": "::<CR>:function<CR>:mkview<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39518318599948543
+    },
+    {
+      "sequence": ":!<CR>:<CR>:unab<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38557845900004395
+    },
+    {
+      "sequence": ":<CR>:echo<CR>:-1<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3866828449999957
+    },
+    {
+      "sequence": "aAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4848761719995309
+    },
+    {
+      "sequence": "OAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.484431558000324
+    },
+    {
+      "sequence": "O!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48138499400010915
+    },
+    {
+      "sequence": "s0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 1.4136284560004242
+    },
+    {
+      "sequence": "iaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4836669230003281
+    },
+    {
+      "sequence": "a                                                                                                    <ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4844584259999465
+    },
+    {
+      "sequence": "A0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 1.4122205879998546
+    },
+    {
+      "sequence": "a\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3963783560002412
+    },
+    {
+      "sequence": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4801253489999908
+    },
+    {
+      "sequence": "O!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4809447200004797
+    },
+    {
+      "sequence": "S!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48314487000016015
+    },
+    {
+      "sequence": "saaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4820058280001831
+    },
+    {
+      "sequence": "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48119876199962164
+    },
+    {
+      "sequence": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48247791400035567
+    },
+    {
+      "sequence": "i\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42841794200012373
+    },
+    {
+      "sequence": "O\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39847824500066054
+    },
+    {
+      "sequence": "A\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3961456749998433
+    },
+    {
+      "sequence": "O0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 1.421212455999921
+    },
+    {
+      "sequence": "i!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48046164300012606
+    },
+    {
+      "sequence": "A{{{{[[[[((()))]]]]}}}}<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3982142169998042
+    },
+    {
+      "sequence": "aAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48293380899986005
+    },
+    {
+      "sequence": "a\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4290774490000331
+    },
+    {
+      "sequence": "O0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\u000b\f<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 1.418549728000471
+    },
+    {
+      "sequence": "O1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.48375084700001025
+    },
+    {
+      "sequence": "o\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3967131800000061
+    },
+    {
+      "sequence": "i\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4276904150001428
+    },
+    {
+      "sequence": "i\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42953869100028896
+    },
+    {
+      "sequence": "IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4835151290003523
+    },
+    {
+      "sequence": "aa\tb\tc\nd\ne\tf<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.38659501800020735
+    },
+    {
+      "sequence": "Sa\tb\tc\nd\ne\tf<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.386368912999842
+    }
+  ]
+}

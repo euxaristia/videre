@@ -96,6 +96,70 @@ def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False
         return 1
 
 
+def run_stress_tests(editor: str, verbose: bool = False):
+    """Run stress test scenarios."""
+
+    logger = setup_debug_logging(verbose=verbose)
+
+    # Select driver
+    if editor == "vite":
+        driver_class = ViteDriver
+    elif editor == "nvim":
+        driver_class = NvimDriver
+    else:
+        print(f"Unknown editor: {editor}")
+        return 1
+
+    logger.info(f"Running stress test scenarios for {editor}")
+
+    try:
+        fuzz_runner = FuzzRunner(driver_class, debug=verbose)
+        results = fuzz_runner.run_stress_suite()
+
+        # Summary
+        successful = sum(1 for r in results if r.success)
+        success_rate = successful / len(results)
+
+        print(f"\nStress Test Summary:")
+        print(f"Total: {len(results)}")
+        print(f"Successful: {successful}")
+        print(f"Failed: {len(results) - successful}")
+        print(f"Success rate: {success_rate:.2%}")
+
+        # Save results
+        import json
+
+        results_data = {
+            "stress_tests": len(results),
+            "successful": successful,
+            "failed": len(results) - successful,
+            "success_rate": success_rate,
+            "detailed_results": [
+                {
+                    "sequence": r.sequence,
+                    "success": r.success,
+                    "error": r.error,
+                    "execution_time": r.execution_time,
+                }
+                for r in results
+            ],
+        }
+
+        results_file = f"logs/stress_tests_{editor}.json"
+        Path("logs").mkdir(exist_ok=True)
+        with open(results_file, "w") as f:
+            json.dump(results_data, f, indent=2, default=str)
+        print(f"Detailed results saved to: {results_file}")
+
+        return (
+            0 if success_rate > 0.5 else 1
+        )  # Stress tests are expected to fail sometimes
+
+    except Exception as e:
+        logger.error(f"Stress testing failed: {str(e)}", exc_info=True)
+        return 1
+
+
 def run_edge_cases(editor: str, verbose: bool = False):
     """Run edge case scenarios."""
 
@@ -200,12 +264,17 @@ def main():
         help="Run edge case scenarios instead of random fuzzing",
     )
     parser.add_argument(
+        "-s", "--stress", action="store_true", help="Run stress test scenarios"
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose debug output"
     )
 
     args = parser.parse_args()
 
-    if args.edge_cases:
+    if args.stress:
+        return run_stress_tests(args.editor, args.verbose)
+    elif args.edge_cases:
         return run_edge_cases(args.editor, args.verbose)
     else:
         return run_fuzz_benchmark(args.editor, args.iterations, args.verbose)

@@ -1,0 +1,4 @@
+2026-01-30 12:12:27,002 - benchmark - INFO - info:88 - Debug logging initialized
+2026-01-30 12:12:27,002 - benchmark - INFO - info:88 - Starting fuzzing benchmark for vite
+2026-01-30 12:12:27,002 - benchmark - INFO - info:88 - Running main fuzzing suite
+2026-01-30 12:12:46,188 - benchmark - INFO - info:88 - Fuzzing benchmark completed

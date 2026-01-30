@@ -1,0 +1,224 @@
+{
+  "stress_tests": 36,
+  "successful": 36,
+  "failed": 0,
+  "success_rate": 1.0,
+  "detailed_results": [
+    {
+      "sequence": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5844500369998968
+    },
+    {
+      "sequence": "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5844124710001779
+    },
+    {
+      "sequence": "llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5853306420003719
+    },
+    {
+      "sequence": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+      "success": true,
+      "error": null,
+      "execution_time": 0.584320241000114
+    },
+    {
+      "sequence": "iaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<ESC>oaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4837260329995843
+    },
+    {
+      "sequence": "i<BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><BS><ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.39637695599958533
+    },
+    {
+      "sequence": "i<Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><Delete><ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4585866639999949
+    },
+    {
+      "sequence": ":1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4808546239996758
+    },
+    {
+      "sequence": ":xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4802847130004011
+    },
+    {
+      "sequence": "::::::::::::::::::::<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3955618800000593
+    },
+    {
+      "sequence": "vlllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllld",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4815330820001691
+    },
+    {
+      "sequence": "Vjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjd",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4285304930003804
+    },
+    {
+      "sequence": "<C-v>jjjjjjjjjjjjjjjjjjjjlllllllllllllllllllld",
+      "success": true,
+      "error": null,
+      "execution_time": 0.41718983400005527
+    },
+    {
+      "sequence": "/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4279836470000191
+    },
+    {
+      "sequence": ":%s/aaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbb/g<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.42298721299994213
+    },
+    {
+      "sequence": "\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy\"ayy",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5851185619999342
+    },
+    {
+      "sequence": "\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap\"ap",
+      "success": true,
+      "error": null,
+      "execution_time": 0.53249676500036
+    },
+    {
+      "sequence": "iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>iHello<ESC>ui<ESC>ui<ESC>ui<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.7100942659994871
+    },
+    {
+      "sequence": "iHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>uiiHello<ESC>ui",
+      "success": true,
+      "error": null,
+      "execution_time": 0.65692523800044
+    },
+    {
+      "sequence": ":w<CR>:w<CR>:w<CR>:w<CR>:w<CR>:w<CR>:w<CR>:w<CR>:w<CR>:w<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.40536855600021227
+    },
+    {
+      "sequence": ":e!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3769817359998342
+    },
+    {
+      "sequence": ":q!<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.3763134949999767
+    },
+    {
+      "sequence": "qaHello<ESC>q@a@a@a@a@a@a@a@a@a@a@a@a@a@a@a@a@a@a@a@a",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4244676560001608
+    },
+    {
+      "sequence": "qaia<ESC>q@aq@aq@aq@aq@aq@aq@aq@aq@aq@a",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4091247960000146
+    },
+    {
+      "sequence": "ggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggGggG",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4994195560002481
+    },
+    {
+      "sequence": "0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$0$",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4786543389996041
+    },
+    {
+      "sequence": "^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$^$",
+      "success": true,
+      "error": null,
+      "execution_time": 0.47787186799951087
+    },
+    {
+      "sequence": "<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l<C-w>h<C-w>j<C-w>k<C-w>l",
+      "success": true,
+      "error": null,
+      "execution_time": 0.45799645000033706
+    },
+    {
+      "sequence": "<C-w>s<C-w>v<C-w>q<C-w>q<C-w>s<C-w>v<C-w>q<C-w>q<C-w>s<C-w>v<C-w>q<C-w>q<C-w>s<C-w>v<C-w>q<C-w>q<C-w>s<C-w>v<C-w>q<C-w>q",
+      "success": true,
+      "error": null,
+      "execution_time": 0.415317517999938
+    },
+    {
+      "sequence": ":bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>:bn<CR>:bp<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5427771559998291
+    },
+    {
+      "sequence": ":bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>:bfirst<CR>:blast<CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5358781360000648
+    },
+    {
+      "sequence": ":<Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><Up><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.44080350000012913
+    },
+    {
+      "sequence": ":<Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><Down><CR>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4407411349998256
+    },
+    {
+      "sequence": "i\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7\u00e9\u00f1\u00fc\u00e7\u00f8\u00e6\u00a5\u00a3\u00a9\u00ae\u00b0\u00b1\u00d7\u00f7<ESC>",
+      "success": true,
+      "error": null,
+      "execution_time": 0.5218784339999729
+    },
+    {
+      "sequence": "/.*.*.*<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n",
+      "success": true,
+      "error": null,
+      "execution_time": 0.4245000699997945
+    },
+    {
+      "sequence": "?.*.*.*<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n<CR>n",
+      "success": true,
+      "error": null,
+      "execution_time": 0.423993223999787
+    }
+  ]
+}

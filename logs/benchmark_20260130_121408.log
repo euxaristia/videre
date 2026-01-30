@@ -1,0 +1,4 @@
+2026-01-30 12:14:08,284 - benchmark - INFO - info:88 - Debug logging initialized
+2026-01-30 12:14:08,284 - benchmark - INFO - info:88 - Starting fuzzing benchmark for nvim
+2026-01-30 12:14:08,284 - benchmark - INFO - info:88 - Running main fuzzing suite
+2026-01-30 12:14:29,899 - benchmark - INFO - info:88 - Fuzzing benchmark completed

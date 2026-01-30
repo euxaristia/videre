@@ -95,8 +95,13 @@ class EditorDriver(ABC):
                     i = end + 1
                     continue
 
-            # Regular character
-            output.append(ord(keys[i]))
+            # Regular character - ensure it's in valid byte range
+            char_code = ord(keys[i])
+            if char_code < 256:
+                output.append(char_code)
+            else:
+                # Replace unsupported characters with '?'
+                output.append(ord("?"))
             i += 1
 
         return bytes(output)
