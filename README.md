@@ -1,4 +1,4 @@
-# vite ⚡
+# vite 💨
 
 A lightning-fast, lightweight vi text editor built in pure Swift. vite brings the power of modal editing to the terminal with a clean, minimal design inspired by the legendary vi/Vim editors.
 
@@ -281,4 +281,4 @@ Copyright © 2026 euxaristia. All rights reserved.
 
 ---
 
-Built with Swift, inspired by vi, powered by gap buffers. ⚡✨
+Built with Swift, inspired by vi, powered by gap buffers. 💨✨
