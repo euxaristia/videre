@@ -29,6 +29,11 @@ private func handleResize(_ signal: Int32) {
 /// Calculate the terminal display width of a character
 /// Wide characters (emoji, CJK) take 2 columns, most others take 1
 private func displayWidth(of char: Character) -> Int {
+    // Check for Variation Selector-16 (Emoji style) -> Force 2 columns
+    if char.unicodeScalars.contains(where: { $0.value == 0xFE0F }) {
+        return 2
+    }
+
     guard let scalar = char.unicodeScalars.first else { return 1 }
     let value = scalar.value
 
@@ -44,8 +49,6 @@ private func displayWidth(of char: Character) -> Int {
     // Emoji ranges
     if (value >= 0x1F300 && value <= 0x1F9FF) ||  // Miscellaneous Symbols and Pictographs, Emoticons, etc.
        (value >= 0x1FA00 && value <= 0x1FAFF) ||  // Chess symbols, extended-A
-       (value >= 0x2600 && value <= 0x26FF) ||    // Miscellaneous Symbols
-       (value >= 0x2700 && value <= 0x27BF) ||    // Dingbats
        (value >= 0x231A && value <= 0x231B) ||    // Watch, Hourglass
        (value >= 0x23E9 && value <= 0x23F3) ||    // Various symbols
        (value >= 0x23F8 && value <= 0x23FA) ||    // Various symbols
@@ -365,7 +368,45 @@ class ViEditor {
             return "\u{1B}"
         }
 
-        return Character(UnicodeScalar(byte))
+        // Handle UTF-8 multi-byte sequences
+        var bytes: [UInt8] = [byte]
+        let expectedLen: Int
+
+        if (byte & 0x80) == 0 {
+            expectedLen = 1
+        } else if (byte & 0xE0) == 0xC0 {
+            expectedLen = 2
+        } else if (byte & 0xF0) == 0xE0 {
+            expectedLen = 3
+        } else if (byte & 0xF8) == 0xF0 {
+            expectedLen = 4
+        } else {
+            // Invalid start byte, treat as ISO-8859-1 (raw byte)
+            return Character(UnicodeScalar(byte))
+        }
+
+        if expectedLen > 1 {
+            // Read remaining bytes
+            for _ in 1..<expectedLen {
+                var nextByte: [UInt8] = [0]
+                let nextN = read(STDIN_FILENO, &nextByte, 1)
+                if nextN > 0 {
+                    bytes.append(nextByte[0])
+                } else {
+                    // EOF or error in middle of sequence, return what we have as distinct chars?
+                    // For simplicity, just return the first byte as fallback
+                    return Character(UnicodeScalar(byte))
+                }
+            }
+        }
+
+        // Try to decode as UTF-8 string
+        if let str = String(bytes: bytes, encoding: .utf8), let char = str.first {
+            return char
+        } else {
+            // Fallback for invalid sequence
+            return Character(UnicodeScalar(byte))
+        }
     }
 
     private func readMouseSequence() -> Character? {

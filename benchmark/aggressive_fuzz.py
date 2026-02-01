@@ -14,7 +14,7 @@ from utils.fuzzer import FuzzRunner, FuzzConfig, InputFuzzer
 from utils.debug import setup_debug_logging
 
 
-def run_aggressive_fuzz(editor: str, iterations: int = 50):
+def run_aggressive_fuzz(editor: str, iterations: int = 50, file_path: str | None = None):
     """Run aggressive fuzzing to find crashes."""
 
     logger = setup_debug_logging(verbose=True)
@@ -43,11 +43,11 @@ def run_aggressive_fuzz(editor: str, iterations: int = 50):
 
     # Run multiple rounds with different strategies
     strategies = [
-        ("Random Fuzzing", lambda: fuzz_runner.run_fuzz_suite(iterations, config)),
-        ("Movement Fuzzing", lambda: run_movement_fuzzing(fuzz_runner, iterations)),
-        ("Command Fuzzing", lambda: run_command_fuzzing(fuzz_runner, iterations)),
-        ("Insertion Fuzzing", lambda: run_insertion_fuzzing(fuzz_runner, iterations)),
-        ("Unicode Fuzzing", lambda: run_unicode_fuzzing(fuzz_runner, iterations)),
+        ("Random Fuzzing", lambda: fuzz_runner.run_fuzz_suite(iterations, config, file_path=file_path)),
+        ("Movement Fuzzing", lambda: run_movement_fuzzing(fuzz_runner, iterations, file_path)),
+        ("Command Fuzzing", lambda: run_command_fuzzing(fuzz_runner, iterations, file_path)),
+        ("Insertion Fuzzing", lambda: run_insertion_fuzzing(fuzz_runner, iterations, file_path)),
+        ("Unicode Fuzzing", lambda: run_unicode_fuzzing(fuzz_runner, iterations, file_path)),
     ]
 
     all_results = []
@@ -127,7 +127,7 @@ def run_aggressive_fuzz(editor: str, iterations: int = 50):
     return 0 if total_rate > 0.7 else 1
 
 
-def run_movement_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
+def run_movement_fuzzing(fuzz_runner: FuzzRunner, iterations: int, file_path: str | None = None):
     """Run movement-focused fuzzing."""
     fuzzer = InputFuzzer()
     results = []
@@ -168,7 +168,7 @@ def run_movement_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
             ]
         )
 
-        result = fuzz_runner.run_sequence(sequence)
+        result = fuzz_runner.run_sequence(sequence, file_path=file_path)
         results.append(result)
 
         if (i + 1) % 10 == 0:
@@ -180,7 +180,7 @@ def run_movement_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
     return results
 
 
-def run_command_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
+def run_command_fuzzing(fuzz_runner: FuzzRunner, iterations: int, file_path: str | None = None):
     """Run command-mode fuzzing."""
     import random
 
@@ -241,7 +241,7 @@ def run_command_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
         ]
         sequence = "".join(commands)
 
-        result = fuzz_runner.run_sequence(sequence)
+        result = fuzz_runner.run_sequence(sequence, file_path=file_path)
         results.append(result)
 
         if (i + 1) % 10 == 0:
@@ -253,7 +253,7 @@ def run_command_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
     return results
 
 
-def run_insertion_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
+def run_insertion_fuzzing(fuzz_runner: FuzzRunner, iterations: int, file_path: str | None = None):
     """Run insertion-mode fuzzing."""
     import random
     import string
@@ -282,7 +282,7 @@ def run_insertion_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
         text = random.choice(stress_patterns)
         sequence = mode_entry + text + "<ESC>"
 
-        result = fuzz_runner.run_sequence(sequence)
+        result = fuzz_runner.run_sequence(sequence, file_path=file_path)
         results.append(result)
 
         if (i + 1) % 10 == 0:
@@ -294,7 +294,7 @@ def run_insertion_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
     return results
 
 
-def run_unicode_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
+def run_unicode_fuzzing(fuzz_runner: FuzzRunner, iterations: int, file_path: str | None = None):
     """Run unicode-heavy fuzzing."""
     fuzzer = InputFuzzer()
     results = []
@@ -303,7 +303,7 @@ def run_unicode_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
         # Generate unicode heavy sequence
         sequence = fuzzer.generate_unicode_sequence(length=random.randint(20, 100))
         
-        result = fuzz_runner.run_sequence(sequence)
+        result = fuzz_runner.run_sequence(sequence, file_path=file_path)
         results.append(result)
 
         if (i + 1) % 10 == 0:
@@ -327,10 +327,13 @@ def main():
         default=50,
         help="Iterations per strategy (default: 50)",
     )
+    parser.add_argument(
+        "-f", "--file", help="File to open in the editor"
+    )
 
     args = parser.parse_args()
 
-    return run_aggressive_fuzz(args.editor, args.iterations)
+    return run_aggressive_fuzz(args.editor, args.iterations, args.file)
 
 
 if __name__ == "__main__":

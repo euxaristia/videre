@@ -12,7 +12,7 @@ class TextBuffer {
 
     init(_ text: String) {
         self.gapBuffer = GapBuffer(text)
-        self.lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        self.lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).map(String.init)
         if self.lines.isEmpty {
             self.lines = [""]
         }

@@ -16,7 +16,7 @@ from utils.debug import setup_debug_logging
 from utils.recovery import RecoveryManager, GracefulShutdown
 
 
-def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False):
+def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False, file_path: str | None = None):
     """Run fuzzing benchmarks for a specific editor."""
 
     # Setup debug logging
@@ -53,24 +53,30 @@ def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False
 
         # Run fuzzing suite
         logger.info("Running main fuzzing suite")
-        results = fuzz_runner.run_fuzz_suite(iterations, config)
+        results = fuzz_runner.run_fuzz_suite(iterations, config, file_path=file_path)
 
         # Get summary
         summary = fuzz_runner.get_summary()
+        
+        if "fuzz_results" not in summary:
+            logger.error("No fuzzing results generated")
+            return 1
+            
+        fuzz_stats = summary["fuzz_results"]
 
         # Print results
         print(f"\n{'=' * 60}")
         print(f"FUZZING RESULTS FOR {editor.upper()}")
         print(f"{'=' * 60}")
-        print(f"Total sequences: {summary['total_sequences']}")
-        print(f"Successful: {summary['successful']}")
-        print(f"Failed: {summary['failed']}")
-        print(f"Success rate: {summary['success_rate']:.2%}")
-        print(f"Average execution time: {summary['average_execution_time']:.3f}s")
+        print(f"Total sequences: {fuzz_stats['total_sequences']}")
+        print(f"Successful: {fuzz_stats['successful']}")
+        print(f"Failed: {fuzz_stats['failed']}")
+        print(f"Success rate: {fuzz_stats['success_rate']:.2%}")
+        print(f"Average execution time: {fuzz_stats['average_execution_time']:.3f}s")
 
-        if summary["error_distribution"]:
+        if fuzz_stats["error_distribution"]:
             print(f"\nError distribution:")
-            for error, count in summary["error_distribution"].items():
+            for error, count in fuzz_stats["error_distribution"].items():
                 print(f"  {error}: {count}")
 
         # Save detailed results
@@ -85,7 +91,7 @@ def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False
         logger.info("Fuzzing benchmark completed", summary)
 
         return (
-            0 if summary["success_rate"] > 0.8 else 1
+            0 if fuzz_stats["success_rate"] > 0.8 else 1
         )  # Consider <80% success as failure
 
     except KeyboardInterrupt:
@@ -319,6 +325,9 @@ def main():
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose debug output"
     )
+    parser.add_argument(
+        "-f", "--file", help="File to open in the editor"
+    )
 
     args = parser.parse_args()
 
@@ -329,7 +338,7 @@ def main():
     elif args.edge_cases:
         return run_edge_cases(args.editor, args.verbose)
     else:
-        return run_fuzz_benchmark(args.editor, args.iterations, args.verbose)
+        return run_fuzz_benchmark(args.editor, args.iterations, args.verbose, args.file)
 
 
 if __name__ == "__main__":

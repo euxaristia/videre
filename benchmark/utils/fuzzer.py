@@ -870,7 +870,7 @@ class FuzzRunner:
         return results
 
     def run_fuzz_suite(
-        self, num_sequences: int = 100, config: FuzzConfig | None = None
+        self, num_sequences: int = 100, config: FuzzConfig | None = None, file_path: str | None = None
     ) -> List[FuzzResult]:
         """Run a complete fuzzing suite."""
         fuzzer = InputFuzzer(config)
@@ -879,7 +879,7 @@ class FuzzRunner:
         # Generate random sequences
         for i in range(num_sequences):
             sequence = fuzzer.generate_sequence()
-            result = self.run_sequence(sequence)
+            result = self.run_sequence(sequence, file_path=file_path)
             results.append(result)
 
             if self.debug and (i + 1) % 10 == 0:
@@ -891,7 +891,7 @@ class FuzzRunner:
         # Add edge case sequences
         edge_cases = fuzzer.generate_edge_case_sequences()
         for sequence in edge_cases:
-            result = self.run_sequence(sequence)
+            result = self.run_sequence(sequence, file_path=file_path)
             results.append(result)
 
         self.results.extend(results)
