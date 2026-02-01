@@ -47,6 +47,7 @@ def run_aggressive_fuzz(editor: str, iterations: int = 50):
         ("Movement Fuzzing", lambda: run_movement_fuzzing(fuzz_runner, iterations)),
         ("Command Fuzzing", lambda: run_command_fuzzing(fuzz_runner, iterations)),
         ("Insertion Fuzzing", lambda: run_insertion_fuzzing(fuzz_runner, iterations)),
+        ("Unicode Fuzzing", lambda: run_unicode_fuzzing(fuzz_runner, iterations)),
     ]
 
     all_results = []
@@ -290,6 +291,27 @@ def run_insertion_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
                 f"Insertion fuzzing progress: {i + 1}/{iterations}, Success rate: {success_rate:.1%}"
             )
 
+    return results
+
+
+def run_unicode_fuzzing(fuzz_runner: FuzzRunner, iterations: int):
+    """Run unicode-heavy fuzzing."""
+    fuzzer = InputFuzzer()
+    results = []
+
+    for i in range(iterations):
+        # Generate unicode heavy sequence
+        sequence = fuzzer.generate_unicode_sequence(length=random.randint(20, 100))
+        
+        result = fuzz_runner.run_sequence(sequence)
+        results.append(result)
+
+        if (i + 1) % 10 == 0:
+            success_rate = sum(1 for r in results if r.success) / len(results)
+            print(
+                f"Unicode fuzzing progress: {i + 1}/{iterations}, Success rate: {success_rate:.1%}"
+            )
+            
     return results
 
 

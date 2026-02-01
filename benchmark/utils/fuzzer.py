@@ -106,27 +106,107 @@ class InputFuzzer:
             "<ESC>",
         ]
 
+        # Basic extended Latin/symbols (1-column width)
         self.unicode_chars = [
-            "α",
-            "β",
-            "γ",
-            "δ",
-            "é",
-            "ñ",
-            "ü",
-            "ç",
-            "ø",
-            "æ",
-            "€",
-            "¥",
-            "£",
-            "©",
-            "®",
-            "™",
-            "°",
-            "±",
-            "×",
-            "÷",
+            "α", "β", "γ", "δ", "é", "ñ", "ü", "ç", "ø", "æ",
+            "€", "¥", "£", "©", "®", "™", "°", "±", "×", "÷",
+        ]
+
+        # Wide characters that take 2 terminal columns - critical for display width bugs
+        self.wide_chars = [
+            # Common emoji
+            "😀", "😎", "🎉", "🔥", "💨", "✨", "🍅", "🚀", "🦀", "✅",
+            "❌", "⚙️", "📁", "💾", "🔍", "⚠️", "🐛", "🎯", "💡", "🔧",
+            # CJK characters (Chinese/Japanese/Korean)
+            "中", "文", "日", "本", "語", "한", "국", "어", "漢", "字",
+            "東", "京", "北", "京", "上", "海", "台", "灣", "香", "港",
+            # Japanese Hiragana/Katakana
+            "あ", "い", "う", "え", "お", "ア", "イ", "ウ", "エ", "オ",
+            # Fullwidth ASCII (2-column versions)
+            "Ａ", "Ｂ", "Ｃ", "１", "２", "３", "！", "？", "（", "）",
+        ]
+
+        # Obscure/exotic Unicode for stress testing
+        self.exotic_chars = [
+            # Mayan numerals (U+1D2E0-U+1D2F3)
+            "𝋀", "𝋁", "𝋂", "𝋃", "𝋄", "𝋅", "𝋆", "𝋇", "𝋈", "𝋉",
+            # Egyptian hieroglyphs (U+13000-U+1342F)
+            "𓀀", "𓀁", "𓀂", "𓀃", "𓁀", "𓁁", "𓂀", "𓃀", "𓄀", "𓅀",
+            # Cuneiform (U+12000-U+123FF)
+            "𒀀", "𒀁", "𒀂", "𒀃", "𒁀", "𒁁", "𒂀", "𒃀", "𒄀", "𒅀",
+            # Gothic (U+10330-U+1034F)
+            "𐌰", "𐌱", "𐌲", "𐌳", "𐌴", "𐌵", "𐌶", "𐌷", "𐌸", "𐌹",
+            # Linear B (U+10000-U+1007F)
+            "𐀀", "𐀁", "𐀂", "𐀃", "𐀄", "𐀅", "𐀐", "𐀑", "𐀒", "𐀓",
+            # Musical symbols
+            "𝄞", "𝄢", "𝅗𝅥", "𝅘𝅥", "𝅘𝅥𝅮", "𝄀", "𝄁", "𝄂", "𝄃", "𝄄",
+            # Alchemical symbols
+            "🜀", "🜁", "🜂", "🜃", "🜄", "🜅", "🜆", "🜇", "🜈", "🜉",
+            # Domino tiles
+            "🁣", "🁤", "🁥", "🁦", "🁧", "🁨", "🁩", "🁪", "🁫", "🁬",
+            # Playing cards
+            "🂡", "🂢", "🂣", "🂤", "🂥", "🂦", "🂧", "🂨", "🂩", "🂪",
+            # Chess symbols
+            "♔", "♕", "♖", "♗", "♘", "♙", "♚", "♛", "♜", "♝",
+        ]
+
+        # Zero-width and combining characters (display width edge cases)
+        self.zero_width_chars = [
+            "\u200B",  # Zero-width space
+            "\u200C",  # Zero-width non-joiner
+            "\u200D",  # Zero-width joiner
+            "\uFEFF",  # Byte order mark / zero-width no-break space
+            "\u0301",  # Combining acute accent (é = e + ́)
+            "\u0302",  # Combining circumflex
+            "\u0303",  # Combining tilde
+            "\u0308",  # Combining diaeresis (ü = u + ̈)
+            "\u0327",  # Combining cedilla
+            "\u0338",  # Combining long solidus overlay
+        ]
+
+        # RTL and complex scripts
+        self.complex_script_chars = [
+            # Arabic
+            "ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر",
+            # Hebrew
+            "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י",
+            # Thai
+            "ก", "ข", "ค", "ง", "จ", "ฉ", "ช", "ซ", "ญ", "ด",
+            # Devanagari (Hindi)
+            "अ", "आ", "इ", "ई", "उ", "ऊ", "ए", "ऐ", "ओ", "औ",
+            # Tamil
+            "அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ",
+        ]
+
+        # Mathematical and technical symbols
+        self.math_symbols = [
+            "∀", "∃", "∄", "∅", "∈", "∉", "∋", "∌", "∏", "∑",
+            "√", "∛", "∜", "∝", "∞", "∠", "∡", "∢", "∧", "∨",
+            "∩", "∪", "∫", "∬", "∭", "∮", "∯", "∰", "∱", "∲",
+            "≈", "≠", "≡", "≢", "≤", "≥", "≦", "≧", "≨", "≩",
+            "⊂", "⊃", "⊄", "⊅", "⊆", "⊇", "⊈", "⊉", "⊊", "⊋",
+        ]
+
+        # Complex Emoji ZWJ Sequences (Family, Professions, Flags)
+        # These test multi-codepoint grapheme cluster handling
+        self.complex_emoji = [
+            # Family: Man, Woman, Girl, Boy
+            "👨‍👩‍👧‍👦", "👨‍👨‍👧‍👦", "👩‍👩‍👧‍👦", 
+            # Professions (Person + ZWJ + Object)
+            "👨‍⚕️", "👩‍⚖️", "👨‍✈️", "👩‍🚀", "👮‍♂️", "👮‍♀️",
+            # Flags (Regional Indicator Symbols)
+            "🇺🇸", "🇬🇧", "🇯🇵", "🇰🇷", "🇩🇪", "🇫🇷", "🏳️‍🌈", "🏳️‍⚧️",
+            # Skin tone modifiers
+            "👍🏻", "👍🏼", "👍🏽", "👍🏾", "👍🏿",
+            "🧛🏻‍♂️", "🧜🏾‍♀️", "🙅🏿‍♂️",
+        ]
+
+        # Control characters (C0 and C1) that shouldn't crash the editor
+        self.control_chars = [
+            "\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07",
+            "\x0b", "\x0c", "\x0e", "\x0f", "\x10", "\x11", "\x12", "\x13",
+            "\x14", "\x15", "\x16", "\x17", "\x18", "\x19", "\x1a", "\x1b",
+            "\x1c", "\x1d", "\x1e", "\x1f", "\x7f",
         ]
 
     def generate_sequence(self, length: int | None = None) -> str:
@@ -141,26 +221,60 @@ class InputFuzzer:
         for _ in range(length):
             choice = random.random()
 
-            if choice < 0.7:  # 70% regular characters
+            if choice < 0.55:  # 55% regular characters
                 sequence.append(
                     random.choice(
                         string.ascii_letters + string.digits + string.punctuation + " "
                     )
                 )
-            elif choice < 0.85 and self.config.include_special_keys:  # 15% special keys
+            elif choice < 0.70 and self.config.include_special_keys:  # 15% special keys
                 sequence.append(random.choice(self.special_keys))
-            elif choice < 0.95 and self.config.include_unicode:  # 10% unicode
-                # Only include unicode chars that can be converted to bytes
-                safe_unicode = [c for c in self.unicode_chars if ord(c) < 256]
-                if safe_unicode:
-                    sequence.append(random.choice(safe_unicode))
+            elif choice < 0.95 and self.config.include_unicode:  # 25% unicode (expanded)
+                unicode_choice = random.random()
+                if unicode_choice < 0.20:
+                    sequence.append(random.choice(self.wide_chars))
+                elif unicode_choice < 0.35:
+                    sequence.append(random.choice(self.exotic_chars))
+                elif unicode_choice < 0.45:
+                    sequence.append(random.choice(self.unicode_chars))
+                elif unicode_choice < 0.55:
+                    sequence.append(random.choice(self.complex_script_chars))
+                elif unicode_choice < 0.65:
+                    sequence.append(random.choice(self.math_symbols))
+                elif unicode_choice < 0.80:
+                    sequence.append(random.choice(self.complex_emoji))
+                elif unicode_choice < 0.90:
+                    sequence.append(random.choice(self.zero_width_chars))
                 else:
-                    sequence.append(
-                        random.choice(string.ascii_letters + string.digits + " ")
-                    )
+                    # Control characters (use sparingly)
+                    sequence.append(random.choice(self.control_chars))
             else:  # 5% escape sequences
                 sequence.append(f"<ESC>{random.choice('hjkl')}")
 
+        return "".join(sequence)
+
+    def generate_unicode_sequence(self, length: int = 50) -> str:
+        """Generate a sequence heavily focused on Unicode complexity."""
+        sequence = ["i"]  # Enter insert mode
+        
+        categories = [
+            self.wide_chars,
+            self.exotic_chars,
+            self.complex_script_chars,
+            self.complex_emoji,
+            self.math_symbols,
+            self.zero_width_chars
+        ]
+        
+        for _ in range(length):
+            category = random.choice(categories)
+            sequence.append(random.choice(category))
+            
+            # Occasionally add a space or newline to break things up
+            if random.random() < 0.1:
+                sequence.append(random.choice([" ", "\n"]))
+                
+        sequence.append("<ESC>")
         return "".join(sequence)
 
     def generate_movement_sequence(self, length: int = 20) -> str:
@@ -236,6 +350,22 @@ class InputFuzzer:
 
         # Special key combinations
         sequences.append("<C-a><C-c><C-v><C-x>" * 10)
+
+        # --- BUG REGRESSION TESTS ---
+        
+        # 1. Fixed Emoji Bug: ZWJ Sequence handling
+        # This tests if backspacing through a ZWJ sequence works correctly (should delete whole grapheme or not crash)
+        # and if cursor positioning is correct around wide characters.
+        sequences.append("i" + "👨‍👩‍👧‍👦" * 5 + "<ESC>" + "0" + "x" * 5) # Delete from start
+        sequences.append("i" + "🏳️‍🌈" * 5 + "<ESC>" + "$" + "X" * 5) # Delete from end
+        
+        # 2. Obscure Unicode / RTL Mixing
+        # Tests mixing RTL (Arabic) with LTR and Emojis
+        sequences.append("i" + "Hello " + "مرحبا" + " 🌍 " + "World" + "<ESC>")
+        
+        # 3. Zero-width joiner stress
+        # Repeated ZWJ characters can cause rendering loops or buffer issues
+        sequences.append("i" + "\u200d" * 20 + "A" + "<ESC>")
 
         return sequences
 
@@ -461,6 +591,14 @@ class InputFuzzer:
         # Search stress
         sequences.append("/" + ".*.*.*" + "<CR>n" * 20)
         sequences.append("?" + ".*.*.*" + "<CR>n" * 20)
+
+        # Emoji / Unicode Stress
+        # Heavy use of complex emojis
+        sequences.append("i" + "".join(self.complex_emoji * 5) + "<ESC>")
+        # Mixed wide/narrow/combining
+        sequences.append("i" + "a" + "\u0301" * 10 + "b" + "😀" + "c" + "👨‍👩‍👧‍👦" + "<ESC>")
+        # ZWJ sequence soup
+        sequences.append("i" + ("\u200d" + "😀") * 50 + "<ESC>")
 
         return sequences
 
