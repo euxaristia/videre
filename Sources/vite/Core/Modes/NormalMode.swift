@@ -98,6 +98,19 @@ class NormalMode: BaseModeHandler {
                 state.moveCursorUp(count: pageSize)
             }
             return true
+        case "\u{03}":
+            // Ctrl+C: Cancel current operation (like ESC, but doesn't change mode)
+            // This handles both Ctrl+C and Ctrl+Shift+C (same byte in terminals)
+            // Important: DO NOT exit - this is a standard terminal copy key
+            pendingCommand = ""
+            countPrefix = 0
+            operatorEngine.pendingOperator = .none
+            waitingForRegisterName = false
+            selectedRegisterName = nil
+            waitingForMarkName = false
+            markMode = nil
+            pendingIndentChar = nil
+            return true
         case "\u{18}":  // Ctrl+X
             // Ctrl+X: Decrement number
             state.incrementNextNumber(count: -count)

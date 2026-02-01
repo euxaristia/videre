@@ -160,6 +160,53 @@ def run_stress_tests(editor: str, verbose: bool = False):
         return 1
 
 
+def run_behavior_tests(editor: str, verbose: bool = False):
+    """Run behavior tests to detect non-standard behavior."""
+
+    logger = setup_debug_logging(verbose=verbose)
+
+    # Select driver
+    if editor == "vite":
+        driver_class = ViteDriver
+    elif editor == "nvim":
+        driver_class = NvimDriver
+    else:
+        print(f"Unknown editor: {editor}")
+        return 1
+
+    logger.info(f"Running behavior tests for {editor}")
+
+    try:
+        fuzz_runner = FuzzRunner(driver_class, debug=verbose)
+
+        # Run behavior suite (tests for non-standard behavior like Ctrl+C exit)
+        behavior_results = fuzz_runner.run_behavior_suite()
+
+        # Also run non-standard sequence detection
+        fuzz_runner.run_non_standard_detection()
+
+        # Get combined summary
+        summary = fuzz_runner.get_summary()
+
+        # Save results
+        import json
+
+        results_file = f"logs/behavior_tests_{editor}.json"
+        Path("logs").mkdir(exist_ok=True)
+        with open(results_file, "w") as f:
+            json.dump(summary, f, indent=2, default=str)
+        print(f"\nDetailed results saved to: {results_file}")
+
+        # Return success only if all behavior tests pass
+        if "behavior_results" in summary:
+            return 0 if summary["behavior_results"]["pass_rate"] == 1.0 else 1
+        return 1
+
+    except Exception as e:
+        logger.error(f"Behavior testing failed: {str(e)}", exc_info=True)
+        return 1
+
+
 def run_edge_cases(editor: str, verbose: bool = False):
     """Run edge case scenarios."""
 
@@ -267,12 +314,17 @@ def main():
         "-s", "--stress", action="store_true", help="Run stress test scenarios"
     )
     parser.add_argument(
+        "-b", "--behavior", action="store_true", help="Run behavior tests (detect non-standard behavior)"
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose debug output"
     )
 
     args = parser.parse_args()
 
-    if args.stress:
+    if args.behavior:
+        return run_behavior_tests(args.editor, args.verbose)
+    elif args.stress:
         return run_stress_tests(args.editor, args.verbose)
     elif args.edge_cases:
         return run_edge_cases(args.editor, args.verbose)

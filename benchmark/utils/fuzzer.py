@@ -2,8 +2,40 @@
 
 import random
 import string
-from typing import List, Dict, Any
-from dataclasses import dataclass
+from typing import List, Dict, Any, Optional, Callable
+from dataclasses import dataclass, field
+from enum import Enum, auto
+
+
+class BehaviorViolation(Enum):
+    """Types of non-standard behavior that can be detected."""
+    UNEXPECTED_EXIT = auto()      # Editor exited when it shouldn't have
+    UNHANDLED_KEY = auto()        # Key caused a crash or undefined behavior
+    STANDARD_KEY_MISBEHAVIOR = auto()  # Standard terminal key did wrong thing
+    HANG = auto()                 # Editor became unresponsive
+    CRASH = auto()                # Editor crashed with error
+
+
+@dataclass
+class BehaviorTest:
+    """Defines a test for expected editor behavior."""
+    name: str
+    sequence: str
+    should_exit: bool = False
+    description: str = ""
+    # If not None, this function validates the result
+    validator: Optional[Callable[['BehaviorResult'], bool]] = None
+
+
+@dataclass
+class BehaviorResult:
+    """Result of a behavior test."""
+    test: BehaviorTest
+    passed: bool
+    violation: Optional[BehaviorViolation] = None
+    error: Optional[str] = None
+    process_exited: bool = False
+    execution_time: float = 0.0
 
 
 @dataclass
@@ -46,6 +78,32 @@ class InputFuzzer:
             "<C-x>",
             "<C-z>",
             "<C-y>",
+        ]
+
+        # Keys that should NEVER cause an exit in a properly behaving editor
+        # These are standard terminal/editor keys that users expect to work
+        self.non_exit_keys = [
+            # Standard copy/paste keys (terminal emulators send these)
+            "<C-c>",      # Ctrl+C - should NOT exit (common mistake)
+            "<C-v>",      # Ctrl+V - paste
+            "<C-x>",      # Ctrl+X - cut
+            "<C-z>",      # Ctrl+Z - undo (should not suspend in raw mode)
+            "<C-a>",      # Ctrl+A - select all / increment
+            "<C-b>",      # Ctrl+B - page up
+            "<C-f>",      # Ctrl+F - page down
+            "<C-d>",      # Ctrl+D - half page down (not exit)
+            "<C-u>",      # Ctrl+U - half page up
+            "<C-r>",      # Ctrl+R - redo
+            "<C-g>",      # Ctrl+G - show file info
+            "<C-l>",      # Ctrl+L - redraw screen
+            "<C-n>",      # Ctrl+N - next line
+            "<C-p>",      # Ctrl+P - previous line
+            # Movement keys
+            "<Up>", "<Down>", "<Left>", "<Right>",
+            "<Home>", "<End>", "<PageUp>", "<PageDown>",
+            # Basic editing that shouldn't exit
+            "<BS>", "<Delete>", "<Tab>", "<Space>",
+            "<ESC>",
         ]
 
         self.unicode_chars = [
@@ -181,6 +239,158 @@ class InputFuzzer:
 
         return sequences
 
+    def generate_behavior_tests(self) -> List[BehaviorTest]:
+        """Generate tests for expected editor behavior (non-standard behavior detection)."""
+        tests = []
+
+        # Test 1: Ctrl+C should NOT cause exit
+        # This is the most common non-standard behavior - terminals traditionally
+        # use Ctrl+C for interrupt, but in raw mode editors should handle it
+        tests.append(BehaviorTest(
+            name="ctrl_c_no_exit",
+            sequence="<C-c>",
+            should_exit=False,
+            description="Ctrl+C should not exit the editor (common terminal copy key)"
+        ))
+
+        # Test 2: Multiple Ctrl+C should NOT cause exit
+        tests.append(BehaviorTest(
+            name="ctrl_c_repeated",
+            sequence="<C-c><C-c><C-c>",
+            should_exit=False,
+            description="Repeated Ctrl+C should not exit the editor"
+        ))
+
+        # Test 3: Ctrl+Shift+C equivalent (same byte as Ctrl+C in terminals)
+        tests.append(BehaviorTest(
+            name="ctrl_shift_c_equivalent",
+            sequence="<C-c>",  # Shift doesn't change control codes at byte level
+            should_exit=False,
+            description="Ctrl+Shift+C (copy) should not exit the editor"
+        ))
+
+        # Test 4: Standard navigation keys should not exit
+        for key in ["<Up>", "<Down>", "<Left>", "<Right>", "<Home>", "<End>", "<PageUp>", "<PageDown>"]:
+            tests.append(BehaviorTest(
+                name=f"nav_{key.strip('<>').lower()}_no_exit",
+                sequence=key,
+                should_exit=False,
+                description=f"{key} navigation key should not exit the editor"
+            ))
+
+        # Test 5: Ctrl key combinations that should never exit
+        safe_ctrl_keys = ["a", "b", "d", "f", "g", "l", "n", "p", "r", "u", "v", "x", "z"]
+        for char in safe_ctrl_keys:
+            tests.append(BehaviorTest(
+                name=f"ctrl_{char}_no_exit",
+                sequence=f"<C-{char}>",
+                should_exit=False,
+                description=f"Ctrl+{char.upper()} should not exit the editor"
+            ))
+
+        # Test 6: Basic editing keys should not exit
+        for key in ["<BS>", "<Delete>", "<Tab>", "<Space>", "<ESC>"]:
+            tests.append(BehaviorTest(
+                name=f"edit_{key.strip('<>').lower()}_no_exit",
+                sequence=key,
+                should_exit=False,
+                description=f"{key} should not exit the editor"
+            ))
+
+        # Test 7: Normal mode movement followed by navigation
+        tests.append(BehaviorTest(
+            name="movement_sequence_no_exit",
+            sequence="hjkl<C-c>hjkl",
+            should_exit=False,
+            description="Movement with Ctrl+C mixed in should not exit"
+        ))
+
+        # Test 8: Insert mode with Ctrl+C should not exit (should return to normal)
+        tests.append(BehaviorTest(
+            name="insert_ctrl_c_no_exit",
+            sequence="i<C-c>",
+            should_exit=False,
+            description="Ctrl+C in insert mode should not exit (should just exit insert mode)"
+        ))
+
+        # Test 9: Visual mode with Ctrl+C should not exit
+        tests.append(BehaviorTest(
+            name="visual_ctrl_c_no_exit",
+            sequence="v<C-c>",
+            should_exit=False,
+            description="Ctrl+C in visual mode should not exit (should clear selection)"
+        ))
+
+        # Test 10: Command mode with Ctrl+C should not exit
+        tests.append(BehaviorTest(
+            name="command_ctrl_c_no_exit",
+            sequence=":<C-c>",
+            should_exit=False,
+            description="Ctrl+C in command mode should not exit (should cancel command)"
+        ))
+
+        return tests
+
+    def generate_exit_verification_tests(self) -> List[BehaviorTest]:
+        """Generate tests that verify exit commands work correctly.
+
+        These are separate from behavior tests because they test positive behavior
+        (things that SHOULD cause exit) rather than negative behavior detection
+        (things that should NOT cause exit).
+        """
+        tests = []
+
+        tests.append(BehaviorTest(
+            name="quit_command_exits",
+            sequence="<ESC>:q!<CR>",
+            should_exit=True,
+            description=":q! command should exit the editor"
+        ))
+
+        tests.append(BehaviorTest(
+            name="zq_exits",
+            sequence="<ESC>ZQ",
+            should_exit=True,
+            description="ZQ should exit the editor without saving"
+        ))
+
+        tests.append(BehaviorTest(
+            name="zz_exits",
+            sequence="<ESC>ZZ",
+            should_exit=True,
+            description="ZZ should save and exit the editor"
+        ))
+
+        return tests
+
+    def generate_non_standard_sequences(self) -> List[str]:
+        """Generate sequences specifically designed to catch non-standard behavior."""
+        sequences = []
+
+        # Focus on keys that commonly cause issues
+        # Ctrl+C variations
+        sequences.append("<C-c>")
+        sequences.append("<C-c><C-c><C-c>")
+        sequences.append("i<C-c>")  # Ctrl+C in insert mode
+        sequences.append("v<C-c>")  # Ctrl+C in visual mode
+        sequences.append(":<C-c>")  # Ctrl+C in command mode
+
+        # Other Ctrl combinations that might not be handled
+        for char in "abcdefghijklmnopqrstuvwxyz":
+            sequences.append(f"<C-{char}>")
+
+        # Ctrl+Shift combinations (same bytes as Ctrl in most terminals)
+        # These test that the editor handles the byte value correctly
+        sequences.append("<C-c>")  # Same as Ctrl+Shift+C at byte level
+
+        # Rapid mode switching with Ctrl+C
+        sequences.append("i<ESC>v<ESC><C-c>i<ESC>")
+
+        # Mixed with commands
+        sequences.append("dd<C-c>yy<C-c>p<C-c>")
+
+        return sequences
+
     def generate_stress_sequences(self) -> List[str]:
         """Generate high-stress sequences that push editor limits."""
         sequences = []
@@ -264,6 +474,8 @@ class FuzzResult:
     error: str | None = None
     execution_time: float = 0.0
     output: str = ""
+    unexpected_exit: bool = False  # True if editor exited when it shouldn't have
+    behavior_violation: Optional[BehaviorViolation] = None
 
 
 class FuzzRunner:
@@ -273,6 +485,21 @@ class FuzzRunner:
         self.driver_class = driver_class
         self.debug = debug
         self.results: List[FuzzResult] = []
+        self.behavior_results: List[BehaviorResult] = []
+
+    def _check_process_alive(self, driver) -> bool:
+        """Check if the editor process is still running."""
+        import os
+        if driver.child_pid is None:
+            return False
+        try:
+            # os.kill with signal 0 checks if process exists
+            os.kill(driver.child_pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except OSError:
+            return False
 
     def run_sequence(self, sequence: str, file_path: str | None = None) -> FuzzResult:
         """Run a single fuzz sequence."""
@@ -298,6 +525,17 @@ class FuzzRunner:
             # Give editor time to process
             driver.read_output(timeout=0.1)
 
+            # Check if process is still alive before attempting quit
+            if not self._check_process_alive(driver):
+                result.success = False
+                result.unexpected_exit = True
+                result.behavior_violation = BehaviorViolation.UNEXPECTED_EXIT
+                result.error = "Editor exited unexpectedly during sequence"
+                result.execution_time = time.perf_counter() - start_time
+                if self.debug:
+                    print(f"UNEXPECTED EXIT detected for sequence: {repr(sequence[:30])}")
+                return result
+
             # Quit
             quit_time = driver.quit()
 
@@ -310,6 +548,11 @@ class FuzzRunner:
             if self.debug:
                 print(f"Error in sequence: {e}")
 
+            # Check if this was an unexpected exit
+            if "exited" in str(e).lower() or not self._check_process_alive(driver):
+                result.unexpected_exit = True
+                result.behavior_violation = BehaviorViolation.UNEXPECTED_EXIT
+
             # Force quit on error
             try:
                 driver.quit(force=True)
@@ -317,6 +560,176 @@ class FuzzRunner:
                 pass
 
         return result
+
+    def run_behavior_test(self, test: BehaviorTest, file_path: str | None = None) -> BehaviorResult:
+        """Run a single behavior test to detect non-standard behavior."""
+        import time
+        import os
+        driver = self.driver_class()
+        result = BehaviorResult(test=test, passed=False)
+
+        try:
+            start_time = time.perf_counter()
+
+            # Start editor
+            driver.start(file_path)
+
+            if self.debug:
+                print(f"Behavior test '{test.name}': {test.description}")
+
+            # Send the test sequence
+            driver.send_keys(test.sequence, delay=0.005)
+
+            # For tests that expect exit, wait longer and check more thoroughly
+            if test.should_exit:
+                # Wait for process to potentially exit
+                max_wait = 1.0
+                check_interval = 0.05
+                waited = 0.0
+                process_exited = False
+
+                while waited < max_wait:
+                    time.sleep(check_interval)
+                    waited += check_interval
+                    # Try to read output (this can detect closed PTY)
+                    try:
+                        driver.read_output(timeout=0.01)
+                    except:
+                        pass
+                    # Check if process exited
+                    if not self._check_process_alive(driver):
+                        process_exited = True
+                        break
+                    # Also check via waitpid with WNOHANG
+                    if driver.child_pid:
+                        try:
+                            pid, status = os.waitpid(driver.child_pid, os.WNOHANG)
+                            if pid == driver.child_pid:
+                                process_exited = True
+                                break
+                        except ChildProcessError:
+                            process_exited = True
+                            break
+                        except:
+                            pass
+
+                result.process_exited = process_exited
+                result.passed = process_exited
+                if not result.passed:
+                    result.violation = BehaviorViolation.STANDARD_KEY_MISBEHAVIOR
+                    result.error = f"Expected exit but editor is still running"
+            else:
+                # For tests that expect NO exit, a quick check is sufficient
+                time.sleep(0.1)
+                driver.read_output(timeout=0.1)
+
+                process_alive = self._check_process_alive(driver)
+                result.process_exited = not process_alive
+                result.passed = process_alive
+                if not result.passed:
+                    result.violation = BehaviorViolation.UNEXPECTED_EXIT
+                    result.error = f"Editor exited unexpectedly (sequence: {repr(test.sequence)})"
+
+            result.execution_time = time.perf_counter() - start_time
+
+            # Clean up - quit if still running
+            if self._check_process_alive(driver):
+                try:
+                    driver.quit(force=True)
+                except:
+                    pass
+
+        except Exception as e:
+            result.passed = False
+            result.error = str(e)
+            result.violation = BehaviorViolation.CRASH
+            if self.debug:
+                print(f"Behavior test error: {e}")
+            try:
+                driver.quit(force=True)
+            except:
+                pass
+
+        return result
+
+    def run_behavior_suite(self, file_path: str | None = None) -> List[BehaviorResult]:
+        """Run all behavior tests to detect non-standard behavior."""
+        fuzzer = InputFuzzer()
+        tests = fuzzer.generate_behavior_tests()
+        results = []
+
+        print(f"\n{'='*60}")
+        print("NON-STANDARD BEHAVIOR DETECTION SUITE")
+        print(f"{'='*60}")
+        print(f"Running {len(tests)} behavior tests...\n")
+
+        passed = 0
+        failed = 0
+
+        for test in tests:
+            result = self.run_behavior_test(test, file_path)
+            results.append(result)
+
+            status = "✓ PASS" if result.passed else "✗ FAIL"
+            if result.passed:
+                passed += 1
+            else:
+                failed += 1
+
+            print(f"  {status} - {test.name}")
+            if not result.passed and self.debug:
+                print(f"         {test.description}")
+                print(f"         Error: {result.error}")
+                if result.violation:
+                    print(f"         Violation: {result.violation.name}")
+
+        print(f"\n{'='*60}")
+        print(f"BEHAVIOR TEST RESULTS: {passed} passed, {failed} failed")
+        if failed > 0:
+            print("\nFAILED TESTS (non-standard behavior detected):")
+            for r in results:
+                if not r.passed:
+                    print(f"  - {r.test.name}: {r.error}")
+        print(f"{'='*60}\n")
+
+        self.behavior_results.extend(results)
+        return results
+
+    def run_non_standard_detection(self, file_path: str | None = None) -> List[FuzzResult]:
+        """Run sequences specifically designed to detect non-standard behavior."""
+        fuzzer = InputFuzzer()
+        sequences = fuzzer.generate_non_standard_sequences()
+        results = []
+
+        print(f"\n{'='*60}")
+        print("NON-STANDARD BEHAVIOR SEQUENCE TESTS")
+        print(f"{'='*60}")
+        print(f"Testing {len(sequences)} potentially problematic sequences...\n")
+
+        violations = []
+
+        for i, sequence in enumerate(sequences, 1):
+            result = self.run_sequence(sequence, file_path)
+            results.append(result)
+
+            if result.unexpected_exit:
+                violations.append((sequence, result))
+                print(f"  ✗ VIOLATION #{len(violations)}: Unexpected exit on {repr(sequence[:40])}")
+            elif self.debug:
+                print(f"  ✓ OK: {repr(sequence[:40])}")
+
+        print(f"\n{'='*60}")
+        if violations:
+            print(f"NON-STANDARD BEHAVIOR DETECTED: {len(violations)} violations")
+            print("\nProblematic sequences that caused unexpected exits:")
+            for seq, res in violations:
+                print(f"  - {repr(seq)}")
+        else:
+            print("All sequences handled correctly (no unexpected exits)")
+        print(f"{'='*60}\n")
+
+        self.results.extend(results)
+        return results
 
     def run_fuzz_suite(
         self, num_sequences: int = 100, config: FuzzConfig | None = None
@@ -371,25 +784,58 @@ class FuzzRunner:
 
     def get_summary(self) -> Dict[str, Any]:
         """Get summary statistics of fuzzing results."""
-        if not self.results:
-            return {}
+        summary = {}
 
-        total = len(self.results)
-        successful = sum(1 for r in self.results if r.success)
-        failed = total - successful
+        if self.results:
+            total = len(self.results)
+            successful = sum(1 for r in self.results if r.success)
+            failed = total - successful
+            unexpected_exits = sum(1 for r in self.results if r.unexpected_exit)
 
-        errors = {}
-        for result in self.results:
-            if not result.success and result.error:
-                errors[result.error] = errors.get(result.error, 0) + 1
+            errors = {}
+            for result in self.results:
+                if not result.success and result.error:
+                    errors[result.error] = errors.get(result.error, 0) + 1
 
-        avg_time = sum(r.execution_time for r in self.results) / total
+            avg_time = sum(r.execution_time for r in self.results) / total
 
-        return {
-            "total_sequences": total,
-            "successful": successful,
-            "failed": failed,
-            "success_rate": successful / total,
-            "average_execution_time": avg_time,
-            "error_distribution": errors,
-        }
+            summary["fuzz_results"] = {
+                "total_sequences": total,
+                "successful": successful,
+                "failed": failed,
+                "success_rate": successful / total,
+                "unexpected_exits": unexpected_exits,
+                "average_execution_time": avg_time,
+                "error_distribution": errors,
+            }
+
+        if self.behavior_results:
+            behavior_total = len(self.behavior_results)
+            behavior_passed = sum(1 for r in self.behavior_results if r.passed)
+            behavior_failed = behavior_total - behavior_passed
+
+            violations_by_type = {}
+            for result in self.behavior_results:
+                if result.violation:
+                    v_name = result.violation.name
+                    violations_by_type[v_name] = violations_by_type.get(v_name, 0) + 1
+
+            summary["behavior_results"] = {
+                "total_tests": behavior_total,
+                "passed": behavior_passed,
+                "failed": behavior_failed,
+                "pass_rate": behavior_passed / behavior_total if behavior_total > 0 else 0,
+                "violations_by_type": violations_by_type,
+                "failed_tests": [
+                    {
+                        "name": r.test.name,
+                        "description": r.test.description,
+                        "error": r.error,
+                        "violation": r.violation.name if r.violation else None,
+                    }
+                    for r in self.behavior_results
+                    if not r.passed
+                ],
+            }
+
+        return summary

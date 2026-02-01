@@ -10,8 +10,9 @@ class SearchMode: BaseModeHandler {
 
     override func handleInput(_ char: Character) -> Bool {
         switch char {
-        case "\u{1B}":
-            // Escape - cancel search
+        case "\u{1B}", "\u{03}":
+            // Escape or Ctrl+C - cancel search
+            // Ctrl+C (0x03) is the same byte as Ctrl+Shift+C in terminals
             if let initialPos = initialCursorPosition {
                 state.cursor.move(to: initialPos)
             }

@@ -8,8 +8,9 @@ class VisualMode: BaseModeHandler {
 
     override func handleInput(_ char: Character) -> Bool {
         switch char {
-        case "\u{1B}":
-            // Escape - return to normal mode
+        case "\u{1B}", "\u{03}":
+            // Escape or Ctrl+C - return to normal mode
+            // Ctrl+C (0x03) is the same byte as Ctrl+Shift+C in terminals
             state.setMode(.normal)
             return true
 

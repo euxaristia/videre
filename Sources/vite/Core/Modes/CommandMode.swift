@@ -4,8 +4,9 @@ import Foundation
 class CommandMode: BaseModeHandler {
     override func handleInput(_ char: Character) -> Bool {
         switch char {
-        case "\u{1B}":
-            // Escape
+        case "\u{1B}", "\u{03}":
+            // Escape or Ctrl+C - cancel command
+            // Ctrl+C (0x03) is the same byte as Ctrl+Shift+C in terminals
             state.setMode(.normal)
             state.pendingCommand = ""
             state.statusMessage = ""
