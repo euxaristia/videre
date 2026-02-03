@@ -570,16 +570,99 @@ class SyntaxHighlighter {
             if line[i] == "<" {
                 // Look for closing >
                 if let closeIdx = line[i...].firstIndex(of: ">") {
-                    let tagContent = String(line[i...closeIdx])
-                    // Basic check that it looks like a tag (starts with < followed by letter or /)
+                    // Check if it's a valid tag start
                     let afterOpen = line.index(after: i)
                     if afterOpen < end
                         && (line[afterOpen].isLetter || line[afterOpen] == "/"
                             || line[afterOpen] == "!")
                     {
-                        result += SyntaxColor.tag.rawValue
-                        result += tagContent
-                        result += SyntaxColor.reset.rawValue
+                        // We found a tag! Now let's try to highlight it "nicely" instead of just one color
+                        let tagContentRange = line.index(after: i)..<closeIdx
+                        let tagContent = String(line[tagContentRange])
+
+                        // Output < in tag color
+                        result += SyntaxColor.tag.rawValue + "<" + SyntaxColor.reset.rawValue
+
+                        // Parse the content inside <...>
+                        var insideString = false
+                        var stringChar: Character = " "
+                        var currentToken = ""
+
+                        for (idx, char) in tagContent.enumerated() {
+                            if insideString {
+                                currentToken.append(char)
+                                if char == stringChar
+                                    && (currentToken.count <= 1
+                                        || currentToken.dropLast().last != "\\")
+                                {
+                                    // End string
+                                    result +=
+                                        SyntaxColor.string.rawValue + currentToken
+                                        + SyntaxColor.reset.rawValue
+                                    currentToken = ""
+                                    insideString = false
+                                }
+                            } else {
+                                if char == "\"" || char == "'" {
+                                    // Flush previous token (likely space or operator)
+                                    if !currentToken.isEmpty {
+                                        result +=
+                                            SyntaxColor.tag.rawValue + currentToken
+                                            + SyntaxColor.reset.rawValue
+                                        currentToken = ""
+                                    }
+                                    insideString = true
+                                    stringChar = char
+                                    currentToken.append(char)
+                                } else if char == "=" {
+                                    // Flush previous token (attribute name)
+                                    if !currentToken.isEmpty {
+                                        // Attribute name usually green or similar, using attribute color
+                                        result +=
+                                            SyntaxColor.attribute.rawValue + currentToken
+                                            + SyntaxColor.reset.rawValue
+                                        currentToken = ""
+                                    }
+                                    result +=
+                                        SyntaxColor.operator_.rawValue + "="
+                                        + SyntaxColor.reset.rawValue
+                                } else if char.isWhitespace {
+                                    if !currentToken.isEmpty {
+                                        // Could be tag name or attribute name depending on position, keeping simple
+                                        // If it's the first token, it's the tag name
+                                        let isTagName =
+                                            (idx - currentToken.count) == 0
+                                            || (tagContent.prefix(1) == "/"
+                                                && (idx - currentToken.count) == 1)
+                                        let color =
+                                            isTagName
+                                            ? SyntaxColor.keyword.rawValue
+                                            : SyntaxColor.attribute.rawValue
+                                        result += color + currentToken + SyntaxColor.reset.rawValue
+                                        currentToken = ""
+                                    }
+                                    result += String(char)
+                                } else {
+                                    currentToken.append(char)
+                                }
+                            }
+                        }
+
+                        // Flush remaining
+                        if !currentToken.isEmpty {
+                            let isTagName =
+                                (tagContent.count - currentToken.count) == 0
+                                || (tagContent.prefix(1) == "/"
+                                    && (tagContent.count - currentToken.count) == 1)
+                            let color =
+                                isTagName
+                                ? SyntaxColor.keyword.rawValue : SyntaxColor.attribute.rawValue
+                            result += color + currentToken + SyntaxColor.reset.rawValue
+                        }
+
+                        // Output > in tag color
+                        result += SyntaxColor.tag.rawValue + ">" + SyntaxColor.reset.rawValue
+
                         i = line.index(after: closeIdx)
                         continue
                     }

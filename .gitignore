@@ -13,3 +13,15 @@ Package.resolved
 __pycache__/
 benchmark/results/
 benchmark/benchmark/fixtures/
+
+# Logs
+logs/*.log
+benchmark/logs/
+benchmark/vite_output.log
+
+# Temporary reproduction files
+benchmark/glitchy_readme.md
+
+# Misc
+help.txt
+logs/fuzz_results_vite_10.json
