@@ -167,7 +167,8 @@ class MotionEngine {
             var col = pos.column
 
             // Skip current non-whitespace
-            while col < line.count && !isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
+            while col < line.count
+                && !isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
             {
                 col += 1
             }
@@ -185,7 +186,8 @@ class MotionEngine {
                 // Skip whitespace on new line
                 let nextLine = buffer.line(pos.line)
                 while pos.column < nextLine.count
-                    && isWhitespace(nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
+                    && isWhitespace(
+                        nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
                 {
                     pos.column += 1
                 }
@@ -225,8 +227,7 @@ class MotionEngine {
             }
 
             // If we're on whitespace, we overshot - move forward one
-            if col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)])
-            {
+            if col < line.count && isWhitespace(line[line.index(line.startIndex, offsetBy: col)]) {
                 col += 1
             }
 
@@ -267,7 +268,8 @@ class MotionEngine {
                 // Find first WORD on new line
                 let nextLine = buffer.line(pos.line)
                 while pos.column < nextLine.count
-                    && isWhitespace(nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
+                    && isWhitespace(
+                        nextLine[nextLine.index(nextLine.startIndex, offsetBy: pos.column)])
                 {
                     pos.column += 1
                 }
@@ -373,7 +375,7 @@ class MotionEngine {
                 line += 1
             }
         }
-        
+
         let targetLine = min(line, buffer.lineCount - 1)
         let lineLength = buffer.lineLength(targetLine)
         let newCol = min(cursor.preferredColumn, max(0, lineLength - 1))
@@ -402,7 +404,7 @@ class MotionEngine {
                 }
             }
         }
-        
+
         let targetLine = max(0, line)
         let lineLength = buffer.lineLength(targetLine)
         let newCol = min(cursor.preferredColumn, max(0, lineLength - 1))
@@ -419,6 +421,9 @@ class MotionEngine {
         for line in pos.line...buffer.lineCount - 1 {
             let lineStr = buffer.line(line)
             let startCol = line == pos.line ? pos.column + 1 : 0
+
+            // Guard against invalid range if cursor is past end of line
+            guard startCol <= lineStr.count else { continue }
 
             for col in startCol..<lineStr.count {
                 if lineStr[lineStr.index(lineStr.startIndex, offsetBy: col)] == char {
