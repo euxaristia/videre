@@ -15,19 +15,8 @@ install-local: INSTALL_DIR = $(HOME)/.local/bin
 install-local: MAN_DIR = $(HOME)/.local/share/man/man1
 install-local: install
 
+# Static build (default) - faster startup, no Swift runtime dependency
 release:
-ifeq ($(shell id -u),0)
-	@if [ -n "$(SUDO_USER)" ]; then \
-		sudo -u $(SUDO_USER) swift build -c release; \
-	else \
-		swift build -c release; \
-	fi
-else
-	swift build -c release
-endif
-
-# Static build - faster startup, larger binary, no Swift runtime dependency
-release-static:
 ifeq ($(shell id -u),0)
 	@if [ -n "$(SUDO_USER)" ]; then \
 		sudo -u $(SUDO_USER) swift build -c release -Xswiftc -static-stdlib; \
@@ -38,7 +27,19 @@ else
 	swift build -c release -Xswiftc -static-stdlib
 endif
 
+# Dynamic build - smaller binary, requires Swift runtime
+release-dynamic:
+ifeq ($(shell id -u),0)
+	@if [ -n "$(SUDO_USER)" ]; then \
+		sudo -u $(SUDO_USER) swift build -c release; \
+	else \
+		swift build -c release; \
+	fi
+else
+	swift build -c release
+endif
+
 clean:
 	swift package clean
 
-.PHONY: install install-local release clean
+.PHONY: install install-local release release-dynamic clean
