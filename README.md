@@ -1,4 +1,4 @@
-# videre 💨
+# videre 👁
 
 A lightning-fast, lightweight vi text editor built in pure Swift. videre brings the power of modal editing to the terminal with a clean, minimal design inspired by the legendary vi/Vim editors.
 
