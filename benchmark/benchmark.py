@@ -52,7 +52,8 @@ def get_version(editor_name: str, driver_class) -> str:
 def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
     """Run all benchmark suites."""
     print("Generating test files...")
-    test_files = generate_test_files()
+    fixtures_dir = benchmark_dir / "fixtures"
+    test_files = generate_test_files(base_dir=str(fixtures_dir))
     print(f"  Created {len(test_files)} test files")
 
     results = {}
@@ -152,7 +153,7 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
     print("GENERATING REPORTS")
     print("=" * 80)
 
-    reporter = Reporter()
+    reporter = Reporter(output_dir=str(benchmark_dir / "results"))
 
     json_path = reporter.save_json(results, metadata)
     print(f"✓ JSON results saved to: {json_path}")
@@ -164,7 +165,7 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
 
     # Cleanup
     print("Cleaning up test files...")
-    cleanup_test_files()
+    cleanup_test_files(base_dir=str(fixtures_dir))
 
     return results
 

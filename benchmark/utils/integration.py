@@ -91,7 +91,7 @@ def add_fuzzing_to_benchmark(benchmark_runner):
 
 
 def create_enhanced_benchmark_runner(
-    verbose: bool = False, enable_fuzzing: bool = True
+    verbose: bool = False, enable_fuzzing: bool = True, log_dir: Any = None
 ):
     """Create an enhanced benchmark runner with fuzzing and debugging."""
 
@@ -105,7 +105,9 @@ def create_enhanced_benchmark_runner(
             self.error_tracker = ErrorTracker(self.logger)
             self.recovery_manager = RecoveryManager(self.logger)
             self.health_checker = HealthChecker(self.logger)
+            self.health_checker = HealthChecker(self.logger)
             self.enable_fuzzing = enable_fuzzing
+            self.log_dir = log_dir if log_dir else Path("logs")
 
             # Store results
             self.benchmark_results = {}
@@ -222,9 +224,9 @@ def create_enhanced_benchmark_runner(
             from pathlib import Path
             from datetime import datetime
 
-            Path("logs").mkdir(exist_ok=True)
+            self.log_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            report_file = f"logs/enhanced_report_{timestamp}.json"
+            report_file = self.log_dir / f"enhanced_report_{timestamp}.json"
 
             with open(report_file, "w") as f:
                 json.dump(report, f, indent=2, default=str)

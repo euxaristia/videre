@@ -8,6 +8,8 @@ from pathlib import Path
 # Add current directory to path for imports
 benchmark_dir = Path(__file__).parent
 sys.path.insert(0, str(benchmark_dir))
+project_root = benchmark_dir.parent
+log_dir = project_root / "logs"
 
 from drivers.videre_driver import VidereDriver
 from drivers.nvim_driver import NvimDriver
@@ -80,8 +82,8 @@ def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False
                 print(f"  {error}: {count}")
 
         # Save detailed results
-        results_file = f"logs/fuzz_results_{editor}_{iterations}.json"
-        Path("logs").mkdir(exist_ok=True)
+        results_file = log_dir / f"fuzz_results_{editor}_{iterations}.json"
+        log_dir.mkdir(exist_ok=True)
         import json
 
         with open(results_file, "w") as f:
@@ -151,8 +153,8 @@ def run_stress_tests(editor: str, verbose: bool = False):
             ],
         }
 
-        results_file = f"logs/stress_tests_{editor}.json"
-        Path("logs").mkdir(exist_ok=True)
+        results_file = log_dir / f"stress_tests_{editor}.json"
+        log_dir.mkdir(exist_ok=True)
         with open(results_file, "w") as f:
             json.dump(results_data, f, indent=2, default=str)
         print(f"Detailed results saved to: {results_file}")
@@ -197,8 +199,8 @@ def run_behavior_tests(editor: str, verbose: bool = False):
         # Save results
         import json
 
-        results_file = f"logs/behavior_tests_{editor}.json"
-        Path("logs").mkdir(exist_ok=True)
+        results_file = log_dir / f"behavior_tests_{editor}.json"
+        log_dir.mkdir(exist_ok=True)
         with open(results_file, "w") as f:
             json.dump(summary, f, indent=2, default=str)
         print(f"\nDetailed results saved to: {results_file}")
@@ -285,8 +287,8 @@ def run_edge_cases(editor: str, verbose: bool = False):
             ],
         }
 
-        results_file = f"logs/edge_cases_{editor}.json"
-        Path("logs").mkdir(exist_ok=True)
+        results_file = log_dir / f"edge_cases_{editor}.json"
+        log_dir.mkdir(exist_ok=True)
         with open(results_file, "w") as f:
             json.dump(results_data, f, indent=2, default=str)
         print(f"Detailed results saved to: {results_file}")

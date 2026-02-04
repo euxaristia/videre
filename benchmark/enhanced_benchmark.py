@@ -7,6 +7,8 @@ from pathlib import Path
 # Add current directory to path for imports
 benchmark_dir = Path(__file__).parent
 sys.path.insert(0, str(benchmark_dir))
+project_root = benchmark_dir.parent
+log_dir = project_root / "logs"
 
 from utils.integration import create_enhanced_benchmark_runner
 
@@ -17,7 +19,7 @@ def main():
     print("=" * 60)
 
     # Create enhanced runner
-    runner = create_enhanced_benchmark_runner(verbose=True, enable_fuzzing=True)
+    runner = create_enhanced_benchmark_runner(verbose=True, enable_fuzzing=True, log_dir=log_dir)
 
     try:
         # Run full suite

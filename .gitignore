@@ -12,10 +12,10 @@ Package.resolved
 # Benchmark artifacts
 __pycache__/
 benchmark/results/
-benchmark/benchmark/fixtures/
 
 # Logs
 logs/*.log
+logs/*.json
 benchmark/logs/
 benchmark/videre_output.log
 
