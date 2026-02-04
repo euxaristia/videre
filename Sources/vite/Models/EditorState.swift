@@ -242,6 +242,11 @@ class EditorState {
 
     func moveCursorDown(count: Int = 1) {
         cursor.moveDown(count)
+        // Prevent cursor from moving beyond end of buffer
+        let maxLine = max(0, buffer.lineCount - 1)
+        if cursor.position.line > maxLine {
+            cursor.position.line = maxLine
+        }
         let lineLength = buffer.lineLength(cursor.position.line)
         let maxCol = currentMode == .insert ? lineLength : max(0, lineLength - 1)
         let newCol = min(cursor.preferredColumn, maxCol)
@@ -293,6 +298,25 @@ class EditorState {
         let lastLine = max(0, buffer.lineCount - 1)
         cursor.moveToEndOfFile(lastLine)
         updateStatusMessage()
+    }
+
+    // MARK: - Cursor Clamping
+
+    /// Clamp cursor position to buffer bounds and current mode column limits.
+    func clampCursorToBufferForRender() {
+        let maxLine = max(0, buffer.lineCount - 1)
+        if cursor.position.line > maxLine {
+            cursor.position.line = maxLine
+        }
+
+        let lineLength = buffer.lineLength(cursor.position.line)
+        let maxCol = currentMode == .insert ? lineLength : max(0, lineLength - 1)
+        if cursor.position.column > maxCol {
+            cursor.position.column = maxCol
+        }
+        if cursor.preferredColumn > maxCol {
+            cursor.preferredColumn = maxCol
+        }
     }
 
     // MARK: - Text Operations

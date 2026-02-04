@@ -9,6 +9,10 @@ let package = Package(
         .executableTarget(
             name: "vite",
             dependencies: []
+        ),
+        .testTarget(
+            name: "viteTests",
+            dependencies: ["vite"]
         )
     ]
 )

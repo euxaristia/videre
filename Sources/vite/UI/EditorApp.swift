@@ -577,6 +577,9 @@ class ViEditor {
         let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false)
             .count
 
+        // Clamp cursor to buffer bounds before calculating viewport.
+        state.clampCursorToBufferForRender()
+
         // Update scroll offset to keep cursor visible (viewport scrolling)
         let cursorLine = state.cursor.position.line
         if cursorLine < state.scrollOffset {
