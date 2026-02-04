@@ -6,6 +6,7 @@ import time
 import signal
 import pty
 import subprocess
+import select
 from abc import ABC, abstractmethod
 from typing import Optional
 import fcntl
@@ -134,44 +135,52 @@ class EditorDriver(ABC):
         return special_keys.get(key, b"")
 
     def wait_for_ready(self, timeout: float = 5.0) -> bool:
-        """Wait for editor to be ready."""
+        """Wait for editor to be ready using select() for precise timing."""
         start_time = time.perf_counter()
         output = ""
 
         while time.perf_counter() - start_time < timeout:
-            try:
-                chunk = os.read(self.master_fd, 4096)
-                if chunk:
-                    output += chunk.decode("utf-8", errors="replace")
-                    if self.is_ready(output):
-                        return True
-            except BlockingIOError:
-                pass
-            except OSError:
-                break
+            # Use select() with short timeout for precise polling
+            # This avoids the overhead of fixed sleep intervals
+            ready, _, _ = select.select([self.master_fd], [], [], 0.0001)
 
-            time.sleep(0.05)
+            if ready:
+                try:
+                    chunk = os.read(self.master_fd, 4096)
+                    if chunk:
+                        output += chunk.decode("utf-8", errors="replace")
+                        if self.is_ready(output):
+                            return True
+                except BlockingIOError:
+                    pass
+                except OSError:
+                    break
 
         return False
 
     def read_output(self, timeout: float = 0.5) -> str:
-        """Read available output from editor."""
+        """Read available output from editor using select() for precise timing."""
         output = ""
         start_time = time.perf_counter()
 
         while time.perf_counter() - start_time < timeout:
-            try:
-                chunk = os.read(self.master_fd, 4096)
-                if chunk:
-                    output += chunk.decode("utf-8", errors="replace")
-                else:
-                    break
-            except BlockingIOError:
-                pass
-            except OSError:
-                break
+            # Use select() with short timeout for efficient polling
+            ready, _, _ = select.select([self.master_fd], [], [], 0.001)
 
-            time.sleep(0.01)
+            if ready:
+                try:
+                    chunk = os.read(self.master_fd, 4096)
+                    if chunk:
+                        output += chunk.decode("utf-8", errors="replace")
+                    else:
+                        break
+                except BlockingIOError:
+                    pass
+                except OSError:
+                    break
+            elif output:
+                # If we have some output and nothing new is coming, we're done
+                break
 
         return output
 
