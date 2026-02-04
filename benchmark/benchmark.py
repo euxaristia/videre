@@ -64,37 +64,37 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
     print("=" * 80)
 
     try:
-        videre_version = get_version("videre", ViteDriver)
+        videre_version = get_version("videre", VidereDriver)
         metadata["videre_version"] = videre_version
         print(f"videre version: {videre_version}")
 
         print("\nRunning startup benchmarks...")
         results["startup"] = {}
-        videre_startup = startup.benchmark_startup(ViteDriver, iterations)
+        videre_startup = startup.benchmark_startup(VidereDriver, iterations)
         results["startup"]["videre"] = videre_startup
         print("  ✓ Startup benchmarks complete")
 
         print("Running insertion benchmarks...")
         results["insertion"] = {}
-        videre_insertion = insertion.benchmark_insertion(ViteDriver, iterations)
+        videre_insertion = insertion.benchmark_insertion(VidereDriver, iterations)
         results["insertion"]["videre"] = videre_insertion
         print("  ✓ Insertion benchmarks complete")
 
         print("Running movement benchmarks...")
         results["movement"] = {}
-        videre_movement = movement.benchmark_movement(ViteDriver, iterations)
+        videre_movement = movement.benchmark_movement(VidereDriver, iterations)
         results["movement"]["videre"] = videre_movement
         print("  ✓ Movement benchmarks complete")
 
         print("Running file operation benchmarks...")
         results["fileops"] = {}
-        videre_fileops = fileops.benchmark_fileops(ViteDriver, iterations)
+        videre_fileops = fileops.benchmark_fileops(VidereDriver, iterations)
         results["fileops"]["videre"] = videre_fileops
         print("  ✓ File operation benchmarks complete")
 
         print("Running exit benchmarks...")
         results["exit"] = {}
-        videre_exit = exit.benchmark_exit(ViteDriver, iterations)
+        videre_exit = exit.benchmark_exit(VidereDriver, iterations)
         results["exit"]["videre"] = videre_exit
         print("  ✓ Exit benchmarks complete")
 
