@@ -466,6 +466,14 @@ class ViEditor {
             } else if cursorLine >= state.scrollOffset + availableLines {
                 state.cursor.position.line = state.scrollOffset + availableLines - 1
             }
+            // Hard clamp to buffer in case viewport math overshoots.
+            let maxLine = max(0, totalLines - 1)
+            if state.cursor.position.line > maxLine {
+                state.cursor.position.line = maxLine
+            }
+            if state.cursor.position.line < 0 {
+                state.cursor.position.line = 0
+            }
             // Maintain horizontal position using preferredColumn, clamped to new line length
             let lineLength = state.buffer.lineLength(state.cursor.position.line)
             let maxCol = state.currentMode == .insert ? lineLength : max(0, lineLength - 1)
@@ -574,8 +582,7 @@ class ViEditor {
 
         // Reserve space for status line and command line (always reserve 2 lines to match Neovim)
         let availableLines = max(1, Int(terminalSize.rows) - 2)
-        let totalLines = state.buffer.text.split(separator: "\n", omittingEmptySubsequences: false)
-            .count
+        let totalLines = state.buffer.lineCount
 
         // Clamp cursor to buffer bounds before calculating viewport.
         state.clampCursorToBufferForRender()
@@ -592,6 +599,23 @@ class ViEditor {
 
         // Clamp scroll offset to valid range
         state.scrollOffset = max(0, min(state.scrollOffset, max(0, totalLines - availableLines)))
+
+        // Defensive clamp: ensure cursor never points past EOF after scrolling math.
+        let maxLine = max(0, totalLines - 1)
+        if state.cursor.position.line > maxLine {
+            state.cursor.position.line = maxLine
+        }
+        if state.cursor.position.line < 0 {
+            state.cursor.position.line = 0
+        }
+        let lineLength = state.buffer.lineLength(state.cursor.position.line)
+        let maxCol = state.currentMode == .insert ? lineLength : max(0, lineLength - 1)
+        if state.cursor.position.column > maxCol {
+            state.cursor.position.column = maxCol
+        }
+        if state.cursor.preferredColumn > maxCol {
+            state.cursor.preferredColumn = maxCol
+        }
 
         // Render buffer (limited to available screen lines)
         if state.showWelcomeMessage {

@@ -27,4 +27,18 @@ final class EditorStateTests: XCTestCase {
         XCTAssertEqual(state.cursor.position.column, 3)
         XCTAssertEqual(state.cursor.preferredColumn, 3)
     }
+
+    func testClampCursorToBufferForRenderWithTrailingEmptyLine() {
+        let state = EditorState()
+        state.buffer = TextBuffer("one\ntwo\n")
+        state.cursor.position.line = 99
+        state.cursor.position.column = 50
+        state.cursor.preferredColumn = 50
+
+        state.clampCursorToBufferForRender()
+
+        XCTAssertEqual(state.cursor.position.line, 2)
+        XCTAssertEqual(state.cursor.position.column, 0)
+        XCTAssertEqual(state.cursor.preferredColumn, 0)
+    }
 }
