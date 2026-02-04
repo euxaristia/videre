@@ -25,3 +25,4 @@ benchmark/glitchy_readme.md
 # Misc
 help.txt
 logs/fuzz_results_videre_10.json
+test_output.log
