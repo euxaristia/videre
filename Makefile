@@ -1,4 +1,4 @@
-BINARY_NAME = vite
+BINARY_NAME = videre
 INSTALL_DIR = /usr/local/bin
 MAN_DIR = /usr/local/share/man/man1
 

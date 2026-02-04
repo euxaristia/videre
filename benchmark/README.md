@@ -1,6 +1,6 @@
-# vite Benchmark Suite
+# videre Benchmark Suite
 
-Automated benchmark suite comparing vite's performance against Neovim for basic editor operations.
+Automated benchmark suite comparing videre's performance against Neovim for basic editor operations.
 
 ## Quick Start
 
@@ -16,7 +16,7 @@ python3 benchmark/benchmark.py --help
 # Run with custom iterations
 python3 benchmark/benchmark.py -i 10
 
-# Test only vite (skip Neovim)
+# Test only videre (skip Neovim)
 python3 benchmark/benchmark.py --skip-nvim
 ```
 
@@ -58,12 +58,12 @@ Contains structured data with timing statistics:
 ```json
 {
   "metadata": {
-    "vite_version": "...",
+    "videre_version": "...",
     "nvim_version": "..."
   },
   "results": {
     "startup": {
-      "vite": {
+      "videre": {
         "mean": 0.023,
         "median": 0.022,
         "stddev": 0.002,
@@ -89,7 +89,7 @@ Summary printed to terminal with all timing statistics.
 
 ### Drivers (`benchmark/drivers/`)
 - **base_driver.py:** Abstract base class with PTY automation
-- **vite_driver.py:** vite-specific driver
+- **videre_driver.py:** videre-specific driver
 - **nvim_driver.py:** Neovim-specific driver
 
 ### Scenarios (`benchmark/scenarios/`)
@@ -147,11 +147,11 @@ The benchmark system uses Python's `pty` module to automate both editors:
 ### System
 - Python 3.7+
 - Linux or macOS (PTY-based)
-- Swift 5.9+ (to build vite)
+- Swift 5.9+ (to build videre)
 
 ### Dependencies
 - Neovim (optional, for comparison)
-- Built vite binary (auto-built by run_benchmarks.sh)
+- Built videre binary (auto-built by run_benchmarks.sh)
 
 ### Installation
 ```bash
@@ -215,7 +215,7 @@ benchmark/
 ├── drivers/
 │   ├── __init__.py
 │   ├── base_driver.py       # PTY automation base class
-│   ├── vite_driver.py       # vite driver
+│   ├── videre_driver.py       # videre driver
 │   └── nvim_driver.py       # Neovim driver
 ├── scenarios/
 │   ├── __init__.py
@@ -240,18 +240,18 @@ benchmark/
 BENCHMARK RESULTS
 ================================================================================
 Timestamp: 2025-01-24 15:30:45
-vite version: 0.1.0
+videre version: 0.1.0
 nvim version: NVIM v0.11.5
 
 Startup
 ----------------
 
   empty:
-    vite     - Mean: 0.0234s, Median: 0.0231s, StdDev: 0.0012s
+    videre     - Mean: 0.0234s, Median: 0.0231s, StdDev: 0.0012s
     nvim     - Mean: 0.0456s, Median: 0.0453s, StdDev: 0.0018s
 
   100_lines:
-    vite     - Mean: 0.0241s, Median: 0.0238s, StdDev: 0.0015s
+    videre     - Mean: 0.0241s, Median: 0.0238s, StdDev: 0.0015s
     nvim     - Mean: 0.0463s, Median: 0.0460s, StdDev: 0.0020s
 
 ...
@@ -259,4 +259,4 @@ Startup
 
 ## License
 
-Same as vite project.
+Same as videre project.

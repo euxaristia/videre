@@ -1,5 +1,5 @@
 import XCTest
-@testable import vite
+@testable import videre
 
 final class EditorStateTests: XCTestCase {
     func testMoveCursorDownDoesNotExceedEOF() {

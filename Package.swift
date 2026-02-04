@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "vite",
+    name: "videre",
     platforms: [.macOS(.v13)],
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "vite",
+            name: "videre",
             dependencies: []
         ),
         .testTarget(
-            name: "viteTests",
-            dependencies: ["vite"]
+            name: "videreTests",
+            dependencies: ["videre"]
         )
     ]
 )

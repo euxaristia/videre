@@ -23,7 +23,7 @@ def add_fuzzing_to_benchmark(benchmark_runner):
 
         # Check editor health
         if editor == "all":
-            editors_to_test = ["vite", "nvim"]
+            editors_to_test = ["videre", "nvim"]
         else:
             editors_to_test = [editor]
 
@@ -37,10 +37,10 @@ def add_fuzzing_to_benchmark(benchmark_runner):
                 continue
 
             # Get driver class
-            if editor == "vite":
-                from ..drivers.vite_driver import ViteDriver
+            if editor == "videre":
+                from ..drivers.videre_driver import VidereDriver
 
-                driver_class = ViteDriver
+                driver_class = VidereDriver
             elif editor == "nvim":
                 from ..drivers.nvim_driver import NvimDriver
 
@@ -138,7 +138,7 @@ def create_enhanced_benchmark_runner(
                 return {}
 
             if editors is None:
-                editors = ["vite", "nvim"]
+                editors = ["videre", "nvim"]
 
             from .fuzzer import FuzzRunner, FuzzConfig
 
@@ -152,10 +152,10 @@ def create_enhanced_benchmark_runner(
 
                     # Get driver class
                     driver_class = None
-                    if editor == "vite":
-                        from ..drivers.vite_driver import ViteDriver
+                    if editor == "videre":
+                        from ..drivers.videre_driver import VidereDriver
 
-                        driver_class = ViteDriver
+                        driver_class = VidereDriver
                     elif editor == "nvim":
                         from ..drivers.nvim_driver import NvimDriver
 

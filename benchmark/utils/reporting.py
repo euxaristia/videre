@@ -38,7 +38,7 @@ class Reporter:
         lines = []
         lines.append("# Benchmark Results\n")
         lines.append(f"**Timestamp:** {timestamp}\n")
-        lines.append(f"**vite version:** {metadata.get('vite_version', 'unknown')}\n")
+        lines.append(f"**videre version:** {metadata.get('videre_version', 'unknown')}\n")
         lines.append(f"**nvim version:** {metadata.get('nvim_version', 'unknown')}\n")
         lines.append("")
 
@@ -104,7 +104,7 @@ class Reporter:
         print("BENCHMARK RESULTS")
         print("=" * 80)
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"vite version: {metadata.get('vite_version', 'unknown')}")
+        print(f"videre version: {metadata.get('videre_version', 'unknown')}")
         print(f"nvim version: {metadata.get('nvim_version', 'unknown')}\n")
 
         for category, category_data in results.items():

@@ -184,16 +184,16 @@ class CommandMode: BaseModeHandler {
 
     private func loadHelp() {
         let helpText = """
-            VITE - help
+            VIDERE - help
 
                 Move around:  Use the cursor keys, or "h" to go left,
                               "j" to go down, "k" to go up, "l" to go right.
             Close this window: Use ":q<Enter>".
-              Get out of vite: Use ":qa!<Enter>" (careful, all changes are lost!).
+              Get out of videre: Use ":qa!<Enter>" (careful, all changes are lost!).
 
             Get specific help: It is possible to go directly to whatever you want help
                               on, by giving an argument to the :help command.
-                              (Not yet implemented in vite)
+                              (Not yet implemented in videre)
 
                    WHAT              EXAMPLE
                    Normal mode       :help x

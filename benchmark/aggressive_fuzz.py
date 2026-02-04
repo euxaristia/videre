@@ -8,7 +8,7 @@ from pathlib import Path
 benchmark_dir = Path(__file__).parent
 sys.path.insert(0, str(benchmark_dir))
 
-from drivers.vite_driver import ViteDriver
+from drivers.videre_driver import VidereDriver
 from drivers.nvim_driver import NvimDriver
 from utils.fuzzer import FuzzRunner, FuzzConfig, InputFuzzer
 from utils.debug import setup_debug_logging
@@ -20,8 +20,8 @@ def run_aggressive_fuzz(editor: str, iterations: int = 50, file_path: str | None
     logger = setup_debug_logging(verbose=True)
 
     # Select driver
-    if editor == "vite":
-        driver_class = ViteDriver
+    if editor == "videre":
+        driver_class = VidereDriver
     elif editor == "nvim":
         driver_class = NvimDriver
     else:
@@ -319,7 +319,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Aggressive fuzzing for editors")
-    parser.add_argument("editor", choices=["vite", "nvim"], help="Editor to test")
+    parser.add_argument("editor", choices=["videre", "nvim"], help="Editor to test")
     parser.add_argument(
         "-i",
         "--iterations",

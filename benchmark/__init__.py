@@ -1,1 +1,1 @@
-"""vite benchmark suite."""
+"""videre benchmark suite."""

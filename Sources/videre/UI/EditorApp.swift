@@ -805,10 +805,10 @@ class ViEditor {
         let terminalCols = Int(terminalSize.cols)
 
         let message = [
-            "VITE v0.1.0",
+            "VIDERE v0.1.0",
             "",
-            "vite is open source and freely distributable",
-            "https://github.com/euxaristia/vite",
+            "videre is open source and freely distributable",
+            "https://github.com/euxaristia/videre",
             "",
             "type  :q<Enter>               to exit         ",
             "type  :help<Enter>            for help        ",

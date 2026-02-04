@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Main benchmark runner for vite vs nvim comparison."""
+"""Main benchmark runner for videre vs nvim comparison."""
 
 import sys
 import os
@@ -12,7 +12,7 @@ from pathlib import Path
 benchmark_dir = Path(__file__).parent
 sys.path.insert(0, str(benchmark_dir))
 
-from drivers.vite_driver import ViteDriver
+from drivers.videre_driver import VidereDriver
 from drivers.nvim_driver import NvimDriver
 from scenarios import startup, insertion, movement, fileops, exit
 from utils.test_data import generate_test_files, cleanup_test_files
@@ -22,8 +22,8 @@ from utils.reporting import Reporter
 def get_version(editor_name: str, driver_class) -> str:
     """Get version string for an editor."""
     try:
-        if editor_name == "vite":
-            # vite doesn't have a --version flag, get from git or package
+        if editor_name == "videre":
+            # videre doesn't have a --version flag, get from git or package
             result = subprocess.run(
                 ["git", "describe", "--tags", "--always"],
                 cwd=os.path.dirname(__file__),
@@ -58,48 +58,48 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
     results = {}
     metadata = {}
 
-    # Test vite
+    # Test videre
     print("\n" + "=" * 80)
-    print("BENCHMARKING vite")
+    print("BENCHMARKING videre")
     print("=" * 80)
 
     try:
-        vite_version = get_version("vite", ViteDriver)
-        metadata["vite_version"] = vite_version
-        print(f"vite version: {vite_version}")
+        videre_version = get_version("videre", ViteDriver)
+        metadata["videre_version"] = videre_version
+        print(f"videre version: {videre_version}")
 
         print("\nRunning startup benchmarks...")
         results["startup"] = {}
-        vite_startup = startup.benchmark_startup(ViteDriver, iterations)
-        results["startup"]["vite"] = vite_startup
+        videre_startup = startup.benchmark_startup(ViteDriver, iterations)
+        results["startup"]["videre"] = videre_startup
         print("  ✓ Startup benchmarks complete")
 
         print("Running insertion benchmarks...")
         results["insertion"] = {}
-        vite_insertion = insertion.benchmark_insertion(ViteDriver, iterations)
-        results["insertion"]["vite"] = vite_insertion
+        videre_insertion = insertion.benchmark_insertion(ViteDriver, iterations)
+        results["insertion"]["videre"] = videre_insertion
         print("  ✓ Insertion benchmarks complete")
 
         print("Running movement benchmarks...")
         results["movement"] = {}
-        vite_movement = movement.benchmark_movement(ViteDriver, iterations)
-        results["movement"]["vite"] = vite_movement
+        videre_movement = movement.benchmark_movement(ViteDriver, iterations)
+        results["movement"]["videre"] = videre_movement
         print("  ✓ Movement benchmarks complete")
 
         print("Running file operation benchmarks...")
         results["fileops"] = {}
-        vite_fileops = fileops.benchmark_fileops(ViteDriver, iterations)
-        results["fileops"]["vite"] = vite_fileops
+        videre_fileops = fileops.benchmark_fileops(ViteDriver, iterations)
+        results["fileops"]["videre"] = videre_fileops
         print("  ✓ File operation benchmarks complete")
 
         print("Running exit benchmarks...")
         results["exit"] = {}
-        vite_exit = exit.benchmark_exit(ViteDriver, iterations)
-        results["exit"]["vite"] = vite_exit
+        videre_exit = exit.benchmark_exit(ViteDriver, iterations)
+        results["exit"]["videre"] = videre_exit
         print("  ✓ Exit benchmarks complete")
 
     except Exception as e:
-        print(f"✗ Error benchmarking vite: {e}", file=sys.stderr)
+        print(f"✗ Error benchmarking videre: {e}", file=sys.stderr)
         import traceback
 
         traceback.print_exc()
@@ -170,7 +170,7 @@ def run_benchmarks(iterations: int = 5, skip_nvim: bool = False) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Benchmark vite vs Neovim")
+    parser = argparse.ArgumentParser(description="Benchmark videre vs Neovim")
     parser.add_argument(
         "-i",
         "--iterations",
@@ -181,7 +181,7 @@ def main():
     parser.add_argument(
         "--skip-nvim",
         action="store_true",
-        help="Skip Neovim benchmarks (only test vite)",
+        help="Skip Neovim benchmarks (only test videre)",
     )
 
     args = parser.parse_args()

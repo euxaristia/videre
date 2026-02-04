@@ -9,7 +9,7 @@ from pathlib import Path
 benchmark_dir = Path(__file__).parent
 sys.path.insert(0, str(benchmark_dir))
 
-from drivers.vite_driver import ViteDriver
+from drivers.videre_driver import VidereDriver
 from drivers.nvim_driver import NvimDriver
 from utils.fuzzer import InputFuzzer, FuzzRunner, FuzzConfig
 from utils.debug import setup_debug_logging
@@ -28,8 +28,8 @@ def run_fuzz_benchmark(editor: str, iterations: int = 100, verbose: bool = False
     graceful_shutdown.register_cleanup(recovery_manager.cleanup_failed_processes)
 
     # Select driver
-    if editor == "vite":
-        driver_class = ViteDriver
+    if editor == "videre":
+        driver_class = VidereDriver
     elif editor == "nvim":
         driver_class = NvimDriver
     else:
@@ -108,8 +108,8 @@ def run_stress_tests(editor: str, verbose: bool = False):
     logger = setup_debug_logging(verbose=verbose)
 
     # Select driver
-    if editor == "vite":
-        driver_class = ViteDriver
+    if editor == "videre":
+        driver_class = VidereDriver
     elif editor == "nvim":
         driver_class = NvimDriver
     else:
@@ -172,8 +172,8 @@ def run_behavior_tests(editor: str, verbose: bool = False):
     logger = setup_debug_logging(verbose=verbose)
 
     # Select driver
-    if editor == "vite":
-        driver_class = ViteDriver
+    if editor == "videre":
+        driver_class = VidereDriver
     elif editor == "nvim":
         driver_class = NvimDriver
     else:
@@ -219,8 +219,8 @@ def run_edge_cases(editor: str, verbose: bool = False):
     logger = setup_debug_logging(verbose=verbose)
 
     # Select driver
-    if editor == "vite":
-        driver_class = ViteDriver
+    if editor == "videre":
+        driver_class = VidereDriver
     elif editor == "nvim":
         driver_class = NvimDriver
     else:
@@ -302,7 +302,7 @@ def run_edge_cases(editor: str, verbose: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(description="Fuzz and stress test editors")
-    parser.add_argument("editor", choices=["vite", "nvim"], help="Editor to test")
+    parser.add_argument("editor", choices=["videre", "nvim"], help="Editor to test")
     parser.add_argument(
         "-i",
         "--iterations",

@@ -1,18 +1,18 @@
-.TH VITE 1 "2026-01-25" "vite" "User Commands"
+.TH VIDERE 1 "2026-01-25" "videre" "User Commands"
 .SH NAME
-vite \- a lightning-fast, lightweight vi text editor
+videre \- a lightning-fast, lightweight vi text editor
 .SH SYNOPSIS
-.B vite
+.B videre
 .RI [ file ]
 .SH DESCRIPTION
-.B vite
+.B videre
 is a modal text editor built in pure Swift, bringing the power of vi/Vim modal editing to the terminal with minimal dependencies and maximum performance.
 .PP
 It features true modal editing (Normal, Insert, Visual, and Command modes), classic vi keybindings with modern enhancements, efficient gap buffer text storage, rich motion and operator system, and a clean Neovim-inspired UI.
 .SH ARGUMENTS
 .TP
 .I file
-The file to open. If not specified, vite starts with an empty buffer.
+The file to open. If not specified, videre starts with an empty buffer.
 .SH MODES
 .SS Normal Mode
 Enter with ESC or at startup. Used for navigation and commands.
@@ -123,13 +123,13 @@ Exit visual mode
 .SH EXAMPLES
 .TP
 Open a file:
-.B vite myfile.txt
+.B videre myfile.txt
 .TP
 Start with empty buffer:
-.B vite
+.B videre
 .TP
 Edit a file, go to line 42:
-.B vite myfile.txt
+.B videre myfile.txt
 Then in Normal mode type:
 .B 42G
 .TP
@@ -143,7 +143,7 @@ In Normal mode, copy a line with:
 Then move to desired location and paste with:
 .B p
 .SH ARCHITECTURE
-.B vite
+.B videre
 implements several key components:
 .TP
 .B Gap Buffer
@@ -191,7 +191,7 @@ Run
 .B reset
 or
 .B stty sane
-in your shell. vite restores terminal state on clean exit, but hard kills may leave TTY misconfigured.
+in your shell. videre restores terminal state on clean exit, but hard kills may leave TTY misconfigured.
 .TP
 .B Arrow keys not working?
 Ensure your terminal emits standard escape sequences. Test with
@@ -203,11 +203,11 @@ Your terminal may not support ANSI dim mode. Try a modern terminal: iTerm2, Alac
 .SH ENVIRONMENT
 .TP
 .B PATH
-vite should be in your PATH for easy access. The Makefile installs to ~/.local/bin by default.
+videre should be in your PATH for easy access. The Makefile installs to ~/.local/bin by default.
 .SH FILES
 .TP
 .I file
-The file being edited. vite creates the file if it doesn't exist when using :w to save.
+The file being edited. videre creates the file if it doesn't exist when using :w to save.
 .SH SEE ALSO
 .B vi(1), vim(1), ex(1)
 .SH AUTHOR
@@ -215,4 +215,4 @@ euxaristia
 .SH LICENSE
 Copyright © 2026 euxaristia. All rights reserved.
 .PP
-vite is distributed under the BSD 3-Clause License.
+videre is distributed under the BSD 3-Clause License.

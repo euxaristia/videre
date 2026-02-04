@@ -82,7 +82,7 @@ class RecoveryManager:
         self.logger.info("Cleaning up failed processes")
 
         # Look for common editor processes
-        editor_commands = ["vite", "nvim", "vim", "vi"]
+        editor_commands = ["videre", "nvim", "vim", "vi"]
 
         for cmd in editor_commands:
             try:
@@ -119,7 +119,7 @@ class RecoveryManager:
         import glob
         import tempfile
 
-        temp_patterns = ["/tmp/vite*", "/tmp/nvim*", "/tmp/.vite*", "/tmp/.nvim*"]
+        temp_patterns = ["/tmp/videre*", "/tmp/nvim*", "/tmp/.videre*", "/tmp/.nvim*"]
 
         cleaned_count = 0
         for pattern in temp_patterns:
@@ -229,18 +229,18 @@ class HealthChecker:
     def check_editor_health(self, editor_name: str) -> bool:
         """Check if an editor is available and healthy."""
         try:
-            if editor_name == "vite":
-                # Check if vite binary exists
-                vite_path = (
-                    Path(__file__).parent.parent.parent / ".build" / "release" / "vite"
+            if editor_name == "videre":
+                # Check if videre binary exists
+                videre_path = (
+                    Path(__file__).parent.parent.parent / ".build" / "release" / "videre"
                 )
-                if not vite_path.exists():
-                    self.logger.error(f"vite binary not found at {vite_path}")
+                if not videre_path.exists():
+                    self.logger.error(f"videre binary not found at {videre_path}")
                     return False
 
                 # Try to run --help or similar
                 result = subprocess.run(
-                    [str(vite_path)], capture_output=True, text=True, timeout=3
+                    [str(videre_path)], capture_output=True, text=True, timeout=3
                 )
 
                 # We don't care about exit code, just that it runs
