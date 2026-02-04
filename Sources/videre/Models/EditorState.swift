@@ -50,8 +50,10 @@ class EditorState {
             return
         }
 
-        let directory = (filePath as NSString).deletingLastPathComponent
-        let fileName = (filePath as NSString).lastPathComponent
+        // Pure Swift path operations (avoids NSString bridging overhead)
+        let lastSlash = filePath.lastIndex(of: "/")
+        let directory = lastSlash.map { String(filePath[..<$0]) } ?? ""
+        let fileName = lastSlash.map { String(filePath[filePath.index(after: $0)...]) } ?? filePath
         let searchDir = directory.isEmpty ? "." : directory
 
         // Get branch and status in one go
@@ -99,8 +101,8 @@ class EditorState {
     // Viewport scrolling - the first visible line
     var scrollOffset: Int = 0
 
-    // Mouse interaction state
-    var lastClickTime: Date = Date.distantPast
+    // Mouse interaction state (using Double timestamp for lower overhead)
+    var lastClickTime: Double = 0
     var lastClickPosition: Position? = nil
     var clickCount: Int = 0
     var isDragging: Bool = false

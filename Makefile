@@ -26,6 +26,18 @@ else
 	swift build -c release
 endif
 
+# Static build - faster startup, larger binary, no Swift runtime dependency
+release-static:
+ifeq ($(shell id -u),0)
+	@if [ -n "$(SUDO_USER)" ]; then \
+		sudo -u $(SUDO_USER) swift build -c release -Xswiftc -static-stdlib; \
+	else \
+		swift build -c release -Xswiftc -static-stdlib; \
+	fi
+else
+	swift build -c release -Xswiftc -static-stdlib
+endif
+
 clean:
 	swift package clean
 

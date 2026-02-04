@@ -107,26 +107,50 @@ struct LanguageDefinition {
     }
 }
 
-/// Main syntax highlighter class
+/// Main syntax highlighter class with line caching for performance
 class SyntaxHighlighter {
     private var language: LanguageDefinition?
     private var inBlockComment: Bool = false
+
+    // Line cache for lazy highlighting (line content hash -> highlighted string)
+    private var lineCache: [Int: String] = [:]
+    private var lineCacheKeys: [Int] = []  // LRU tracking
+    private let maxCacheSize = 500  // Max cached lines
 
     static let shared = SyntaxHighlighter()
 
     private init() {}
 
+    /// Clear the highlight cache (call when file changes significantly)
+    func clearCache() {
+        lineCache.removeAll(keepingCapacity: true)
+        lineCacheKeys.removeAll(keepingCapacity: true)
+    }
+
     /// Detect language from file extension
     func detectLanguage(from filePath: String?) -> LanguageDefinition? {
         guard let path = filePath else { return nil }
-        let ext = (path as NSString).pathExtension.lowercased()
+        // Pure Swift path extension (avoids NSString bridging overhead)
+        let ext: String
+        if let lastDot = path.lastIndex(of: "."),
+           let lastSlash = path.lastIndex(of: "/"),
+           lastDot > lastSlash {
+            ext = String(path[path.index(after: lastDot)...]).lowercased()
+        } else if let lastDot = path.lastIndex(of: "."), !path.contains("/") {
+            ext = String(path[path.index(after: lastDot)...]).lowercased()
+        } else {
+            return nil
+        }
         return Languages.all.first { $0.extensions.contains(ext) }
     }
 
     /// Set the current language
     func setLanguage(_ lang: LanguageDefinition?) {
-        self.language = lang
-        self.inBlockComment = false
+        if self.language?.name != lang?.name {
+            self.language = lang
+            self.inBlockComment = false
+            clearCache()  // Clear cache when language changes
+        }
     }
 
     /// Get color for token type
@@ -149,17 +173,43 @@ class SyntaxHighlighter {
         }
     }
 
-    /// Highlight a single line and return colorized string
+    /// Highlight a single line and return colorized string (with caching)
     func highlightLine(_ line: String) -> String {
         guard let lang = language else { return line }
 
-        // Use special markdown highlighting
-        if lang.name == "Markdown" {
-            return highlightMarkdownLine(line)
+        // Skip highlighting for languages without meaningful patterns
+        guard lang.hasHighlighting || lang.name == "Markdown" else { return line }
+
+        // Check cache first (using hashValue for fast lookup)
+        let cacheKey = line.hashValue
+        if let cached = lineCache[cacheKey] {
+            return cached
         }
 
-        // Skip highlighting for languages without meaningful patterns
-        guard lang.hasHighlighting else { return line }
+        // Compute highlighted line
+        let highlighted: String
+        if lang.name == "Markdown" {
+            highlighted = highlightMarkdownLine(line)
+        } else {
+            highlighted = highlightLineUncached(line, lang: lang)
+        }
+
+        // Add to cache with LRU eviction
+        if lineCache.count >= maxCacheSize {
+            // Remove oldest entry
+            if let oldKey = lineCacheKeys.first {
+                lineCache.removeValue(forKey: oldKey)
+                lineCacheKeys.removeFirst()
+            }
+        }
+        lineCache[cacheKey] = highlighted
+        lineCacheKeys.append(cacheKey)
+
+        return highlighted
+    }
+
+    /// Internal uncached highlighting
+    private func highlightLineUncached(_ line: String, lang: LanguageDefinition) -> String {
 
         var result = ""
         var i = line.startIndex

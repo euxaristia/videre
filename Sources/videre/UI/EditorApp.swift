@@ -24,11 +24,130 @@ private func handleResize(_ signal: Int32) {
     terminalResized = true
 }
 
-// MARK: - Display Width Utilities
+/// Fast cross-platform time function (avoids Foundation Date overhead)
+private func currentTime() -> Double {
+    var ts = timespec()
+    clock_gettime(CLOCK_MONOTONIC, &ts)
+    return Double(ts.tv_sec) + Double(ts.tv_nsec) / 1_000_000_000
+}
+
+// MARK: - Display Width Utilities (Optimized with Lookup Tables)
+
+/// Unicode range for width lookup - sorted by start for binary search
+private struct UnicodeRange {
+    let start: UInt32
+    let end: UInt32
+}
+
+/// Zero-width character ranges (sorted by start)
+private let zeroWidthRanges: [UnicodeRange] = [
+    UnicodeRange(start: 0x0300, end: 0x036F),   // Combining Diacritical Marks
+    UnicodeRange(start: 0x200B, end: 0x200F),   // Zero-width space, joiners, marks
+    UnicodeRange(start: 0xFE00, end: 0xFE0F),   // Variation Selectors
+    UnicodeRange(start: 0xE0100, end: 0xE01EF), // Variation Selectors Supplement
+]
+
+/// Wide character ranges (sorted by start for binary search)
+private let wideCharRanges: [UnicodeRange] = [
+    // Sorted by start value for binary search
+    UnicodeRange(start: 0x1100, end: 0x11FF),   // Hangul Jamo
+    UnicodeRange(start: 0x231A, end: 0x231B),   // Watch, Hourglass
+    UnicodeRange(start: 0x23E9, end: 0x23F3),   // Various symbols
+    UnicodeRange(start: 0x23F8, end: 0x23FA),   // Various symbols
+    UnicodeRange(start: 0x25AA, end: 0x25AB),   // Squares
+    UnicodeRange(start: 0x25B6, end: 0x25B6),   // Play button
+    UnicodeRange(start: 0x25C0, end: 0x25C0),   // Reverse button
+    UnicodeRange(start: 0x25FB, end: 0x25FE),   // Squares
+    UnicodeRange(start: 0x2614, end: 0x2615),   // Umbrella, hot beverage
+    UnicodeRange(start: 0x2648, end: 0x2653),   // Zodiac
+    UnicodeRange(start: 0x267F, end: 0x267F),   // Wheelchair
+    UnicodeRange(start: 0x2693, end: 0x2693),   // Anchor
+    UnicodeRange(start: 0x26A1, end: 0x26A1),   // High voltage
+    UnicodeRange(start: 0x26AA, end: 0x26AB),   // Circles
+    UnicodeRange(start: 0x26BD, end: 0x26BE),   // Soccer, baseball
+    UnicodeRange(start: 0x26C4, end: 0x26C5),   // Snowman, sun
+    UnicodeRange(start: 0x26CE, end: 0x26CE),   // Ophiuchus
+    UnicodeRange(start: 0x26D4, end: 0x26D4),   // No entry
+    UnicodeRange(start: 0x26EA, end: 0x26EA),   // Church
+    UnicodeRange(start: 0x26F2, end: 0x26F3),   // Fountain, golf
+    UnicodeRange(start: 0x26F5, end: 0x26F5),   // Sailboat
+    UnicodeRange(start: 0x26FA, end: 0x26FA),   // Tent
+    UnicodeRange(start: 0x26FD, end: 0x26FD),   // Fuel pump
+    UnicodeRange(start: 0x2702, end: 0x2702),   // Scissors
+    UnicodeRange(start: 0x2705, end: 0x2705),   // Check mark
+    UnicodeRange(start: 0x2708, end: 0x270D),   // Various
+    UnicodeRange(start: 0x270F, end: 0x270F),   // Pencil
+    UnicodeRange(start: 0x2712, end: 0x2712),   // Black nib
+    UnicodeRange(start: 0x2714, end: 0x2714),   // Check mark
+    UnicodeRange(start: 0x2716, end: 0x2716),   // X mark
+    UnicodeRange(start: 0x271D, end: 0x271D),   // Latin cross
+    UnicodeRange(start: 0x2721, end: 0x2721),   // Star of David
+    UnicodeRange(start: 0x2728, end: 0x2728),   // Sparkles
+    UnicodeRange(start: 0x2733, end: 0x2734),   // Eight spoked asterisk
+    UnicodeRange(start: 0x2744, end: 0x2744),   // Snowflake
+    UnicodeRange(start: 0x2747, end: 0x2747),   // Sparkle
+    UnicodeRange(start: 0x274C, end: 0x274C),   // Cross mark
+    UnicodeRange(start: 0x274E, end: 0x274E),   // Cross mark
+    UnicodeRange(start: 0x2753, end: 0x2755),   // Question marks
+    UnicodeRange(start: 0x2757, end: 0x2757),   // Exclamation mark
+    UnicodeRange(start: 0x2763, end: 0x2764),   // Heart exclamation, heart
+    UnicodeRange(start: 0x2795, end: 0x2797),   // Plus, minus, divide
+    UnicodeRange(start: 0x27A1, end: 0x27A1),   // Right arrow
+    UnicodeRange(start: 0x27B0, end: 0x27B0),   // Curly loop
+    UnicodeRange(start: 0x27BF, end: 0x27BF),   // Double curly loop
+    UnicodeRange(start: 0x2934, end: 0x2935),   // Arrows
+    UnicodeRange(start: 0x2B05, end: 0x2B07),   // Arrows
+    UnicodeRange(start: 0x2B1B, end: 0x2B1C),   // Squares
+    UnicodeRange(start: 0x2B50, end: 0x2B50),   // Star
+    UnicodeRange(start: 0x2B55, end: 0x2B55),   // Circle
+    UnicodeRange(start: 0x3000, end: 0x303F),   // CJK Symbols and Punctuation
+    UnicodeRange(start: 0x3030, end: 0x3030),   // Wavy dash
+    UnicodeRange(start: 0x303D, end: 0x303D),   // Part alternation mark
+    UnicodeRange(start: 0x3040, end: 0x309F),   // Hiragana
+    UnicodeRange(start: 0x30A0, end: 0x30FF),   // Katakana
+    UnicodeRange(start: 0x3297, end: 0x3297),   // Circled Ideograph Congratulation
+    UnicodeRange(start: 0x3299, end: 0x3299),   // Circled Ideograph Secret
+    UnicodeRange(start: 0x31F0, end: 0x31FF),   // Katakana Phonetic Extensions
+    UnicodeRange(start: 0x3400, end: 0x4DBF),   // CJK Unified Ideographs Extension A
+    UnicodeRange(start: 0x4E00, end: 0x9FFF),   // CJK Unified Ideographs
+    UnicodeRange(start: 0xAC00, end: 0xD7AF),   // Hangul Syllables
+    UnicodeRange(start: 0xF900, end: 0xFAFF),   // CJK Compatibility Ideographs
+    UnicodeRange(start: 0xFF00, end: 0xFFEF),   // Halfwidth and Fullwidth Forms
+    UnicodeRange(start: 0x1F300, end: 0x1F9FF), // Miscellaneous Symbols and Pictographs, Emoticons
+    UnicodeRange(start: 0x1FA00, end: 0x1FAFF), // Chess symbols, extended-A
+    UnicodeRange(start: 0x20000, end: 0x2A6DF), // CJK Unified Ideographs Extension B
+    UnicodeRange(start: 0x2A700, end: 0x2CEAF), // CJK Unified Ideographs Extensions C-F
+    UnicodeRange(start: 0x2F800, end: 0x2FA1F), // CJK Compatibility Ideographs Supplement
+]
+
+/// Binary search to check if value is in any range
+private func isInRanges(_ value: UInt32, _ ranges: [UnicodeRange]) -> Bool {
+    var low = 0
+    var high = ranges.count - 1
+
+    while low <= high {
+        let mid = (low + high) / 2
+        let range = ranges[mid]
+
+        if value < range.start {
+            high = mid - 1
+        } else if value > range.end {
+            low = mid + 1
+        } else {
+            return true  // value is within this range
+        }
+    }
+    return false
+}
 
 /// Calculate the terminal display width of a character
 /// Wide characters (emoji, CJK) take 2 columns, most others take 1
 private func displayWidth(of char: Character) -> Int {
+    // Fast path: ASCII characters are always width 1
+    if let ascii = char.asciiValue {
+        return ascii < 32 ? 0 : 1  // Control chars are 0, printable ASCII is 1
+    }
+
     // Check for Variation Selector-16 (Emoji style) -> Force 2 columns
     if char.unicodeScalars.contains(where: { $0.value == 0xFE0F }) {
         return 2
@@ -37,88 +156,13 @@ private func displayWidth(of char: Character) -> Int {
     guard let scalar = char.unicodeScalars.first else { return 1 }
     let value = scalar.value
 
-    // Zero-width characters (combining marks, zero-width joiners, etc.)
-    if (value >= 0x0300 && value <= 0x036F) ||  // Combining Diacritical Marks
-       (value >= 0x200B && value <= 0x200F) ||  // Zero-width space, joiners, marks
-       (value >= 0xFE00 && value <= 0xFE0F) ||  // Variation Selectors
-       (value >= 0xE0100 && value <= 0xE01EF) { // Variation Selectors Supplement
+    // Zero-width characters (small set, linear search is fine)
+    if isInRanges(value, zeroWidthRanges) {
         return 0
     }
 
-    // Wide characters (2 columns)
-    // Emoji ranges
-    if (value >= 0x1F300 && value <= 0x1F9FF) ||  // Miscellaneous Symbols and Pictographs, Emoticons, etc.
-       (value >= 0x1FA00 && value <= 0x1FAFF) ||  // Chess symbols, extended-A
-       (value >= 0x231A && value <= 0x231B) ||    // Watch, Hourglass
-       (value >= 0x23E9 && value <= 0x23F3) ||    // Various symbols
-       (value >= 0x23F8 && value <= 0x23FA) ||    // Various symbols
-       (value >= 0x25AA && value <= 0x25AB) ||    // Squares
-       (value >= 0x25B6 && value == 0x25B6) ||    // Play button
-       (value >= 0x25C0 && value == 0x25C0) ||    // Reverse button
-       (value >= 0x25FB && value <= 0x25FE) ||    // Squares
-       (value >= 0x2614 && value <= 0x2615) ||    // Umbrella, hot beverage
-       (value >= 0x2648 && value <= 0x2653) ||    // Zodiac
-       (value >= 0x267F && value == 0x267F) ||    // Wheelchair
-       (value >= 0x2693 && value == 0x2693) ||    // Anchor
-       (value >= 0x26A1 && value == 0x26A1) ||    // High voltage
-       (value >= 0x26AA && value <= 0x26AB) ||    // Circles
-       (value >= 0x26BD && value <= 0x26BE) ||    // Soccer, baseball
-       (value >= 0x26C4 && value <= 0x26C5) ||    // Snowman, sun
-       (value >= 0x26CE && value == 0x26CE) ||    // Ophiuchus
-       (value >= 0x26D4 && value == 0x26D4) ||    // No entry
-       (value >= 0x26EA && value == 0x26EA) ||    // Church
-       (value >= 0x26F2 && value <= 0x26F3) ||    // Fountain, golf
-       (value >= 0x26F5 && value == 0x26F5) ||    // Sailboat
-       (value >= 0x26FA && value == 0x26FA) ||    // Tent
-       (value >= 0x26FD && value == 0x26FD) ||    // Fuel pump
-       (value >= 0x2702 && value == 0x2702) ||    // Scissors
-       (value >= 0x2705 && value == 0x2705) ||    // Check mark
-       (value >= 0x2708 && value <= 0x270D) ||    // Various
-       (value >= 0x270F && value == 0x270F) ||    // Pencil
-       (value >= 0x2712 && value == 0x2712) ||    // Black nib
-       (value >= 0x2714 && value == 0x2714) ||    // Check mark
-       (value >= 0x2716 && value == 0x2716) ||    // X mark
-       (value >= 0x271D && value == 0x271D) ||    // Latin cross
-       (value >= 0x2721 && value == 0x2721) ||    // Star of David
-       (value >= 0x2728 && value == 0x2728) ||    // Sparkles
-       (value >= 0x2733 && value <= 0x2734) ||    // Eight spoked asterisk
-       (value >= 0x2744 && value == 0x2744) ||    // Snowflake
-       (value >= 0x2747 && value == 0x2747) ||    // Sparkle
-       (value >= 0x274C && value == 0x274C) ||    // Cross mark
-       (value >= 0x274E && value == 0x274E) ||    // Cross mark
-       (value >= 0x2753 && value <= 0x2755) ||    // Question marks
-       (value >= 0x2757 && value == 0x2757) ||    // Exclamation mark
-       (value >= 0x2763 && value <= 0x2764) ||    // Heart exclamation, heart
-       (value >= 0x2795 && value <= 0x2797) ||    // Plus, minus, divide
-       (value >= 0x27A1 && value == 0x27A1) ||    // Right arrow
-       (value >= 0x27B0 && value == 0x27B0) ||    // Curly loop
-       (value >= 0x27BF && value == 0x27BF) ||    // Double curly loop
-       (value >= 0x2934 && value <= 0x2935) ||    // Arrows
-       (value >= 0x2B05 && value <= 0x2B07) ||    // Arrows
-       (value >= 0x2B1B && value <= 0x2B1C) ||    // Squares
-       (value >= 0x2B50 && value == 0x2B50) ||    // Star
-       (value >= 0x2B55 && value == 0x2B55) ||    // Circle
-       (value >= 0x3030 && value == 0x3030) ||    // Wavy dash
-       (value >= 0x303D && value == 0x303D) ||    // Part alternation mark
-       (value >= 0x3297 && value == 0x3297) ||    // Circled Ideograph Congratulation
-       (value >= 0x3299 && value == 0x3299) {     // Circled Ideograph Secret
-        return 2
-    }
-
-    // CJK characters (2 columns)
-    if (value >= 0x4E00 && value <= 0x9FFF) ||    // CJK Unified Ideographs
-       (value >= 0x3400 && value <= 0x4DBF) ||    // CJK Unified Ideographs Extension A
-       (value >= 0x20000 && value <= 0x2A6DF) ||  // CJK Unified Ideographs Extension B
-       (value >= 0x2A700 && value <= 0x2CEAF) ||  // CJK Unified Ideographs Extensions C-F
-       (value >= 0xF900 && value <= 0xFAFF) ||    // CJK Compatibility Ideographs
-       (value >= 0x2F800 && value <= 0x2FA1F) ||  // CJK Compatibility Ideographs Supplement
-       (value >= 0x3000 && value <= 0x303F) ||    // CJK Symbols and Punctuation
-       (value >= 0xFF00 && value <= 0xFFEF) ||    // Halfwidth and Fullwidth Forms
-       (value >= 0x1100 && value <= 0x11FF) ||    // Hangul Jamo
-       (value >= 0xAC00 && value <= 0xD7AF) ||    // Hangul Syllables
-       (value >= 0x3040 && value <= 0x309F) ||    // Hiragana
-       (value >= 0x30A0 && value <= 0x30FF) ||    // Katakana
-       (value >= 0x31F0 && value <= 0x31FF) {     // Katakana Phonetic Extensions
+    // Wide characters (binary search)
+    if isInRanges(value, wideCharRanges) {
         return 2
     }
 
@@ -140,6 +184,7 @@ private func displayWidth(of string: String) -> Int {
 private func truncateToDisplayWidth(_ string: String, maxWidth: Int) -> String {
     var width = 0
     var result = ""
+    result.reserveCapacity(min(string.count, maxWidth))
 
     for char in string {
         let charWidth = displayWidth(of: char)
@@ -156,12 +201,15 @@ private func truncateToDisplayWidth(_ string: String, maxWidth: Int) -> String {
 /// Calculate display width of string up to a character index
 /// Used for cursor positioning - converts character column to display column
 private func displayWidthUpTo(_ string: String, charIndex: Int) -> Int {
+    guard charIndex > 0 else { return 0 }
     var width = 0
-    for (index, char) in string.enumerated() {
+    var index = 0
+    for char in string {
         if index >= charIndex {
             break
         }
         width += displayWidth(of: char)
+        index += 1
     }
     return width
 }
@@ -169,42 +217,77 @@ private func displayWidthUpTo(_ string: String, charIndex: Int) -> Int {
 /// Main editor application class
 class ViEditor {
     let state: EditorState
-    let inputDispatcher: InputDispatcher
-    let modeManager: ModeManager
-    var normalMode: NormalMode
-    var insertMode: InsertMode
-    var visualMode: VisualMode
-    var commandMode: CommandMode
-    var searchMode: SearchMode
     var shouldExit: Bool = false
     var terminalSize: TerminalSize = TerminalSize()
 
     // ESC spam detection
     private var escPressCount = 0
-    private var lastEscPressTime: Date = Date.distantPast
+    private var lastEscPressTime: Double = 0
+
+    // Lazy mode initialization - only create handlers when first needed
+    private var _inputDispatcher: InputDispatcher?
+    private var _modeManager: ModeManager?
+    private var _normalMode: NormalMode?
+    private var _insertMode: InsertMode?
+    private var _visualMode: VisualMode?
+    private var _commandMode: CommandMode?
+    private var _searchMode: SearchMode?
+
+    var inputDispatcher: InputDispatcher {
+        if _inputDispatcher == nil { _inputDispatcher = InputDispatcher(state: state) }
+        return _inputDispatcher!
+    }
+    var modeManager: ModeManager {
+        if _modeManager == nil { _modeManager = ModeManager(state: state) }
+        return _modeManager!
+    }
+    var normalMode: NormalMode {
+        if _normalMode == nil {
+            _normalMode = NormalMode(state: state)
+            state.normalModeHandler = _normalMode
+        }
+        return _normalMode!
+    }
+    var insertMode: InsertMode {
+        if _insertMode == nil {
+            _insertMode = InsertMode(state: state)
+            state.insertModeHandler = _insertMode
+        }
+        return _insertMode!
+    }
+    var visualMode: VisualMode {
+        if _visualMode == nil {
+            _visualMode = VisualMode(state: state)
+            state.visualModeHandler = _visualMode
+        }
+        return _visualMode!
+    }
+    var commandMode: CommandMode {
+        if _commandMode == nil {
+            _commandMode = CommandMode(state: state)
+            state.commandModeHandler = _commandMode
+        }
+        return _commandMode!
+    }
+    var searchMode: SearchMode {
+        if _searchMode == nil {
+            _searchMode = SearchMode(state: state)
+            state.searchModeHandler = _searchMode
+        }
+        return _searchMode!
+    }
 
     init(state: EditorState) {
         self.state = state
-        self.inputDispatcher = InputDispatcher(state: state)
-        self.modeManager = ModeManager(state: state)
-        self.normalMode = NormalMode(state: state)
-        self.insertMode = InsertMode(state: state)
-        self.visualMode = VisualMode(state: state)
-        self.commandMode = CommandMode(state: state)
-        self.searchMode = SearchMode(state: state)
+        // Defer all mode initialization until first use
+        // Only initialize normal mode and syntax highlighting at startup
+        state.setMode(.normal)
+    }
 
-        // Register mode handlers with state for lifecycle management
-        state.normalModeHandler = normalMode
-        state.insertModeHandler = insertMode
-        state.visualModeHandler = visualMode
-        state.commandModeHandler = commandMode
-        state.searchModeHandler = searchMode
-
-        // Initialize syntax highlighting based on file extension
+    /// Initialize syntax highlighting (called after terminal setup)
+    private func initializeSyntaxHighlighting() {
         let language = SyntaxHighlighter.shared.detectLanguage(from: state.filePath)
         SyntaxHighlighter.shared.setLanguage(language)
-
-        state.setMode(.normal)
     }
 
     func run() {
@@ -216,6 +299,10 @@ class ViEditor {
 
         // Get initial terminal size
         updateTerminalSize()
+
+        // Deferred initialization after terminal is ready
+        initializeSyntaxHighlighting()
+        _ = normalMode  // Initialize normal mode handler
 
         while true {
             // Check if terminal was resized
@@ -236,8 +323,8 @@ class ViEditor {
 
                 // Handle ESC spam detection
                 if char == "\u{1B}" {
-                    let now = Date()
-                    if now.timeIntervalSince(lastEscPressTime) < 0.5 {
+                    let now = currentTime()
+                    if now - lastEscPressTime < 0.5 {
                         escPressCount += 1
                     } else {
                         escPressCount = 1
@@ -497,8 +584,8 @@ class ViEditor {
                     line: bufferLine, column: min(bufferCol, max(0, lineLength - 1)))
 
                 // Handle multi-click detection
-                let now = Date()
-                if now.timeIntervalSince(state.lastClickTime) < 0.5
+                let now = currentTime()
+                if now - state.lastClickTime < 0.5
                     && clickPos == state.lastClickPosition
                 {
                     state.clickCount = (state.clickCount % 3) + 1
