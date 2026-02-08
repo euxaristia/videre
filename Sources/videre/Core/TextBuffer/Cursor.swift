@@ -39,6 +39,15 @@ struct Position: Equatable {
     }
 }
 
+extension Position: Comparable {
+    static func < (lhs: Position, rhs: Position) -> Bool {
+        if lhs.line != rhs.line {
+            return lhs.line < rhs.line
+        }
+        return lhs.column < rhs.column
+    }
+}
+
 /// Cursor with position and movement
 class Cursor {
     var position: Position

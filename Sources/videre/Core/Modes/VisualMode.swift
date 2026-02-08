@@ -101,18 +101,16 @@ class VisualMode: BaseModeHandler {
         let start = startPosition
         let end = state.cursor.position
 
-        var (rangeStart, rangeEnd) =
-            start.line < end.line || (start.line == end.line && start.column < end.column)
-            ? (start, end) : (end, start)
+        // Correctly order start and end positions
+        var (rangeStart, rangeEnd) = (start < end) ? (start, end) : (end, start)
 
         if isLineVisual {
             rangeStart.column = 0
             let lastLineLength = state.buffer.lineLength(rangeEnd.line)
             rangeEnd.column = max(0, lastLineLength - 1)
         } else if isBlockVisual {
-            // In block mode, return corners of the rectangular selection
-            // The actual block operations will need special handling in each operator
-            // For now, just return the corners
+            // Block mode logic (rectangular)
+            // For now, return start/end as corners
         }
 
         return (rangeStart, rangeEnd)

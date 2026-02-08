@@ -10,6 +10,21 @@ enum EditorMode {
     case search
 }
 
+enum MenuItem: String, CaseIterable {
+    case cut = "Cut"
+    case copy = "Copy"
+    case paste = "Paste"
+    case delete = "Delete"
+    case selectAll = "Select All"
+}
+
+struct ContextMenu {
+    var position: (row: Int, col: Int)
+    var items: [MenuItem] = [.cut, .copy, .paste, .delete, .selectAll]
+    var selectedIndex: Int = 0
+    var hoveredIndex: Int? = nil
+}
+
 /// Central state container for the editor
 class EditorState {
     var buffer: TextBuffer
@@ -40,6 +55,9 @@ class EditorState {
     var matchingBracketPosition: Position? = nil
     var isWaitingForEnter: Bool = false
     var multiLineMessage: [String] = []
+    
+    // Context Menu
+    var contextMenu: ContextMenu? = nil
 
     // git state
     var gitStatus: String = ""

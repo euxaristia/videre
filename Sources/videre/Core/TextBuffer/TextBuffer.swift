@@ -214,6 +214,23 @@ class TextBuffer {
         return nil
     }
 
+    // MARK: - Compatibility / Convenience
+
+    func getText(in range: ClosedRange<Position>) -> String {
+        let start = range.lowerBound
+        let end = range.upperBound
+        
+        // Adjust end for inclusive selection (Visual Mode usually includes the character under cursor)
+        var inclusiveEnd = end
+        inclusiveEnd.column += 1
+        
+        return substring(from: start, to: inclusiveEnd)
+    }
+
+    func insertText(_ text: String, at position: Position) {
+        insertString(text, at: position)
+    }
+
     // MARK: - Indentation
 
     /// Add indentation (spaces) to a line

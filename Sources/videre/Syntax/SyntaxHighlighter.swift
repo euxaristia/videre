@@ -18,8 +18,8 @@ enum SyntaxColor: String {
     case tag = "\u{001B}[38;5;167m"  // Red for HTML/XML tags
     // Search highlight - tan/khaki background with black text (like neovim)
     case searchMatch = "\u{001B}[30;48;5;179m"  // Black text on tan/khaki background
-    // Visual selection - dark grey background (like neovim)
-    case visualSelection = "\u{001B}[48;5;242m"
+    // Visual selection - Use Inverse Video for maximum compatibility
+    case visualSelection = "\u{001B}[7m"
     // Bracket matching - light grey background (like neovim)
     case bracketMatch = "\u{001B}[48;5;248m"
     // Markdown-specific colors (using unique codes)

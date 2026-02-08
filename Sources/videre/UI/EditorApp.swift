@@ -214,6 +214,12 @@ private func displayWidthUpTo(_ string: String, charIndex: Int) -> Int {
     return width
 }
 
+enum MouseButton {
+    case left
+    case right
+    case other
+}
+
 /// Main editor application class
 class ViEditor {
     let state: EditorState
@@ -279,8 +285,13 @@ class ViEditor {
 
     init(state: EditorState) {
         self.state = state
-        // Defer all mode initialization until first use
-        // Only initialize normal mode and syntax highlighting at startup
+        // Initialize all mode handlers at startup to ensure mouse/etc work immediately
+        _ = normalMode
+        _ = insertMode
+        _ = visualMode
+        _ = commandMode
+        _ = searchMode
+        
         state.setMode(.normal)
     }
 
@@ -334,10 +345,22 @@ class ViEditor {
                     if escPressCount >= 5 {
                         state.showExitHint = true
                     }
+                    // Close context menu on ESC
+                    if state.contextMenu != nil {
+                        state.contextMenu = nil
+                        state.updateStatusMessage()
+                        continue
+                    }
                 } else if char != Character(UnicodeScalar(0)) {
                     // Any other key clears the hint and count
                     escPressCount = 0
                     state.showExitHint = false
+                    
+                    // Close context menu on any key press
+                    if state.contextMenu != nil {
+                        state.contextMenu = nil
+                        state.updateStatusMessage()
+                    }
                 }
 
                 let keyEvent = KeyEvent(character: char)
@@ -380,8 +403,8 @@ class ViEditor {
 
         // Enter alternate screen buffer (saves current terminal content)
         print("\u{001B}[?1049h", terminator: "")
-        // Enable mouse tracking (Button Event mode for dragging)
-        print("\u{001B}[?1002h\u{001B}[?1006h", terminator: "")
+        // Enable mouse tracking (Any Event mode for hover)
+        print("\u{001B}[?1003h\u{001B}[?1006h", terminator: "")
         // Clear screen and show cursor
         print("\u{001B}[2J", terminator: "")
         print("\u{001B}[H", terminator: "")
@@ -397,7 +420,7 @@ class ViEditor {
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
         // Disable mouse tracking
-        print("\u{001B}[?1006l\u{001B}[?1002l", terminator: "")
+        print("\u{001B}[?1006l\u{001B}[?1003l", terminator: "")
         // Leave alternate screen buffer (restores original terminal content)
         print("\u{001B}[?1049l", terminator: "")
         fflush(stdout)
@@ -506,29 +529,40 @@ class ViEditor {
             seq.append(char)
             if char == "m" || char == "M" { break }
         }
-
+        
         // Format is <button>;<x>;<y><m/M>
         let parts = seq.dropLast().split(separator: ";")
         guard parts.count == 3,
-            let button = Int(parts[0]),
+            let buttonCode = Int(parts[0]),
             let x = Int(parts[1]),
             let y = Int(parts[2])
         else { return nil }
 
         let isRelease = seq.last == "m"
-        if button == 0 && !isRelease {
+        
+        // Button mapping
+        // 0: Left, 1: Middle, 2: Right, 32: Drag, 64: Wheel Up, 65: Wheel Down
+        // Note: SGR mode adds 32 to drag, but sometimes it is reported as 32 directly or button+32
+        
+        if buttonCode == 0 && !isRelease {
             // Left click press
-            handleMouseClick(x: x, y: y)
-        } else if button == 0 && isRelease {
+            handleMouseClick(x: x, y: y, button: .left)
+        } else if buttonCode == 2 && !isRelease {
+            // Right click press
+            handleMouseClick(x: x, y: y, button: .right)
+        } else if buttonCode == 0 && isRelease {
             // Left click release
             state.isDragging = false
-        } else if button == 32 {
-            // Drag event (Left button moved)
+        } else if buttonCode == 32 || buttonCode == 34 { // 32 is Left Drag, 34 is Right Drag (rare)
+            // Drag event
             handleMouseDrag(x: x, y: y)
-        } else if button == 64 {
+        } else if buttonCode == 35 {
+            // Motion without button pressed (Hover)
+            handleMouseMove(x: x, y: y)
+        } else if buttonCode == 64 {
             // Wheel Up
             handleMouseScroll(delta: -3)
-        } else if button == 65 {
+        } else if buttonCode == 65 {
             // Wheel Down
             handleMouseScroll(delta: 3)
         }
@@ -536,7 +570,31 @@ class ViEditor {
         return nil
     }
 
+    private func handleMouseMove(x: Int, y: Int) {
+        if var menu = state.contextMenu {
+            let r = menu.position.row
+            let c = menu.position.col
+            let width = 20
+            let height = menu.items.count + 2
+            
+            if y >= r + 1 && y < r + height - 1 && x >= c && x < c + width {
+                let itemIdx = y - r - 1
+                if itemIdx >= 0 && itemIdx < menu.items.count {
+                    state.contextMenu?.hoveredIndex = itemIdx
+                } else {
+                    state.contextMenu?.hoveredIndex = nil
+                }
+            } else {
+                state.contextMenu?.hoveredIndex = nil
+            }
+        }
+    }
+
     private func handleMouseScroll(delta: Int) {
+        if state.contextMenu != nil {
+            state.contextMenu = nil // Close menu on scroll
+        }
+
         let availableLines = max(1, Int(terminalSize.rows) - 2)
         let totalLines = state.buffer.lineCount
 
@@ -569,7 +627,43 @@ class ViEditor {
         }
     }
 
-    private func handleMouseClick(x: Int, y: Int) {
+    private func handleMouseClick(x: Int, y: Int, button: MouseButton = .left) {
+        // Handle Context Menu Interaction
+        if let menu = state.contextMenu {
+            let menuRow = menu.position.row
+            let menuCol = menu.position.col
+            let width = 20 // Fixed width for now
+            let height = menu.items.count + 2
+            
+            // Check if click is inside menu
+            if y >= menuRow && y < menuRow + height && x >= menuCol && x < menuCol + width {
+                if button == .left {
+                    let clickedItemIndex = y - menuRow - 1 // -1 for border
+                    if clickedItemIndex >= 0 && clickedItemIndex < menu.items.count {
+                        handleMenuAction(menu.items[clickedItemIndex])
+                    }
+                }
+                return // Consume click
+            } else {
+                // Click outside menu: close it
+                state.contextMenu = nil
+                state.updateStatusMessage()
+                
+                // If right click, open new menu at new location
+                if button == .right {
+                    state.contextMenu = ContextMenu(position: (row: y, col: x))
+                    return
+                }
+                
+                // If left click, fall through to normal handling (move cursor)
+            }
+        } else if button == .right {
+            // No menu open, Right click -> Open Menu
+            state.contextMenu = ContextMenu(position: (row: y, col: x))
+            state.updateStatusMessage()
+            return
+        }
+
         let terminalRows = Int(terminalSize.rows)
         let gutterWidth = String(state.buffer.lineCount).count
 
@@ -604,6 +698,10 @@ class ViEditor {
                         state.setMode(.normal)
                     }
                     state.isDragging = true
+                    // Ensure the start position for dragging is captured immediately
+                    if let visualHandler = state.visualModeHandler as? VisualMode {
+                        visualHandler.startPosition = clickPos
+                    }
                 case 2:
                     // Double click: select word
                     state.selectWord(at: clickPos)
@@ -621,9 +719,82 @@ class ViEditor {
             }
         }
     }
+    
+    private func handleMenuAction(_ item: MenuItem) {
+        switch item {
+        case .copy:
+            if state.currentMode == .visual || state.currentMode == .visualLine {
+                // Get selected text
+                if let visualHandler = state.visualModeHandler as? VisualMode {
+                    let (start, end) = visualHandler.selectionRange()
+                    let text = state.buffer.getText(in: start...end)
+                    state.registerManager.set("+", .characters(text)) // + is system clipboard
+                    state.statusMessage = "Copied to system clipboard"
+                }
+            } else {
+                state.statusMessage = "No selection to copy"
+            }
+        case .cut:
+             if state.currentMode == .visual || state.currentMode == .visualLine {
+                if let visualHandler = state.visualModeHandler as? VisualMode {
+                    let (start, end) = visualHandler.selectionRange()
+                    let text = state.buffer.getText(in: start...end)
+                    state.registerManager.set("+", .characters(text))
+                    // Delete text
+                    // Need to implement delete range or use replace
+                    // Since TextBuffer methods might be limited, we can use replaceRange with empty string
+                    state.buffer.replaceRange(from: start, to: end, with: "")
+                    state.cursor.move(to: start)
+                    state.setMode(.normal)
+                    state.statusMessage = "Cut to system clipboard"
+                }
+            } else {
+                state.statusMessage = "No selection to cut"
+            }
+        case .paste:
+            if let content = state.registerManager.get("+") {
+                switch content {
+                case .characters(let text):
+                    state.buffer.insertText(text, at: state.cursor.position)
+                    state.statusMessage = "Pasted from system clipboard"
+                case .lines(let lines):
+                     // Handle line paste if needed, for now join
+                    state.buffer.insertText(lines.joined(separator: "\n"), at: state.cursor.position)
+                    state.statusMessage = "Pasted lines from system clipboard"
+                }
+            } else {
+                 state.statusMessage = "Clipboard empty"
+            }
+            state.setMode(.normal)
+        case .delete:
+            if state.currentMode == .visual || state.currentMode == .visualLine {
+                if let visualHandler = state.visualModeHandler as? VisualMode {
+                    let (start, end) = visualHandler.selectionRange()
+                    state.buffer.replaceRange(from: start, to: end, with: "")
+                    state.cursor.move(to: start)
+                    state.setMode(.normal)
+                }
+            }
+        case .selectAll:
+            state.cursor.moveToBeginningOfFile()
+            state.setMode(.visual)
+            if let visualHandler = state.visualModeHandler as? VisualMode {
+                visualHandler.startPosition = state.cursor.position
+            }
+            state.cursor.moveToEndOfFile(state.buffer.lineCount - 1)
+        }
+        
+        // Close menu
+        state.contextMenu = nil
+    }
 
     private func handleMouseDrag(x: Int, y: Int) {
         guard state.isDragging else { return }
+        
+        // Close menu if dragging
+        if state.contextMenu != nil {
+            state.contextMenu = nil
+        }
 
         let gutterWidth = String(state.buffer.lineCount).count
 
@@ -637,9 +808,11 @@ class ViEditor {
 
         // If not already in visual mode, enter visual mode
         if state.currentMode == .normal {
+            // Get the position where the drag started (which was set in handleMouseClick)
+            let startPos = (state.visualModeHandler as? VisualMode)?.startPosition ?? state.cursor.position
             state.setMode(.visual)
             if let visualHandler = state.visualModeHandler as? VisualMode {
-                visualHandler.startPosition = state.cursor.position
+                visualHandler.startPosition = startPos
             }
         }
 
@@ -843,6 +1016,9 @@ class ViEditor {
             print(state.statusMessage, terminator: "")
         }
         print("\u{001B}[K", terminator: "")  // Clear rest of line
+        
+        // Render Context Menu (Bubble)
+        renderContextMenu()
 
         // Position the real terminal cursor
         if state.currentMode == .command {
@@ -886,6 +1062,40 @@ class ViEditor {
         print("\u{001B}[?25h", terminator: "")
 
         fflush(stdout)
+    }
+    
+    private func renderContextMenu() {
+        guard let menu = state.contextMenu else { return }
+        
+        let r = menu.position.row
+        let c = menu.position.col
+        let width = 20
+        
+        // Background: Dark Grey (236), Text: White (255)
+        let bg = "\u{001B}[48;5;236m"
+        let fg = "\u{001B}[38;5;255m"
+        let reset = "\u{001B}[0m"
+        
+        // Top Border
+        print("\u{001B}[\(r);\(c)H", terminator: "")
+        print(bg + fg + "┌" + String(repeating: "─", count: width - 2) + "┐" + reset)
+        
+        // Items
+        for (i, item) in menu.items.enumerated() {
+            print("\u{001B}[\(r + i + 1);\(c)H", terminator: "")
+            let label = item.rawValue
+            let padding = width - 2 - label.count
+            
+            let isHovered = menu.hoveredIndex == i
+            let itemBg = isHovered ? "\u{001B}[48;5;248m" : bg // Light grey if hovered
+            let itemFg = isHovered ? "\u{001B}[30m" : fg      // Black text if hovered
+            
+            print(itemBg + itemFg + "│ " + label + String(repeating: " ", count: max(0, padding - 1)) + "│" + reset)
+        }
+        
+        // Bottom Border
+        print("\u{001B}[\(r + menu.items.count + 1);\(c)H", terminator: "")
+        print(bg + fg + "└" + String(repeating: "─", count: width - 2) + "┘" + reset)
     }
 
     private func renderWelcomeMessage(availableLines: Int) {
@@ -1077,7 +1287,7 @@ class ViEditor {
         return result
     }
 
-    private func applySelectionHighlighting(
+    func applySelectionHighlighting(
         to highlighted: String, line: Int, raw: String, start: Position, end: Position
     ) -> String {
         // Find if this line is within the selection range
@@ -1086,14 +1296,15 @@ class ViEditor {
         var result = ""
         var rawIndex = raw.startIndex
         var highlightedIndex = highlighted.startIndex
-
-        // Initial background if start of selection is at the beginning of this line
-        if isSelected(line: line, col: 0, start: start, end: end) {
+        
+        // Initial state
+        var currentlyInSelection = isSelected(line: line, col: 0, start: start, end: end)
+        if currentlyInSelection {
             result += SyntaxColor.visualSelection.rawValue
         }
 
-        while rawIndex < raw.endIndex && highlightedIndex < highlighted.endIndex {
-            // Skip ANSI escape sequences in highlighted string
+        while highlightedIndex < highlighted.endIndex {
+            // Check for ANSI escape sequences in highlighted string
             if highlighted[highlightedIndex] == "\u{001B}" {
                 var escEnd = highlighted.index(after: highlightedIndex)
                 while escEnd < highlighted.endIndex {
@@ -1108,50 +1319,43 @@ class ViEditor {
                 result += escSeq
 
                 // If the escape sequence was a reset, re-apply selection background if we're still in selection
-                if escSeq == SyntaxColor.reset.rawValue || escSeq == "\u{001B}[0m" {
-                    let col = raw.distance(from: raw.startIndex, to: rawIndex)
-                    if isSelected(line: line, col: col, start: start, end: end) {
-                        result += SyntaxColor.visualSelection.rawValue
-                    }
+                if currentlyInSelection {
+                    result += SyntaxColor.visualSelection.rawValue
                 }
 
                 highlightedIndex = escEnd
                 continue
             }
 
-            let col = raw.distance(from: raw.startIndex, to: rawIndex)
-            let selected = isSelected(line: line, col: col, start: start, end: end)
-
-            // Check if selection changed state
-            if col > 0 {
-                let prevSelected = isSelected(line: line, col: col - 1, start: start, end: end)
-                if selected && !prevSelected {
+            // Normal character
+            if rawIndex < raw.endIndex {
+                let col = raw.distance(from: raw.startIndex, to: rawIndex)
+                let selected = isSelected(line: line, col: col, start: start, end: end)
+                
+                if selected && !currentlyInSelection {
                     result += SyntaxColor.visualSelection.rawValue
-                } else if !selected && prevSelected {
+                    currentlyInSelection = true
+                } else if !selected && currentlyInSelection {
                     result += SyntaxColor.reset.rawValue
+                    currentlyInSelection = false
                 }
+                
+                result += String(highlighted[highlightedIndex])
+                rawIndex = raw.index(after: rawIndex)
+            } else {
+                result += String(highlighted[highlightedIndex])
             }
-
-            result += String(highlighted[highlightedIndex])
-
-            rawIndex = raw.index(after: rawIndex)
+            
             highlightedIndex = highlighted.index(after: highlightedIndex)
         }
 
-        // Append remaining
-        if highlightedIndex < highlighted.endIndex {
-            result += String(highlighted[highlightedIndex...])
-        }
-
-        // Always reset at the end of the line if we were selecting
-        if isSelected(line: line, col: max(0, raw.count - 1), start: start, end: end) {
-            result += SyntaxColor.reset.rawValue
-        }
+        // Always reset at the end of the line
+        result += SyntaxColor.reset.rawValue
 
         return result
     }
 
-    private func isSelected(line: Int, col: Int, start: Position, end: Position) -> Bool {
+    func isSelected(line: Int, col: Int, start: Position, end: Position) -> Bool {
         if line < start.line || line > end.line { return false }
         if line == start.line && line == end.line {
             return col >= start.column && col <= end.column
