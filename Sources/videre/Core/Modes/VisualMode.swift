@@ -3,10 +3,14 @@ import Foundation
 /// Handler for Visual mode
 class VisualMode: BaseModeHandler {
     var startPosition: Position = Position()
+    var forcedEndPosition: Position? = nil
     var isLineVisual: Bool = false
     var isBlockVisual: Bool = false
 
     override func handleInput(_ char: Character) -> Bool {
+        // Any input clears the forced selection and makes it follow the cursor again
+        forcedEndPosition = nil
+        
         switch char {
         case "\u{1B}", "\u{03}":
             // Escape or Ctrl+C - return to normal mode
@@ -95,11 +99,12 @@ class VisualMode: BaseModeHandler {
 
     override func exit() {
         startPosition = Position()
+        forcedEndPosition = nil
     }
 
     func selectionRange() -> (Position, Position) {
         let start = startPosition
-        let end = state.cursor.position
+        let end = forcedEndPosition ?? state.cursor.position
 
         // Correctly order start and end positions
         var (rangeStart, rangeEnd) = (start < end) ? (start, end) : (end, start)

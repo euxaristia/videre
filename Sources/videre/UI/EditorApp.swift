@@ -696,6 +696,8 @@ class ViEditor {
                     state.cursor.move(to: clickPos)
                     if state.currentMode != .normal {
                         state.setMode(.normal)
+                    } else if let visualHandler = state.visualModeHandler as? VisualMode {
+                        visualHandler.forcedEndPosition = nil
                     }
                     state.isDragging = true
                     // Ensure the start position for dragging is captured immediately
@@ -776,12 +778,13 @@ class ViEditor {
                 }
             }
         case .selectAll:
-            state.cursor.moveToBeginningOfFile()
             state.setMode(.visual)
             if let visualHandler = state.visualModeHandler as? VisualMode {
-                visualHandler.startPosition = state.cursor.position
+                visualHandler.startPosition = Position(line: 0, column: 0)
+                let lastLine = max(0, state.buffer.lineCount - 1)
+                let lastLineLength = state.buffer.lineLength(lastLine)
+                visualHandler.forcedEndPosition = Position(line: lastLine, column: max(0, lastLineLength - 1))
             }
-            state.cursor.moveToEndOfFile(state.buffer.lineCount - 1)
         }
         
         // Close menu
