@@ -571,14 +571,14 @@ class ViEditor {
     }
 
     private func handleMouseMove(x: Int, y: Int) {
-        if var menu = state.contextMenu {
+        if let menu = state.contextMenu {
             let r = menu.position.row
             let c = menu.position.col
             let width = 20
-            let height = menu.items.count + 2
+            let height = menu.items.count
             
-            if y >= r + 1 && y < r + height - 1 && x >= c && x < c + width {
-                let itemIdx = y - r - 1
+            if y >= r && y < r + height && x >= c && x < c + width {
+                let itemIdx = y - r
                 if itemIdx >= 0 && itemIdx < menu.items.count {
                     state.contextMenu?.hoveredIndex = itemIdx
                 } else {
@@ -633,12 +633,12 @@ class ViEditor {
             let menuRow = menu.position.row
             let menuCol = menu.position.col
             let width = 20 // Fixed width for now
-            let height = menu.items.count + 2
+            let height = menu.items.count
             
             // Check if click is inside menu
             if y >= menuRow && y < menuRow + height && x >= menuCol && x < menuCol + width {
                 if button == .left {
-                    let clickedItemIndex = y - menuRow - 1 // -1 for border
+                    let clickedItemIndex = y - menuRow
                     if clickedItemIndex >= 0 && clickedItemIndex < menu.items.count {
                         handleMenuAction(menu.items[clickedItemIndex])
                     }
@@ -1076,26 +1076,18 @@ class ViEditor {
         let fg = "\u{001B}[38;5;255m"
         let reset = "\u{001B}[0m"
         
-        // Top Border
-        print("\u{001B}[\(r);\(c)H", terminator: "")
-        print(bg + fg + "┌" + String(repeating: "─", count: width - 2) + "┐" + reset)
-        
         // Items
         for (i, item) in menu.items.enumerated() {
-            print("\u{001B}[\(r + i + 1);\(c)H", terminator: "")
-            let label = item.rawValue
-            let padding = width - 2 - label.count
+            print("\u{001B}[\(r + i);\(c)H", terminator: "")
+            let label = " " + item.rawValue
+            let padding = width - label.count
             
             let isHovered = menu.hoveredIndex == i
-            let itemBg = isHovered ? "\u{001B}[48;5;248m" : bg // Light grey if hovered
+            let itemBg = isHovered ? "\u{001B}[48;5;255m" : bg // White if hovered
             let itemFg = isHovered ? "\u{001B}[30m" : fg      // Black text if hovered
             
-            print(itemBg + itemFg + "│ " + label + String(repeating: " ", count: max(0, padding - 1)) + "│" + reset)
+            print(itemBg + itemFg + label + String(repeating: " ", count: max(0, padding)) + reset)
         }
-        
-        // Bottom Border
-        print("\u{001B}[\(r + menu.items.count + 1);\(c)H", terminator: "")
-        print(bg + fg + "└" + String(repeating: "─", count: width - 2) + "┘" + reset)
     }
 
     private func renderWelcomeMessage(availableLines: Int) {
