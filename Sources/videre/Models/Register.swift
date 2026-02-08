@@ -50,8 +50,14 @@ private struct SystemClipboard {
         do {
             try process.run()
             if let data = input.data(using: .utf8) {
-                try pipe.fileHandleForWriting.write(contentsOf: data)
-                try pipe.fileHandleForWriting.closeFile()
+                let fh = pipe.fileHandleForWriting
+                if #available(macOS 10.15.4, iOS 13.4, watchOS 6.2, tvOS 13.4, *) {
+                    try fh.write(contentsOf: data)
+                    try fh.close()
+                } else {
+                    fh.write(data)
+                    fh.closeFile()
+                }
             }
             process.waitUntilExit()
             return process.terminationStatus == 0
