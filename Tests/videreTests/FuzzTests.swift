@@ -1,5 +1,4 @@
-import XCTest
-
+import Testing
 @testable import videre
 
 /// Port of the Python InputFuzzer logic to Swift
@@ -209,13 +208,6 @@ class InputFuzzer {
                     description: "Basic edit keys should not exit"))
         }
 
-        // Ctrl keys should not exit
-        for char in "abdfglnpruvxz" {
-            // We'd map these to control codes if we had a full mapper, but for now check known ones
-            // \u{01} is Ctrl+A, etc.
-            // Let's just check the ones we defined in specialKeys for now to avoid complexity
-        }
-
         return tests
     }
 }
@@ -248,9 +240,9 @@ struct AnyRandomNumberGenerator: RandomNumberGenerator {
     }
 }
 
-final class FuzzTests: XCTestCase {
+struct FuzzTests {
 
-    func testFuzzing() {
+    @Test func fuzzing() {
         let fuzzer = InputFuzzer()
         let iterations = 10
 
@@ -261,7 +253,7 @@ final class FuzzTests: XCTestCase {
         }
     }
 
-    func testEdgeCases() {
+    @Test func edgeCases() {
         let fuzzer = InputFuzzer()
         let cases = fuzzer.generateEdgeCases()
 
@@ -296,11 +288,9 @@ final class FuzzTests: XCTestCase {
         state.currentMode = .normal
 
         return state
-        // In a real fuzzer we might check invariants here
-        // e.g. state.cursor.position is valid
     }
 
-    func testStress() {
+    @Test func stress() {
         let fuzzer = InputFuzzer()
         let sequences = fuzzer.generateStressSequences()
 
@@ -310,7 +300,7 @@ final class FuzzTests: XCTestCase {
         }
     }
 
-    func testBehavior() {
+    @Test func behavior() {
         let fuzzer = InputFuzzer()
         let tests = fuzzer.generateBehaviorTests()
 
@@ -320,7 +310,7 @@ final class FuzzTests: XCTestCase {
         }
     }
 
-    func testSpecializedGenerators() {
+    @Test func specializedGenerators() {
         let fuzzer = InputFuzzer()
 
         print("Running movement sequence")
@@ -343,8 +333,7 @@ final class FuzzTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(
-            state.shouldExit, test.shouldExit,
+        #expect(state.shouldExit == test.shouldExit,
             "Test failed: \(test.name) - \(test.description). shouldExit was \(state.shouldExit)")
     }
 
@@ -365,9 +354,6 @@ final class FuzzTests: XCTestCase {
             case .search:
                 _ = state.searchModeHandler?.handleInput(char)
             }
-
-            // In a real fuzzer we might check invariants here
-            // e.g. state.cursor.position is valid
         }
     }
 }
