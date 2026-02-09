@@ -303,6 +303,12 @@ class ViEditor {
 
     func run() {
         setupTerminal()
+        
+        // Ensure cleanup happens on crash/force-exit
+        SignalHandler.register { [weak self] in
+            self?.restoreTerminal()
+        }
+        
         defer { restoreTerminal() }
 
         // Set up signal handler for terminal resize
@@ -412,7 +418,7 @@ class ViEditor {
         fflush(stdout)
     }
 
-    private func restoreTerminal() {
+    func restoreTerminal() {
         // Restore canonical mode and echo
         var settings = termios()
         tcgetattr(STDIN_FILENO, &settings)

@@ -1,5 +1,11 @@
 import Foundation
 
+#if os(Linux)
+import Glibc
+#else
+import Darwin
+#endif
+
 /// Register content type
 enum RegisterContent {
     case characters(String)
@@ -36,33 +42,66 @@ private struct SystemClipboard {
     }
 
     private static func runCommand(_ command: String, args: [String], input: String) -> Bool {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [command] + args
-
-        let inPipe = Pipe()
-        process.standardInput = inPipe
+        var pid: pid_t = 0
+        let argv: [String] = [command] + args
+        let cArgs = argv.map { $0.withCString(strdup) } + [nil]
         
-        // Silence output by redirecting to /dev/null
-        let devNull = try? FileHandle(forWritingTo: URL(fileURLWithPath: "/dev/null"))
-        process.standardOutput = devNull
-        process.standardError = devNull
-
-        do {
-            try process.run()
+        // Pass environment explicitly to ensure Wayland/X11 vars are present
+        let env = ProcessInfo.processInfo.environment
+        let cEnv = env.map { "\($0.key)=\($0.value)".withCString(strdup) } + [nil]
+        
+        #if os(Linux)
+        var fileActions = posix_spawn_file_actions_t()
+        #else
+        var fileActions: posix_spawn_file_actions_t? = nil
+        #endif
+        
+        posix_spawn_file_actions_init(&fileActions)
+        
+        var pipeFds: [Int32] = [0, 0]
+        _ = pipeFds.withUnsafeMutableBufferPointer { pipe($0.baseAddress!) }
+        let readFd = pipeFds[0]
+        let writeFd = pipeFds[1]
+        
+        // Setup stdin pipe
+        posix_spawn_file_actions_adddup2(&fileActions, readFd, 0)
+        posix_spawn_file_actions_addclose(&fileActions, writeFd)
+        
+        // Redirect stdout/stderr to /dev/null
+        let devNull = open("/dev/null", O_WRONLY)
+        posix_spawn_file_actions_adddup2(&fileActions, devNull, 1)
+        posix_spawn_file_actions_adddup2(&fileActions, devNull, 2)
+        
+        // Use posix_spawnp to search PATH
+        let result = posix_spawnp(&pid, command, &fileActions, nil, 
+            cArgs.map { $0.map(UnsafeMutablePointer.init) }, 
+            cEnv.map { $0.map(UnsafeMutablePointer.init) })
+            
+        close(readFd)
+        close(devNull)
+        
+        if result == 0 {
             if let data = input.data(using: .utf8) {
-                let fh = inPipe.fileHandleForWriting
-                if #available(macOS 10.15.4, iOS 13.4, watchOS 6.2, tvOS 13.4, *) {
-                    try fh.write(contentsOf: data)
-                    try fh.close()
-                } else {
-                    fh.write(data)
-                    fh.closeFile()
+                data.withUnsafeBytes { buffer in
+                    if let base = buffer.baseAddress {
+                        _ = write(writeFd, base, buffer.count)
+                    }
                 }
             }
-            process.waitUntilExit()
-            return process.terminationStatus == 0
-        } catch {
+            close(writeFd)
+            
+            var status: Int32 = 0
+            waitpid(pid, &status, 0)
+            
+            cArgs.compactMap { $0 }.forEach { free($0) }
+            cEnv.compactMap { $0 }.forEach { free($0) }
+            posix_spawn_file_actions_destroy(&fileActions)
+            
+            return status == 0
+        } else {
+            cArgs.compactMap { $0 }.forEach { free($0) }
+            cEnv.compactMap { $0 }.forEach { free($0) }
+            posix_spawn_file_actions_destroy(&fileActions)
             return false
         }
     }
