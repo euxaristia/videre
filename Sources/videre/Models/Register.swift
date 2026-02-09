@@ -40,17 +40,18 @@ private struct SystemClipboard {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [command] + args
 
-        let pipe = Pipe()
-        process.standardInput = pipe
+        let inPipe = Pipe()
+        process.standardInput = inPipe
         
-        // Silence output
-        process.standardOutput = Pipe()
-        process.standardError = Pipe()
+        // Silence output by redirecting to /dev/null
+        let devNull = try? FileHandle(forWritingTo: URL(fileURLWithPath: "/dev/null"))
+        process.standardOutput = devNull
+        process.standardError = devNull
 
         do {
             try process.run()
             if let data = input.data(using: .utf8) {
-                let fh = pipe.fileHandleForWriting
+                let fh = inPipe.fileHandleForWriting
                 if #available(macOS 10.15.4, iOS 13.4, watchOS 6.2, tvOS 13.4, *) {
                     try fh.write(contentsOf: data)
                     try fh.close()
@@ -73,15 +74,16 @@ private struct SystemClipboard {
 
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe() // Silence error
+        process.standardError = try? FileHandle(forWritingTo: URL(fileURLWithPath: "/dev/null"))
 
         do {
             try process.run()
+            
+            // Read data before waiting for exit to avoid deadlock on full pipe
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             
             guard process.terminationStatus == 0 else { return nil }
-            
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             return String(data: data, encoding: .utf8)
         } catch {
             return nil

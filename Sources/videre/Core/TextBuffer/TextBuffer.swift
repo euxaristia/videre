@@ -59,8 +59,15 @@ class TextBuffer {
 
     /// Insert string at position
     func insertString(_ str: String, at position: Position) {
+        var currentPos = position
         for char in str {
-            insertCharacter(char, at: position)
+            insertCharacter(char, at: currentPos)
+            if char == "\n" {
+                currentPos.line += 1
+                currentPos.column = 0
+            } else {
+                currentPos.column += 1
+            }
         }
     }
 

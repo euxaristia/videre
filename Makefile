@@ -19,12 +19,12 @@ install-local: install
 release:
 ifeq ($(shell id -u),0)
 	@if [ -n "$(SUDO_USER)" ]; then \
-		sudo -u $(SUDO_USER) swift build -c release -Xswiftc -static-stdlib; \
+		sudo -u $(SUDO_USER) swift build -c release --static-swift-stdlib; \
 	else \
-		swift build -c release -Xswiftc -static-stdlib; \
+		swift build -c release --static-swift-stdlib; \
 	fi
 else
-	swift build -c release -Xswiftc -static-stdlib
+	swift build -c release --static-swift-stdlib
 endif
 
 # Dynamic build - smaller binary, requires Swift runtime

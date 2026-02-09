@@ -571,22 +571,25 @@ class ViEditor {
     }
 
     private func handleMouseMove(x: Int, y: Int) {
-        if let menu = state.contextMenu {
-            let r = menu.position.row
-            let c = menu.position.col
-            let width = 20
-            let height = menu.items.count
-            
-            if y >= r && y < r + height && x >= c && x < c + width {
-                let itemIdx = y - r
-                if itemIdx >= 0 && itemIdx < menu.items.count {
-                    state.contextMenu?.hoveredIndex = itemIdx
-                } else {
-                    state.contextMenu?.hoveredIndex = nil
-                }
-            } else {
-                state.contextMenu?.hoveredIndex = nil
+        guard let menu = state.contextMenu else { return }
+        
+        let r = menu.position.row
+        let c = menu.position.col
+        let width = 20
+        let height = menu.items.count
+        
+        let oldHovered = state.contextMenu?.hoveredIndex
+        var newHovered: Int? = nil
+
+        if y >= r && y < r + height && x >= c && x < c + width {
+            let itemIdx = y - r
+            if itemIdx >= 0 && itemIdx < menu.items.count {
+                newHovered = itemIdx
             }
+        }
+        
+        if oldHovered != newHovered {
+            state.contextMenu?.hoveredIndex = newHovered
         }
     }
 
@@ -743,9 +746,7 @@ class ViEditor {
                     let text = state.buffer.getText(in: start...end)
                     state.registerManager.set("+", .characters(text))
                     // Delete text
-                    // Need to implement delete range or use replace
-                    // Since TextBuffer methods might be limited, we can use replaceRange with empty string
-                    state.buffer.replaceRange(from: start, to: end, with: "")
+                    state.replaceRange(from: start, to: end, with: "")
                     state.cursor.move(to: start)
                     state.setMode(.normal)
                     state.statusMessage = "Cut to system clipboard"
@@ -755,15 +756,13 @@ class ViEditor {
             }
         case .paste:
             if let content = state.registerManager.get("+") {
+                let text: String
                 switch content {
-                case .characters(let text):
-                    state.buffer.insertText(text, at: state.cursor.position)
-                    state.statusMessage = "Pasted from system clipboard"
-                case .lines(let lines):
-                     // Handle line paste if needed, for now join
-                    state.buffer.insertText(lines.joined(separator: "\n"), at: state.cursor.position)
-                    state.statusMessage = "Pasted lines from system clipboard"
+                case .characters(let s): text = s
+                case .lines(let l): text = l.joined(separator: "\n")
                 }
+                state.replaceRange(from: state.cursor.position, to: state.cursor.position, with: text)
+                state.statusMessage = "Pasted from system clipboard"
             } else {
                  state.statusMessage = "Clipboard empty"
             }
@@ -772,7 +771,7 @@ class ViEditor {
             if state.currentMode == .visual || state.currentMode == .visualLine {
                 if let visualHandler = state.visualModeHandler as? VisualMode {
                     let (start, end) = visualHandler.selectionRange()
-                    state.buffer.replaceRange(from: start, to: end, with: "")
+                    state.deleteRange(from: start, to: end)
                     state.cursor.move(to: start)
                     state.setMode(.normal)
                 }

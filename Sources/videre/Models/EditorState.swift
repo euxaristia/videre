@@ -393,6 +393,20 @@ class EditorState {
         isDirty = true
     }
 
+    func replaceRange(from start: Position, to end: Position, with text: String) {
+        saveUndoState()
+        buffer.replaceRange(from: start, to: end, with: text)
+        isDirty = true
+        updateStatusMessage()
+    }
+
+    func deleteRange(from start: Position, to end: Position) {
+        saveUndoState()
+        buffer.deleteRange(from: start, to: end)
+        isDirty = true
+        updateStatusMessage()
+    }
+
     // MARK: - Undo/Redo Operations
 
     /// Save current state before making changes
