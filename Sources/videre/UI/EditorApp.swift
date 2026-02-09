@@ -473,7 +473,19 @@ class ViEditor {
                     case 0x46: return "↘"  // End (ESC [ F)
                     case 0x3C:  // SGR Mouse Protocol (ESC [ < ...)
                         return readMouseSequence()
-                    default: break
+                    default:
+                        // Unknown CSI sequence - drain remaining bytes until terminator
+                        // CSI sequences end with a byte in range 0x40-0x7E (@ through ~)
+                        if thirdBuffer[0] < 0x40 || thirdBuffer[0] > 0x7E {
+                            // Third byte is not a terminator, keep reading
+                            var drainBuffer: [UInt8] = [0]
+                            while true {
+                                let drainN = read(STDIN_FILENO, &drainBuffer, 1)
+                                if drainN <= 0 { break }
+                                // CSI sequence terminates at byte in 0x40-0x7E range
+                                if drainBuffer[0] >= 0x40 && drainBuffer[0] <= 0x7E { break }
+                            }
+                        }
                     }
                 }
             } else {
