@@ -20,9 +20,9 @@
 *   **Status:** Many editors (Evil mode in Emacs, VscodeVim, IdeaVim) reimplement these behaviors without legal issue.
 
 ### 3. Licensing Compatibility
-*   **Videre License:** BSD 3-Clause (Permissive).
+*   **Videre License:** MIT (Permissive).
 *   **Vim License:** Vim License (Charityware, GPL-compatible).
-*   **Implication:** Since Videre does not use Vim's code, you are not bound by the Vim License. You are free to license Videre under BSD, MIT, Apache, or any other license you choose.
+*   **Implication:** Since Videre does not use Vim's code, you are not bound by the Vim License. You are free to license Videre under MIT, Apache, or any other license you choose.
 
 ## Recommendation
 You can safely state that Videre is a **"modal editor inspired by vi/vim"** rather than a derivative.

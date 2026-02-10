@@ -277,6 +277,8 @@ swift build -c release
 
 ## License
 
+MIT License
+
 Copyright © 2026 euxaristia. All rights reserved.
 
 ---
