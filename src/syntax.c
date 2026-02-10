@@ -1,41 +1,29 @@
 #include "videre.h"
+#include "syntax_languages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL };
-char *C_HL_keywords[] = {
-  "switch", "if", "while", "for", "break", "continue", "return", "else",
-  "struct", "union", "typedef", "static", "enum", "class", "case",
-  "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
-  "void|", NULL
-};
-
-char *SWIFT_HL_extensions[] = { ".swift", NULL };
-char *SWIFT_HL_keywords[] = {
-  "if", "else", "for", "while", "do", "switch", "case", "default", "break",
-  "continue", "return", "func", "var", "let", "class", "struct", "enum",
-  "extension", "protocol", "init", "deinit", "subscript", "typealias",
-  "import", "public", "private", "internal", "fileprivate", "open",
-  "override", "final", "static", "mutating", "nonmutating", "indirect",
-  "Int|", "Float|", "Double|", "Bool|", "String|", "Character|", "UInt|", NULL
-};
-
 editorSyntax HLDB[] = {
-  {
-    "c",
-    C_HL_extensions,
-    C_HL_keywords,
-    "//", "/*", "*/",
-    HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
-  },
-  {
-    "swift",
-    SWIFT_HL_extensions,
-    SWIFT_HL_keywords,
-    "//", "/*", "*/",
-    HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
-  }
+  { "c", C_EXTS, C_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "cpp", CPP_EXTS, CPP_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "objc", OBJC_EXTS, OBJC_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "swift", SWIFT_EXTS, SWIFT_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "python", PY_EXTS, PY_KEYWORDS, "#", NULL, NULL, HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "rust", RS_EXTS, RS_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "go", GO_EXTS, GO_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "javascript", JS_EXTS, JS_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "java", JAVA_EXTS, JAVA_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "ruby", RUBY_EXTS, RUBY_KEYWORDS, "#", "=begin", "=end", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "shell", SH_EXTS, SH_KEYWORDS, "#", NULL, NULL, HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "lua", LUA_EXTS, LUA_KEYWORDS, "--", "--[[", "]]", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "markdown", MD_EXTS, MD_KEYWORDS, NULL, NULL, NULL, HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "sql", SQL_EXTS, SQL_KEYWORDS, "--", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "makefile", MAKE_EXTS, MAKE_KEYWORDS, "#", NULL, NULL, HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "php", PHP_EXTS, PHP_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "zig", ZIG_EXTS, ZIG_KEYWORDS, "//", NULL, NULL, HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "assembly", ASM_EXTS, ASM_KEYWORDS, ";", NULL, NULL, HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
+  { "holyc", HC_EXTS, HC_KEYWORDS, "//", "/*", "*/", HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS },
 };
 
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
@@ -230,7 +218,7 @@ void editorSelectSyntaxHighlight() {
     while (s->filematch[i]) {
       int is_ext = (s->filematch[i][0] == '.');
       if ((is_ext && ext && !strcmp(ext, s->filematch[i])) ||
-          (!is_ext && strstr(E.filename, s->filematch[i]))) {
+          (!is_ext && !strcmp(E.filename, s->filematch[i]))) {
         E.syntax = s;
 
         int filerow;
