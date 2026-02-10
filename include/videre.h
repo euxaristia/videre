@@ -7,8 +7,8 @@
 
 // Input Key Mapping
 enum editorKey {
-    BACKSPACE = 127,
-    ARROW_LEFT = 1000,
+    BACKSPACE = 1000,
+    ARROW_LEFT,
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN,
@@ -17,6 +17,12 @@ enum editorKey {
     END_KEY,
     PAGE_UP,
     PAGE_DOWN
+};
+
+enum editorMode {
+    MODE_NORMAL,
+    MODE_INSERT,
+    MODE_COMMAND
 };
 
 // Data Structures
@@ -37,6 +43,7 @@ typedef struct {
     char *filename;
     char statusmsg[80];
     time_t statusmsg_time;
+    int mode;
     struct termios orig_termios;
 } EditorConfig;
 
@@ -53,7 +60,17 @@ extern EditorConfig E;
 // Prototypes
 void die(const char *s);
 void editorOpen(char *filename);
+void editorSave();
 void editorUpdateRow(erow *row);
+void editorInsertChar(int c);
+void editorInsertNewline();
+void editorDelChar();
+void editorRowInsertChar(erow *row, int at, int c);
+void editorRowDelChar(erow *row, int at);
+void editorFreeRow(erow *row);
+void editorDelRow(int at);
+void editorInsertRow(int at, char *s, size_t len);
+
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
 void editorSetStatusMessage(const char *fmt, ...);
