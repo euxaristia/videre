@@ -540,7 +540,8 @@ int main(int argc, char *argv[]) {
         E.filename = strdup(argv[1]);
     }
 
-    editorSetStatusMessage("HELP: :q = quit | i = insert | :w = save");
+    // Don't show persistent help text - non-standard
+// editorSetStatusMessage("HELP: :q = quit | i = insert | :w = save");
 
     while (1) {
         editorRefreshScreen();

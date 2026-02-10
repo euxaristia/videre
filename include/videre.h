@@ -64,6 +64,7 @@ typedef struct editorSyntax {
 
 // Data Structures
 typedef struct erow {
+    int idx;
     int size;
     char *chars;
     unsigned char *hl;
@@ -90,6 +91,7 @@ typedef struct {
     int screenrows;
     int screencols;
     int numrows;
+    int row_capacity;
     erow *row;
     int dirty;
     char *filename;
@@ -156,6 +158,10 @@ void editorSaveUndoState();
 void editorUndo();
 void editorRedo();
 void editorFreeUndoState(editorUndoState *state);
+
+// Higher level utils
+void editorDeleteRange(int sx, int sy, int ex, int ey);
+void editorSelectWord();
 
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
