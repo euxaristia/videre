@@ -477,3 +477,70 @@ void editorGoToLine(int line_num) {
     E.cy = line_num - 1;
     E.cx = 0;
 }
+
+// Check if a row is blank (empty or only whitespace)
+static int is_blank_row(int row_idx) {
+    if (row_idx < 0 || row_idx >= E.numrows) return 1;
+    erow *row = &E.row[row_idx];
+    if (row->size == 0) return 1;
+    for (int i = 0; i < row->size; i++) {
+        if (row->chars[i] != ' ' && row->chars[i] != '\t') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// Move to previous paragraph ({ command)
+void editorMoveToPreviousParagraph() {
+    if (E.numrows == 0) return;
+    
+    int row = E.cy;
+    
+    // If we're on a non-blank line, first move to the blank line before this paragraph
+    if (!is_blank_row(row)) {
+        while (row > 0 && !is_blank_row(row - 1)) {
+            row--;
+        }
+    }
+    
+    // Now skip blank lines to find the start of the previous paragraph
+    while (row > 0 && is_blank_row(row - 1)) {
+        row--;
+    }
+    
+    // Move to the start of the previous paragraph
+    while (row > 0 && !is_blank_row(row - 1)) {
+        row--;
+    }
+    
+    E.cy = row;
+    E.cx = 0;
+}
+
+// Move to next paragraph (} command)
+void editorMoveToNextParagraph() {
+    if (E.numrows == 0) return;
+    
+    int row = E.cy;
+    
+    // If we're on a non-blank line, first move to the blank line after this paragraph
+    if (!is_blank_row(row)) {
+        while (row < E.numrows - 1 && !is_blank_row(row + 1)) {
+            row++;
+        }
+    }
+    
+    // Now skip blank lines to find the start of the next paragraph
+    while (row < E.numrows - 1 && is_blank_row(row + 1)) {
+        row++;
+    }
+    
+    // Move to the start of the next paragraph
+    if (row < E.numrows - 1) {
+        row++;
+    }
+    
+    E.cy = row;
+    E.cx = 0;
+}

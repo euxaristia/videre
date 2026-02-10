@@ -729,6 +729,14 @@ void editorProcessKeypress() {
             case 'G':
                 editorMoveToFileEnd();
                 break;
+            
+            case '{':
+                editorMoveToPreviousParagraph();
+                break;
+            
+            case '}':
+                editorMoveToNextParagraph();
+                break;
         }
     }
 
