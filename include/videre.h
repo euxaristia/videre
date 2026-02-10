@@ -171,6 +171,10 @@ void editorYank(int sx, int sy, int ex, int ey, int is_line);
 void editorPaste();
 void editorSelectAll();
 
+// Input
+int editorHandleMouse();
+int editorProcessKeypress();
+
 // Undo/Redo
 void editorSaveUndoState();
 void editorUndo();

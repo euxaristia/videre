@@ -308,8 +308,8 @@ char *menu_items[] = {
     " Cut       ",
     " Copy      ",
     " Paste     ",
-    " Select All",
-    "-----------",
+    " Select All ",
+    "----------- ",
     " Undo      ",
     " Redo      "
 };
@@ -404,7 +404,7 @@ void editorRefreshScreen() {
 
 // --- Input Handling ---
 
-void editorHandleMouse() {
+int editorHandleMouse() {
     static int last_click_x = -1, last_click_y = -1;
     static time_t last_click_time = 0;
     
@@ -422,6 +422,7 @@ void editorHandleMouse() {
         if (mx < 1) mx = 1;
         if (my < 1) my = 1;
 
+        int prev_selected = E.menu_selected;
         if (x >= mx && x < mx + menu_width && y >= my && y < my + menu_height) {
             int item_idx = y - my - 1;
             if (item_idx >= 0 && item_idx < MENU_COUNT) {
@@ -461,20 +462,20 @@ void editorHandleMouse() {
                 }
             }
             E.menu_open = 0;
-            return;
+            return 1;
         } else if (b == MOUSE_RIGHT) {
             // Right-click while menu is open: move the menu
             E.menu_x = x;
             E.menu_y = y;
             E.menu_selected = -1;
-            return;
+            return 1;
         } else if ((b & 0x80) || (b & MOUSE_DRAG)) {
-            // Just movement or release: we already updated highlighting
-            return;
+            // Just movement or release: refresh only if selection changed
+            return (E.menu_selected != prev_selected);
         } else {
             // Click outside menu: close it
             E.menu_open = 0;
-            return;
+            return 1;
         }
     }
 
@@ -490,13 +491,15 @@ void editorHandleMouse() {
                 if (E.rowoff + E.screenrows < E.numrows) E.rowoff++;
             }
         }
-        return;
+        return 1;
     }
 
     if (b & 0x80) { // Release
         E.is_dragging = 0;
-        return;
+        return 0; // Release doesn't need refresh usually unless we were dragging
     }
+
+    int prev_cx = E.cx, prev_cy = E.cy;
 
     // Only process motion if dragging
     if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
@@ -516,7 +519,7 @@ void editorHandleMouse() {
         if (E.mode == MODE_NORMAL) {
             E.mode = MODE_VISUAL;
         }
-        return;
+        return 1;
     }
 
     if (b == MOUSE_LEFT) {
@@ -548,6 +551,7 @@ void editorHandleMouse() {
         last_click_x = x;
         last_click_y = y;
         last_click_time = now;
+        return 1;
     }
     // Handle right click - open context menu
     else if (b == MOUSE_RIGHT) {
@@ -555,22 +559,24 @@ void editorHandleMouse() {
         E.menu_x = x;
         E.menu_y = y;
         E.menu_selected = -1;
+        return 1;
     }
+    
+    return (E.cx != prev_cx || E.cy != prev_cy);
 }
 
-void editorProcessKeypress() {
+int editorProcessKeypress() {
     static int quit_times = 1;
     int c = readKey();
     
     if (E.menu_open && c != MOUSE_EVENT) {
         E.menu_open = 0;
-        if (c == '\x1b') return;
+        if (c == '\x1b') return 1;
         // Fall through to process key if not ESC
     }
     
     if (c == MOUSE_EVENT) {
-        editorHandleMouse();
-        return;
+        return editorHandleMouse();
     }
 
     if (E.mode == MODE_INSERT) {
@@ -582,7 +588,7 @@ void editorProcessKeypress() {
                 E.mode = MODE_NORMAL;
                 editorSetStatusMessage("");
                 if (E.cx > 0) E.cx--;
-                break;
+                return 1;
             case 127:
             case 8: 
             case BACKSPACE:
@@ -698,7 +704,7 @@ void editorProcessKeypress() {
                     editorSetStatusMessage("WARNING!!! File has unsaved changes. "
                         "Press Ctrl-C %d more times to quit.", quit_times);
                     quit_times--;
-                    return;
+                    return 1;
                 }
                 exit(0);
                 break;
@@ -891,6 +897,7 @@ void editorProcessKeypress() {
     }
 
     quit_times = 1;
+    return 1;
 }
 
 int main(int argc, char *argv[]) {
@@ -904,9 +911,11 @@ int main(int argc, char *argv[]) {
     // Don't show persistent help text - non-standard
 // editorSetStatusMessage("HELP: :q = quit | i = insert | :w = save");
 
+    editorRefreshScreen(); // Initial refresh
     while (1) {
-        editorRefreshScreen();
-        editorProcessKeypress();
+        if (editorProcessKeypress()) {
+            editorRefreshScreen();
+        }
     }
     return 0;
 }
