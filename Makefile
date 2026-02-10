@@ -1,45 +1,19 @@
-BINARY_NAME = videre
-INSTALL_DIR = /usr/local/bin
-MAN_DIR = /usr/local/share/man/man1
+CC = gcc
+CFLAGS = -Wall -Wextra -Iinclude -O2
+TARGET = videre
 
-install: release
-	install -d $(INSTALL_DIR)
-	install -m 755 .build/release/$(BINARY_NAME) $(INSTALL_DIR)/
-	install -d $(MAN_DIR)
-	install -m 644 $(BINARY_NAME).1 $(MAN_DIR)/
-	@echo "$(BINARY_NAME) installed to $(INSTALL_DIR)/$(BINARY_NAME)"
-	@echo "$(BINARY_NAME) man page installed to $(MAN_DIR)/$(BINARY_NAME).1"
-	@echo "Make sure $(INSTALL_DIR) is in your \$$PATH"
+SRC = $(wildcard src/*.c)
+OBJ = $(SRC:.c=.o)
 
-install-local: INSTALL_DIR = $(HOME)/.local/bin
-install-local: MAN_DIR = $(HOME)/.local/share/man/man1
-install-local: install
+all: $(TARGET)
 
-# Static build (default) - faster startup, no Swift runtime dependency
-release:
-ifeq ($(shell id -u),0)
-	@if [ -n "$(SUDO_USER)" ]; then \
-		sudo -u $(SUDO_USER) swift build -c release --static-swift-stdlib; \
-	else \
-		swift build -c release --static-swift-stdlib; \
-	fi
-else
-	swift build -c release --static-swift-stdlib
-endif
+$(TARGET): $(OBJ)
+	$(CC) $(OBJ) -o $(TARGET)
 
-# Dynamic build - smaller binary, requires Swift runtime
-release-dynamic:
-ifeq ($(shell id -u),0)
-	@if [ -n "$(SUDO_USER)" ]; then \
-		sudo -u $(SUDO_USER) swift build -c release; \
-	else \
-		swift build -c release; \
-	fi
-else
-	swift build -c release
-endif
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	swift package clean
+	rm -f $(OBJ) $(TARGET)
 
-.PHONY: install install-local release release-dynamic clean
+.PHONY: all clean
