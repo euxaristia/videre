@@ -332,37 +332,44 @@ void editorDrawContextMenu(struct abuf *ab) {
 
     char buf[64];
     // Draw shadow/border and items
-    // Dark background (235), Light grey text (252)
+    // Dark background (235), Medium grey border (239)
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y, x);
     abAppend(ab, buf, strlen(buf));
-    // Border color: medium grey (239)
-    abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m┌───────────┐", 61);
+    
+    char *top_border = "\x1b[48;5;235m\x1b[38;5;239m┌───────────┐";
+    abAppend(ab, top_border, strlen(top_border));
 
     for (int i = 0; i < MENU_COUNT; i++) {
         snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + i + 1, x);
         abAppend(ab, buf, strlen(buf));
-        abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m│", 25);
         
         if (i == E.menu_selected) {
             // Selected item: Blue background (24), White text (255)
-            abAppend(ab, "\x1b[48;5;24m\x1b[38;5;255m", 22);
+            abAppend(ab, "\x1b[48;5;24m\x1b[38;5;255m│", strlen("\x1b[48;5;24m\x1b[38;5;255m│"));
+            if (i == 4) { // Separator
+                abAppend(ab, "───────────", strlen("───────────"));
+            } else {
+                abAppend(ab, menu_items[i], strlen(menu_items[i]));
+            }
+            abAppend(ab, "│", 1);
         } else {
             // Normal item: Dark background (235), Light grey text (252)
-            abAppend(ab, "\x1b[48;5;235m\x1b[38;5;252m", 22);
+            abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m│", strlen("\x1b[48;5;235m\x1b[38;5;239m│"));
+            abAppend(ab, "\x1b[38;5;252m", strlen("\x1b[38;5;252m"));
+            
+            if (i == 4) { // Separator
+                abAppend(ab, "\x1b[38;5;239m───────────", strlen("\x1b[38;5;239m───────────"));
+            } else {
+                abAppend(ab, menu_items[i], strlen(menu_items[i]));
+            }
+            abAppend(ab, "\x1b[38;5;239m│", strlen("\x1b[38;5;239m│"));
         }
-        
-        if (i == 4) { // Separator
-            abAppend(ab, "───────────", 33);
-        } else {
-            abAppend(ab, menu_items[i], 11);
-        }
-        
-        abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m│", 25);
     }
 
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + MENU_COUNT + 1, x);
     abAppend(ab, buf, strlen(buf));
-    abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m", 64);
+    char *bottom_border = "\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m";
+    abAppend(ab, bottom_border, strlen(bottom_border));
 }
 
 void editorRefreshScreen() {
@@ -472,6 +479,84 @@ void editorHandleMouse() {
     }
 
     if (b & 0x40) { // Wheel
+        if ((b & 0x3) == 0) { // Up
+            int times = 3;
+            while (times--) {
+                if (E.rowoff > 0) E.rowoff--;
+            }
+        } else if ((b & 0x3) == 1) { // Down
+            int times = 3;
+            while (times--) {
+                if (E.rowoff + E.screenrows < E.numrows) E.rowoff++;
+            }
+        }
+        return;
+    }
+
+    if (b & 0x80) { // Release
+        E.is_dragging = 0;
+        return;
+    }
+
+    // Only process motion if dragging
+    if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
+        // Convert screen coordinates to buffer coordinates
+        int filerow = y - 1 + E.rowoff;
+        int filecol = x - 1 + E.coloff;
+        
+        if (filerow >= 0 && filerow < E.numrows) {
+            E.cy = filerow;
+            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
+                E.cx = filecol;
+            } else {
+                E.cx = E.row[E.cy].size;
+            }
+        }
+        
+        if (E.mode == MODE_NORMAL) {
+            E.mode = MODE_VISUAL;
+        }
+        return;
+    }
+
+    if (b == MOUSE_LEFT) {
+        // Convert screen coordinates to buffer coordinates
+        int filerow = y - 1 + E.rowoff;
+        int filecol = x - 1 + E.coloff;
+        
+        if (filerow >= 0 && filerow < E.numrows) {
+            E.cy = filerow;
+            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
+                E.cx = filecol;
+            } else {
+                E.cx = E.row[E.cy].size;
+            }
+        }
+        
+        time_t now = time(NULL);
+        if (x == last_click_x && y == last_click_y && (now - last_click_time) < 1) {
+            // Double-click: select word
+            editorSelectWord();
+        } else {
+            // Single click: start dragging
+            E.is_dragging = 1;
+            if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
+                E.sel_sx = E.cx;
+                E.sel_sy = E.cy;
+            }
+        }
+        last_click_x = x;
+        last_click_y = y;
+        last_click_time = now;
+    }
+    // Handle right click - open context menu
+    else if (b == MOUSE_RIGHT) {
+        E.menu_open = 1;
+        E.menu_x = x;
+        E.menu_y = y;
+        E.menu_selected = -1;
+    }
+}
 
 void editorProcessKeypress() {
     static int quit_times = 1;
