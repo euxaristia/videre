@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 EditorConfig E;
+static int raw_mode_enabled = 0;
 
 void die(const char *s) {
     // Force terminal cleanup before exit
@@ -20,6 +22,8 @@ void die(const char *s) {
 }
 
 void disableRawMode() {
+    if (!raw_mode_enabled) return;
+    
     tcsetattr(STDIN_FILENO, TCSANOW, &E.orig_termios);
     
     // Leave alternate screen, disable mouse, show cursor
@@ -29,7 +33,12 @@ void disableRawMode() {
 }
 
 void enableRawMode() {
-    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) die("tcgetattr");
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) {
+        // Not a terminal, skip raw mode setup
+        raw_mode_enabled = 0;
+        return;
+    }
+    raw_mode_enabled = 1;
     atexit(disableRawMode);
 
     struct termios raw = E.orig_termios;
@@ -126,6 +135,17 @@ int readKey() {
 int getWindowSize(int *rows, int *cols) {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        // Fallback to environment variables if ioctl fails
+        const char *env_cols = getenv("COLUMNS");
+        const char *env_rows = getenv("LINES");
+        if (env_cols && env_rows) {
+            *cols = atoi(env_cols);
+            *rows = atoi(env_rows);
+            if (*cols > 0 && *rows > 0) return 0;
+        }
+        // Default fallback values
+        *cols = 80;
+        *rows = 24;
         return -1;
     } else {
         *cols = ws.ws_col;
