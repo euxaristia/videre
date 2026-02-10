@@ -568,6 +568,7 @@ void editorProcessKeypress() {
                         } else {
                             editorFindChar(search_char, direction);
                         }
+                        editorSetStatusMessage("Found %c at %d,%d", search_char, E.cy + 1, E.cx + 1);
                     }
                 }
                 break;

@@ -148,7 +148,7 @@ void editorFindChar(char c, int direction) {
     
     if (E.numrows == 0) return;
     
-    erow *row = &E.row[E.cy];
+    if (E.numrows == 0) return;
     int start_col = E.cx + (direction > 0 ? 1 : -1);
     
     // Search forward
