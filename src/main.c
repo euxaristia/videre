@@ -6,84 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-
-void initEditor() {
-    E.cx = 0;
-    E.cy = 0;
-    E.rowoff = 0;
-    E.coloff = 0;
-    E.numrows = 0;
-    E.row = NULL;
-    E.dirty = 0;
-    E.filename = NULL;
-    E.statusmsg[0] = '\0';
-    E.statusmsg_time = 0;
-    E.mode = MODE_NORMAL;
-    E.is_dragging = 0;
-    E.sel_sx = E.sel_sy = -1;
-    
-    for (int i = 0; i < 256; i++) {
-        E.registers[i].chars = NULL;
-        E.registers[i].size = 0;
-        E.registers[i].is_line = 0;
-    }
-    E.undo_stack = NULL;
-    E.redo_stack = NULL;
-
-    if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
-    if (E.screenrows < 3) E.screenrows = 1;
-    else E.screenrows -= 2; 
-}
-
-// --- High Level Editing ---
-
-void editorInsertChar(int c) {
-    editorSaveUndoState();
-    if (E.cy == E.numrows) {
-        editorInsertRow(E.numrows, "", 0);
-    }
-    editorRowInsertChar(&E.row[E.cy], E.cx, c);
-    E.cx++;
-}
-
-void editorInsertNewline() {
-    editorSaveUndoState();
-    if (E.cx == 0) {
-        editorInsertRow(E.cy, "", 0);
-    } else {
-        erow *row = &E.row[E.cy];
-        editorInsertRow(E.cy + 1, &row->chars[E.cx], row->size - E.cx);
-        row = &E.row[E.cy];
-        row->size = E.cx;
-        row->chars[row->size] = '\0';
-        editorUpdateRow(row);
-    }
-    E.cy++;
-    E.cx = 0;
-}
-
-void editorDelChar() {
-    if (E.cy == E.numrows) return;
-    if (E.cx == 0 && E.cy == 0) return;
-
-    editorSaveUndoState();
-    erow *row = &E.row[E.cy];
-    if (E.cx > 0) {
-        editorRowDelChar(row, E.cx - 1);
-        E.cx--;
-    } else {
-        E.cx = E.row[E.cy - 1].size;
-        row = &E.row[E.cy];
-        E.row[E.cy - 1].chars = realloc(E.row[E.cy - 1].chars, E.row[E.cy - 1].size + row->size + 1);
-        memcpy(&E.row[E.cy - 1].chars[E.row[E.cy - 1].size], row->chars, row->size);
-        E.row[E.cy - 1].size += row->size;
-        E.row[E.cy - 1].chars[E.row[E.cy - 1].size] = '\0';
-        editorUpdateRow(&E.row[E.cy - 1]);
-        
-        editorDelRow(E.cy);
-        E.cy--;
-    }
-}
+#include <time.h>
 
 // --- Status Message ---
 
@@ -137,23 +60,6 @@ char *editorPrompt(char *prompt, void (*callback)(char *, int)) {
         }
 
         if (callback) callback(buf, c);
-    }
-}
-
-// --- Scrolling ---
-
-void editorScroll() {
-    if (E.cy < E.rowoff) {
-        E.rowoff = E.cy;
-    }
-    if (E.cy >= E.rowoff + E.screenrows) {
-        E.rowoff = E.cy - E.screenrows + 1;
-    }
-    if (E.cx < E.coloff) {
-        E.coloff = E.cx;
-    }
-    if (E.cx >= E.coloff + E.screencols) {
-        E.coloff = E.cx - E.screencols + 1;
     }
 }
 
@@ -253,22 +159,35 @@ void editorDrawRows(struct abuf *ab) {
 }
 
 void editorDrawStatusBar(struct abuf *ab) {
-    abAppend(ab, "\x1b[7m", 4);
+    // Neovim-style status bar: grey background (ANSI 250) with black text (ANSI 30)
+    abAppend(ab, "\x1b[48;5;250m", 11);
+    abAppend(ab, "\x1b[38;5;30m", 11);
+    
     char status[80], rstatus[80];
     
-    char *mode_str = " NORMAL ";
-    if (E.mode == MODE_INSERT) mode_str = " INSERT ";
-    else if (E.mode == MODE_VISUAL) mode_str = " VISUAL ";
-    else if (E.mode == MODE_VISUAL_LINE) mode_str = " V-LINE ";
-    
-    int len = snprintf(status, sizeof(status), "%s %s%s",
-        mode_str,
+    // Left side: filename and modification flag
+    int len = snprintf(status, sizeof(status), "%s%s",
         E.filename ? E.filename : "[No Name]",
         E.dirty ? " [+]" : "");
     if (len > (int)sizeof(status) - 1) len = sizeof(status) - 1;
     
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d,%d-1 ",
-        E.cy + 1, E.cx + 1);
+    // Right side: cursor position and scroll indicator
+    char *pos_indicator = "";
+    if (E.numrows == 0) {
+        pos_indicator = "All";
+    } else if (E.rowoff == 0) {
+        pos_indicator = "Top";
+    } else if (E.rowoff + E.screenrows >= E.numrows) {
+        pos_indicator = "Bot";
+    } else {
+        static char pct_buf[8];
+        int pct = (E.rowoff * 100) / (E.numrows - E.screenrows);
+        snprintf(pct_buf, sizeof(pct_buf), "%d%%", pct);
+        pos_indicator = pct_buf;
+    }
+    
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d,%d-1 %s",
+        E.cy + 1, E.cx + 1, pos_indicator);
     if (rlen > (int)sizeof(rstatus) - 1) rlen = sizeof(rstatus) - 1;
 
     if (len > E.screencols) len = E.screencols;
@@ -289,10 +208,36 @@ void editorDrawStatusBar(struct abuf *ab) {
 
 void editorDrawMessageBar(struct abuf *ab) {
     abAppend(ab, "\x1b[K", 3);
-    int msglen = strlen(E.statusmsg);
-    if (msglen > E.screencols) msglen = E.screencols;
-    if (msglen && time(NULL) - E.statusmsg_time < 5)
-        abAppend(ab, E.statusmsg, msglen);
+    
+    // Show mode indicator or status message
+    char *mode_msg = "";
+    if (E.statusmsg[0] == '\0' || time(NULL) - E.statusmsg_time >= 5) {
+        // Show mode indicator when no active message
+        if (E.mode == MODE_INSERT) {
+            mode_msg = "-- INSERT --";
+        } else if (E.mode == MODE_VISUAL) {
+            mode_msg = "-- VISUAL --";
+        } else if (E.mode == MODE_VISUAL_LINE) {
+            mode_msg = "-- VISUAL LINE --";
+        }
+    }
+    
+    if (mode_msg[0] != '\0') {
+        // Display mode indicator centered
+        int mode_len = strlen(mode_msg);
+        int padding = (E.screencols - mode_len) / 2;
+        if (padding > 0) {
+            while (padding-- > 0) abAppend(ab, " ", 1);
+        }
+        abAppend(ab, mode_msg, mode_len);
+    } else {
+        // Display status message if active
+        int msglen = strlen(E.statusmsg);
+        if (msglen > E.screencols) msglen = E.screencols;
+        if (msglen && time(NULL) - E.statusmsg_time < 5) {
+            abAppend(ab, E.statusmsg, msglen);
+        }
+    }
 }
 
 void editorRefreshScreen() {
@@ -323,46 +268,10 @@ void editorRefreshScreen() {
 
 // --- Input Handling ---
 
-void editorMoveCursor(int key) {
-    erow *row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
-
-    switch (key) {
-        case ARROW_LEFT:
-            if (E.cx != 0) {
-                E.cx--;
-            } else if (E.cy > 0) {
-                E.cy--;
-                E.cx = E.row[E.cy].size;
-            }
-            break;
-        case ARROW_RIGHT:
-            if (row && E.cx < row->size) {
-                E.cx++;
-            } else if (row && E.cx == row->size) {
-                E.cy++;
-                E.cx = 0;
-            }
-            break;
-        case ARROW_UP:
-            if (E.cy != 0) {
-                E.cy--;
-            }
-            break;
-        case ARROW_DOWN:
-            if (E.cy < E.numrows) {
-                E.cy++;
-            }
-            break;
-    }
-
-    row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
-    int rowlen = row ? row->size : 0;
-    if (E.cx > rowlen) {
-        E.cx = rowlen;
-    }
-}
-
 void editorHandleMouse() {
+    static int last_click_x = -1, last_click_y = -1;
+    static time_t last_click_time = 0;
+    
     int b = E.mouse_b;
     int x = E.mouse_x;
     int y = E.mouse_y;
@@ -401,11 +310,19 @@ void editorHandleMouse() {
     }
 
     if (b == MOUSE_LEFT) {
-        E.is_dragging = 1;
-        if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
-            E.sel_sx = E.cx;
-            E.sel_sy = E.cy;
+        time_t now = time(NULL);
+        if (x == last_click_x && y == last_click_y && (now - last_click_time) < 1) {
+            editorSelectWord();
+        } else {
+            E.is_dragging = 1;
+            if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
+                E.sel_sx = E.cx;
+                E.sel_sy = E.cy;
+            }
         }
+        last_click_x = x;
+        last_click_y = y;
+        last_click_time = now;
     } else if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
         if (E.mode == MODE_NORMAL) {
             E.mode = MODE_VISUAL;
@@ -511,10 +428,19 @@ void editorProcessKeypress() {
                 editorSetStatusMessage("");
                 break;
 
+            case 'd':
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                    editorDeleteRange(E.sel_sx, E.sel_sy, E.cx, E.cy);
+                    E.mode = MODE_NORMAL;
+                    E.sel_sx = E.sel_sy = -1;
+                }
+                break;
+
             case 'x':
                 if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
                     editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
-                    // TODO: actually delete selection
+                    editorDeleteRange(E.sel_sx, E.sel_sy, E.cx, E.cy);
                     E.mode = MODE_NORMAL;
                     E.sel_sx = E.sel_sy = -1;
                 } else {
