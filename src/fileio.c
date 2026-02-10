@@ -61,9 +61,12 @@ void editorOpen(char *filename) {
     free(line);
     fclose(fp);
     
+    int total_chars = 0;
+    for (int i = 0; i < E.numrows; i++) total_chars += E.row[i].size;
+
     E.dirty = 0;
     editorSelectSyntaxHighlight();
-    editorSetStatusMessage("Opened %s", filename);
+    editorSetStatusMessage("\"%s\" %dL, %dC", filename, E.numrows, total_chars);
 }
 
 char *editorRowsToString(int *buflen) {
@@ -111,7 +114,7 @@ void editorSave() {
                 close(fd);
                 free(buf);
                 E.dirty = 0;
-                editorSetStatusMessage("%d bytes written to disk", len);
+                editorSetStatusMessage("\"%s\" %dL, %dC written", E.filename, E.numrows, len);
                 return;
             }
         }

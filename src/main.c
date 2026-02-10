@@ -335,7 +335,7 @@ void editorDrawContextMenu(struct abuf *ab) {
     // Dark grey background (236), White text (255)
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y, x);
     abAppend(ab, buf, strlen(buf));
-    abAppend(ab, "\x1b[48;5;236m\x1b[38;5;255m┌───────────┐", 25);
+    abAppend(ab, "\x1b[48;5;236m\x1b[38;5;255m┌───────────┐", 39);
 
     for (int i = 0; i < MENU_COUNT; i++) {
         snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + i + 1, x);
@@ -349,12 +349,12 @@ void editorDrawContextMenu(struct abuf *ab) {
         }
         
         abAppend(ab, menu_items[i], strlen(menu_items[i]));
-        abAppend(ab, "\x1b[48;5;236m│", 12);
+        abAppend(ab, "\x1b[48;5;236m│", 15);
     }
 
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + MENU_COUNT + 1, x);
     abAppend(ab, buf, strlen(buf));
-    abAppend(ab, "└───────────┘\x1b[m", 15);
+    abAppend(ab, "└───────────┘\x1b[m", 39);
 }
 
 void editorRefreshScreen() {
@@ -554,7 +554,7 @@ void editorProcessKeypress() {
     static int quit_times = 1;
     int c = readKey();
     
-    if (E.menu_open) {
+    if (E.menu_open && c != MOUSE_EVENT) {
         E.menu_open = 0;
         if (c == '\x1b') return;
         // Fall through to process key if not ESC
