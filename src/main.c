@@ -366,24 +366,48 @@ void editorHandleMouse() {
         return;
     }
 
-    // Convert screen coordinates to buffer coordinates
-    int filerow = y - 1 + E.rowoff;
-    int filecol = x - 1 + E.coloff;
-    
-    if (filerow >= 0 && filerow < E.numrows) {
-        E.cy = filerow;
-        if (filecol >= 0 && filecol <= E.row[E.cy].size) {
-            E.cx = filecol;
-        } else {
-            E.cx = E.row[E.cy].size;
+    // Only process motion if dragging
+    if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
+        // Convert screen coordinates to buffer coordinates
+        int filerow = y - 1 + E.rowoff;
+        int filecol = x - 1 + E.coloff;
+        
+        if (filerow >= 0 && filerow < E.numrows) {
+            E.cy = filerow;
+            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
+                E.cx = filecol;
+            } else {
+                E.cx = E.row[E.cy].size;
+            }
         }
+        
+        if (E.mode == MODE_NORMAL) {
+            E.mode = MODE_VISUAL;
+        }
+        return;
     }
 
+    // Handle left click - move cursor only on click
     if (b == MOUSE_LEFT) {
+        // Convert screen coordinates to buffer coordinates
+        int filerow = y - 1 + E.rowoff;
+        int filecol = x - 1 + E.coloff;
+        
+        if (filerow >= 0 && filerow < E.numrows) {
+            E.cy = filerow;
+            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
+                E.cx = filecol;
+            } else {
+                E.cx = E.row[E.cy].size;
+            }
+        }
+        
         time_t now = time(NULL);
         if (x == last_click_x && y == last_click_y && (now - last_click_time) < 1) {
+            // Double-click: select word
             editorSelectWord();
         } else {
+            // Single click: start dragging
             E.is_dragging = 1;
             if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
                 E.sel_sx = E.cx;
@@ -393,9 +417,23 @@ void editorHandleMouse() {
         last_click_x = x;
         last_click_y = y;
         last_click_time = now;
-    } else if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
-        if (E.mode == MODE_NORMAL) {
-            E.mode = MODE_VISUAL;
+    }
+    // Handle right click - show context menu
+    else if (b == MOUSE_RIGHT) {
+        // For now, just enter visual mode at click position
+        // Context menu implementation would go here
+        int filerow = y - 1 + E.rowoff;
+        int filecol = x - 1 + E.coloff;
+        
+        if (filerow >= 0 && filerow < E.numrows) {
+            E.cy = filerow;
+            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
+                E.cx = filecol;
+            } else {
+                E.cx = E.row[E.cy].size;
+            }
+            // TODO: Show context menu
+            editorSetStatusMessage("Right-click menu not yet implemented");
         }
     }
 }
