@@ -194,6 +194,14 @@ void editorUpdateSearchHighlight() {
   
   for (int filerow = 0; filerow < E.numrows; filerow++) {
     erow *row = &E.row[filerow];
+    
+    // Clear previous search highlights first
+    for (int i = 0; i < row->size; i++) {
+      if (row->hl[i] == HL_MATCH || row->hl[i] == HL_MATCH_CURSOR) {
+        row->hl[i] = HL_NORMAL;
+      }
+    }
+    
     char *match = row->chars;
     
     while ((match = strstr(match, E.search_pattern)) != NULL) {
