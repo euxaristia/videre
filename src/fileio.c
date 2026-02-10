@@ -21,6 +21,7 @@ void editorOpen(char *filename) {
     free(line);
     fclose(fp);
     E.dirty = 0;
+    editorSelectSyntaxHighlight();
 }
 
 char *editorRowsToString(int *buflen) {
@@ -49,6 +50,7 @@ void editorSave() {
             editorSetStatusMessage("Save aborted");
             return;
         }
+        editorSelectSyntaxHighlight();
     }
 
     int len;

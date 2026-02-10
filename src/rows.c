@@ -3,8 +3,7 @@
 #include <string.h>
 
 void editorUpdateRow(erow *row) {
-    // Placeholder for future syntax highlighting
-    (void)row;
+    editorUpdateSyntax(row);
 }
 
 void editorInsertRow(int at, char *s, size_t len) {
@@ -16,13 +15,19 @@ void editorInsertRow(int at, char *s, size_t len) {
     E.row[at].size = len;
     E.row[at].chars = malloc(len + 1);
     memcpy(E.row[at].chars, s, len);
-    E.row[at].chars[len] = 0;
+    E.row[at].chars[len] = '\0';
+    
+    E.row[at].hl = NULL;
+    E.row[at].hl_open_comment = 0;
+    editorUpdateSyntax(&E.row[at]);
+
     E.numrows++;
     E.dirty++;
 }
 
 void editorFreeRow(erow *row) {
     free(row->chars);
+    free(row->hl);
 }
 
 void editorDelRow(int at) {
@@ -47,7 +52,7 @@ void editorRowAppendString(erow *row, char *s, size_t len) {
     row->chars = realloc(row->chars, row->size + len + 1);
     memcpy(&row->chars[row->size], s, len);
     row->size += len;
-    row->chars[row->size] = 0;
+    row->chars[row->size] = '\0';
     editorUpdateRow(row);
     E.dirty++;
 }
@@ -59,4 +64,3 @@ void editorRowDelChar(erow *row, int at) {
     editorUpdateRow(row);
     E.dirty++;
 }
-

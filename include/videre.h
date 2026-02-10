@@ -25,10 +25,35 @@ enum editorMode {
     MODE_COMMAND
 };
 
+// Syntax Highlighting
+#define HL_NORMAL 0
+#define HL_COMMENT 1
+#define HL_MLCOMMENT 2
+#define HL_KEYWORD1 3
+#define HL_KEYWORD2 4
+#define HL_STRING 5
+#define HL_NUMBER 6
+#define HL_MATCH 7
+
+#define HL_HIGHLIGHT_NUMBERS (1<<0)
+#define HL_HIGHLIGHT_STRINGS (1<<1)
+
+typedef struct editorSyntax {
+    char *filetype;
+    char **filematch;
+    char **keywords;
+    char *singleline_comment_start;
+    char *multiline_comment_start;
+    char *multiline_comment_end;
+    int flags;
+} editorSyntax;
+
 // Data Structures
 typedef struct erow {
     int size;
     char *chars;
+    unsigned char *hl;
+    int hl_open_comment;
 } erow;
 
 typedef struct {
@@ -47,6 +72,7 @@ typedef struct {
     char *search_pattern;
     int last_match;
     int search_direction;
+    editorSyntax *syntax;
     struct termios orig_termios;
 } EditorConfig;
 
@@ -66,6 +92,9 @@ void editorOpen(char *filename);
 void editorSave();
 void editorFind();
 void editorUpdateRow(erow *row);
+void editorUpdateSyntax(erow *row);
+int editorSyntaxToColor(int hl);
+void editorSelectSyntaxHighlight();
 void editorInsertChar(int c);
 void editorInsertNewline();
 void editorDelChar();
