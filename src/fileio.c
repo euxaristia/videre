@@ -36,6 +36,33 @@ int editorValidateFilename(const char *filename) {
     return 1;
 }
 
+void editorUpdateGitStatus() {
+    E.git_status[0] = '\0';
+    if (!E.filename) return;
+
+    FILE *fp = popen("git status --porcelain -b 2>/dev/null", "r");
+    if (!fp) return;
+
+    char line[1024];
+    if (fgets(line, sizeof(line), fp)) {
+        // First line is branch info: "## branch_name...remote_branch [ahead X, behind Y]"
+        if (strncmp(line, "## ", 3) == 0) {
+            char *branch = line + 3;
+            char *end = strstr(branch, "...");
+            if (!end) end = strpbrk(branch, " \t\n\r");
+            if (end) *end = '\0';
+            
+            int has_changes = 0;
+            if (fgets(line, sizeof(line), fp)) {
+                has_changes = 1;
+            }
+            
+            snprintf(E.git_status, sizeof(E.git_status), "%s%s", branch, has_changes ? "*" : "");
+        }
+    }
+    pclose(fp);
+}
+
 void editorOpen(char *filename) {
     // Validate filename before opening
     if (!editorValidateFilename(filename)) {
@@ -66,7 +93,7 @@ void editorOpen(char *filename) {
 
     E.dirty = 0;
     editorSelectSyntaxHighlight();
-    editorSetStatusMessage("\"%s\" %dL, %dC", filename, E.numrows, total_chars);
+    editorUpdateGitStatus();
 }
 
 char *editorRowsToString(int *buflen) {
@@ -114,6 +141,7 @@ void editorSave() {
                 close(fd);
                 free(buf);
                 E.dirty = 0;
+                editorUpdateGitStatus();
                 editorSetStatusMessage("\"%s\" %dL, %dC written", E.filename, E.numrows, len);
                 return;
             }

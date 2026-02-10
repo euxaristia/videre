@@ -10,6 +10,7 @@
 void initEditor() {
     E.cx = 0;
     E.cy = 0;
+    E.preferredColumn = 0;
     E.rowoff = 0;
     E.coloff = 0;
     E.numrows = 0;
@@ -17,6 +18,7 @@ void initEditor() {
     E.row = NULL;
     E.dirty = 0;
     E.filename = NULL;
+    E.git_status[0] = '\0';
     E.statusmsg[0] = 0;
     E.statusmsg_time = 0;
     E.mode = MODE_NORMAL;
@@ -35,6 +37,8 @@ void initEditor() {
     E.last_search_char = '\0';
     E.last_search_char_found = 0;
     
+    for (int i = 0; i < 26; i++) E.mark_set[i] = 0;
+
     E.menu_open = 0;
     E.menu_x = E.menu_y = 0;
     E.menu_selected = 0;
@@ -51,6 +55,7 @@ void editorInsertChar(int c) {
     }
     editorRowInsertChar(&E.row[E.cy], E.cx, c);
     E.cx++;
+    E.preferredColumn = E.cx;
 }
 
 void editorInsertNewline() {
@@ -67,6 +72,7 @@ void editorInsertNewline() {
     }
     E.cy++;
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 void editorDelChar() {
@@ -78,8 +84,10 @@ void editorDelChar() {
     if (E.cx > 0) {
         editorRowDelChar(row, E.cx - 1);
         E.cx--;
+        E.preferredColumn = E.cx;
     } else {
         E.cx = E.row[E.cy - 1].size;
+        E.preferredColumn = E.cx;
         editorRowAppendString(&E.row[E.cy - 1], row->chars, row->size);
         editorDelRow(E.cy);
         E.cy--;
@@ -93,17 +101,21 @@ void editorMoveCursor(int key) {
         case ARROW_LEFT:
             if (E.cx != 0) {
                 E.cx--;
+                E.preferredColumn = E.cx;
             } else if (E.cy > 0) {
                 E.cy--;
                 E.cx = E.row[E.cy].size;
+                E.preferredColumn = E.cx;
             }
             break;
         case ARROW_RIGHT:
             if (row && E.cx < row->size) {
                 E.cx++;
+                E.preferredColumn = E.cx;
             } else if (row && E.cx == row->size) {
                 E.cy++;
                 E.cx = 0;
+                E.preferredColumn = E.cx;
             }
             break;
         case ARROW_UP:
@@ -120,8 +132,17 @@ void editorMoveCursor(int key) {
 
     row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
     int rowlen = row ? row->size : 0;
-    if (E.cx > rowlen) {
-        E.cx = rowlen;
+    
+    if (key == ARROW_UP || key == ARROW_DOWN) {
+        if (E.preferredColumn > rowlen) {
+            E.cx = rowlen;
+        } else {
+            E.cx = E.preferredColumn;
+        }
+    } else {
+        if (E.cx > rowlen) {
+            E.cx = rowlen;
+        }
     }
 }
 
@@ -132,7 +153,6 @@ void editorFindChar(char c, int direction) {
     
     if (E.numrows == 0) return;
     
-    if (E.numrows == 0) return;
     int start_col = E.cx + (direction > 0 ? 1 : -1);
     
     // Search forward
@@ -145,6 +165,7 @@ void editorFindChar(char c, int direction) {
                 if (current_row->chars[col] == c) {
                     E.cy = line;
                     E.cx = col;
+                    E.preferredColumn = E.cx;
                     E.last_search_char_found = 1;
                     return;
                 }
@@ -161,6 +182,7 @@ void editorFindChar(char c, int direction) {
                 if (current_row->chars[col] == c) {
                     E.cy = line;
                     E.cx = col;
+                    E.preferredColumn = E.cx;
                     E.last_search_char_found = 1;
                     return;
                 }
@@ -187,6 +209,7 @@ void editorFindCharTill(char c, int direction) {
                     E.cy = line;
                     E.cx = col - 1; // Position before the character
                     if (E.cx < 0) E.cx = 0;
+                    E.preferredColumn = E.cx;
                     E.last_search_char_found = 1;
                     return;
                 }
@@ -204,6 +227,7 @@ void editorFindCharTill(char c, int direction) {
                     E.cy = line;
                     E.cx = col + 1; // Position after the character
                     if (E.cx >= current_row->size) E.cx = current_row->size - 1;
+                    E.preferredColumn = E.cx;
                     E.last_search_char_found = 1;
                     return;
                 }
@@ -271,6 +295,7 @@ void editorMoveWordForward(int big_word) {
         if (col < current_row->size) {
             E.cy = row;
             E.cx = col;
+            E.preferredColumn = E.cx;
             return;
         }
         
@@ -283,6 +308,7 @@ void editorMoveWordForward(int big_word) {
     if (E.numrows > 0) {
         E.cy = E.numrows - 1;
         E.cx = E.row[E.cy].size;
+        E.preferredColumn = 1000000;
     }
 }
 
@@ -324,6 +350,7 @@ void editorMoveWordBackward(int big_word) {
             
             E.cy = row;
             E.cx = col + 1;
+            E.preferredColumn = E.cx;
             return;
         }
         
@@ -337,6 +364,7 @@ void editorMoveWordBackward(int big_word) {
     // If we reached the beginning
     E.cy = 0;
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 // Move forward to end of word (e command)
@@ -377,6 +405,7 @@ void editorMoveWordEnd(int big_word) {
             
             E.cy = row;
             E.cx = col;
+            E.preferredColumn = E.cx;
             return;
         }
         
@@ -448,6 +477,7 @@ void editorMatchBracket() {
 // Line motions
 void editorMoveToLineStart() {
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 void editorMoveToFirstNonWhitespace() {
@@ -458,22 +488,26 @@ void editorMoveToFirstNonWhitespace() {
         col++;
     }
     E.cx = col;
+    E.preferredColumn = col;
 }
 
 void editorMoveToLineEnd() {
     if (E.cy >= E.numrows) return;
     E.cx = E.row[E.cy].size;
+    E.preferredColumn = 1000000; // Large value to stay at EOL
 }
 
 void editorMoveToFileStart() {
     E.cy = 0;
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 void editorMoveToFileEnd() {
     if (E.numrows == 0) return;
     E.cy = E.numrows - 1;
     E.cx = E.row[E.cy].size;
+    E.preferredColumn = 1000000;
 }
 
 void editorGoToLine(int line_num) {
@@ -481,6 +515,7 @@ void editorGoToLine(int line_num) {
     if (line_num > E.numrows) line_num = E.numrows;
     E.cy = line_num - 1;
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 // Check if a row is blank (empty or only whitespace)
@@ -521,6 +556,7 @@ void editorMoveToPreviousParagraph() {
     
     E.cy = row;
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 // Move to next paragraph (} command)
@@ -548,6 +584,7 @@ void editorMoveToNextParagraph() {
     
     E.cy = row;
     E.cx = 0;
+    E.preferredColumn = 0;
 }
 
 // Helper function to change case of a character range
@@ -588,6 +625,7 @@ void editorChangeCase(int to_upper) {
     
     E.mode = MODE_NORMAL;
     E.sel_sx = E.sel_sy = -1;
+    E.preferredColumn = E.cx;
 }
 
 // Indent/Unindent lines (> and < operators)
@@ -635,4 +673,32 @@ void editorIndent(int indent) {
     
     E.mode = MODE_NORMAL;
     E.sel_sx = E.sel_sy = -1;
+    E.preferredColumn = E.cx;
+}
+
+void editorSetMark(int mark) {
+    if (mark < 'a' || mark > 'z') return;
+    int idx = mark - 'a';
+    E.mark_x[idx] = E.cx;
+    E.mark_y[idx] = E.cy;
+    E.mark_set[idx] = 1;
+    editorSetStatusMessage("Mark '%c' set", mark);
+}
+
+void editorGoToMark(int mark) {
+    if (mark < 'a' || mark > 'z') return;
+    int idx = mark - 'a';
+    if (!E.mark_set[idx]) {
+        editorSetStatusMessage("Mark '%c' not set", mark);
+        return;
+    }
+    E.cy = E.mark_y[idx];
+    if (E.cy >= E.numrows) E.cy = E.numrows - 1;
+    if (E.cy < 0) E.cy = 0;
+    
+    E.cx = E.mark_x[idx];
+    if (E.cx > E.row[E.cy].size) E.cx = E.row[E.cy].size;
+    
+    E.preferredColumn = E.cx;
+    editorSetStatusMessage("Jumped to mark '%c'", mark);
 }

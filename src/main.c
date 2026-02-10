@@ -229,9 +229,19 @@ void editorDrawStatusBar(struct abuf *ab) {
     char status[80], rstatus[80];
     
     // Left side: filename and modification flag (neovim format)
-    int len = snprintf(status, sizeof(status), " %s%s",
+    int len = snprintf(status, sizeof(status), " %s%s%s%s",
         E.filename ? E.filename : "[No Name]",
-        E.dirty ? " [+]" : "");
+        E.dirty ? " [+]" : "",
+        E.git_status[0] ? " [" : "",
+        E.git_status[0] ? E.git_status : "");
+    if (E.git_status[0]) {
+        int glen = strlen(status);
+        if (glen < (int)sizeof(status) - 1) {
+            status[glen] = ']';
+            status[glen+1] = '\0';
+            len = glen + 1;
+        }
+    }
     if (len > (int)sizeof(status) - 1) len = sizeof(status) - 1;
     
     // Right side: cursor position and scroll indicator (neovim format)
@@ -669,6 +679,14 @@ int editorProcessKeypress() {
                 editorRedo();
                 break;
             
+            case 1: // CTRL-A
+                editorIncrementNumber(1);
+                break;
+            
+            case 24: // CTRL-X
+                editorIncrementNumber(-1);
+                break;
+            
             case 'U':
                 if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
                     editorChangeCase(1);  // uppercase
@@ -862,6 +880,24 @@ int editorProcessKeypress() {
             
             case 'N':
                 editorFindNext(-1);  // Previous match
+                break;
+            
+            case 'm':
+                {
+                    int mark = readKey();
+                    if (mark >= 'a' && mark <= 'z') {
+                        editorSetMark(mark);
+                    }
+                }
+                break;
+            
+            case '\'':
+                {
+                    int mark = readKey();
+                    if (mark >= 'a' && mark <= 'z') {
+                        editorGoToMark(mark);
+                    }
+                }
                 break;
             
             case 'g':

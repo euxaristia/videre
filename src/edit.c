@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <ctype.h>
 
 static char *base64_encode(const unsigned char *data, size_t input_length) {
     static const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -175,4 +176,46 @@ void editorSelectAll() {
     E.cy = E.numrows - 1;
     if (E.numrows > 0) E.cx = E.row[E.cy].size;
     else E.cx = 0;
+    E.preferredColumn = E.cx;
+}
+
+void editorIncrementNumber(int count) {
+    if (E.cy >= E.numrows) return;
+    erow *row = &E.row[E.cy];
+    int i = E.cx;
+    
+    // Find number on current line
+    while (i < row->size && !isdigit(row->chars[i])) {
+        if (row->chars[i] == '-' && i + 1 < row->size && isdigit(row->chars[i+1])) {
+            break;
+        }
+        i++;
+    }
+    
+    if (i < row->size) {
+        char *endptr;
+        long val = strtol(&row->chars[i], &endptr, 10);
+        int num_len = endptr - &row->chars[i];
+        val += count;
+        
+        char buf[32];
+        int new_len = snprintf(buf, sizeof(buf), "%ld", val);
+        
+        int diff = new_len - num_len;
+        editorSaveUndoState();
+        
+        char *new_chars = malloc(row->size + diff + 1);
+        memcpy(new_chars, row->chars, i);
+        memcpy(new_chars + i, buf, new_len);
+        memcpy(new_chars + i + new_len, endptr, row->size - (i + num_len));
+        new_chars[row->size + diff] = '\0';
+        
+        free(row->chars);
+        row->chars = new_chars;
+        row->size += diff;
+        E.cx = i + new_len - 1;
+        E.preferredColumn = E.cx;
+        editorUpdateRow(row);
+        E.dirty++;
+    }
 }

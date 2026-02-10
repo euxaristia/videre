@@ -92,6 +92,7 @@ typedef struct editorUndoState {
 
 typedef struct {
     int cx, cy;
+    int preferredColumn;
     int rowoff;
     int coloff;
     int screenrows;
@@ -101,6 +102,7 @@ typedef struct {
     erow *row;
     int dirty;
     char *filename;
+    char git_status[64];
     char statusmsg[256];
     time_t statusmsg_time;
     int mode;
@@ -117,6 +119,11 @@ typedef struct {
     int last_match;
     int search_direction;
     
+    // Marks (a-z)
+    int mark_x[26];
+    int mark_y[26];
+    int mark_set[26];
+
     // Character search state
     char last_search_char;
     int last_search_char_found;
@@ -150,6 +157,7 @@ extern EditorConfig E;
 // Prototypes
 void die(const char *s) __attribute__((noreturn));
 void editorOpen(char *filename);
+void editorUpdateGitStatus();
 void editorSave();
 void editorFind();
 void editorFindNext(int direction);
@@ -172,6 +180,7 @@ void editorInsertRow(int at, char *s, size_t len);
 void editorYank(int sx, int sy, int ex, int ey, int is_line);
 void editorPaste();
 void editorSelectAll();
+void editorIncrementNumber(int count);
 
 // Input
 int editorHandleMouse();
@@ -186,6 +195,10 @@ void editorFreeUndoState(editorUndoState *state);
 // Higher level utils
 void editorDeleteRange(int sx, int sy, int ex, int ey);
 void editorSelectWord();
+void editorSelectAll();
+void editorIncrementNumber(int count);
+void editorSetMark(int mark);
+void editorGoToMark(int mark);
 void editorFindChar(char c, int direction);
 void editorFindCharTill(char c, int direction);
 void editorRepeatCharSearch();
