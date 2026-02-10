@@ -7,6 +7,38 @@
 #include <string.h>
 #include <stdarg.h>
 
+static int editorUtf8CharLen(unsigned char c) {
+    if ((c & 0x80) == 0) return 1;
+    if ((c & 0xE0) == 0xC0) return 2;
+    if ((c & 0xF0) == 0xE0) return 3;
+    if ((c & 0xF8) == 0xF0) return 4;
+    return 1;
+}
+
+static int editorUtf8PrevBoundary(const char *s, int size, int idx) {
+    if (idx <= 0) return 0;
+    if (idx > size) idx = size;
+    idx--;
+    while (idx > 0 && (((unsigned char)s[idx] & 0xC0) == 0x80)) {
+        idx--;
+    }
+    return idx;
+}
+
+static int editorUtf8NextBoundary(const char *s, int size, int idx) {
+    if (idx < 0) idx = 0;
+    if (idx >= size) return size;
+
+    while (idx < size && (((unsigned char)s[idx] & 0xC0) == 0x80)) {
+        idx++;
+    }
+    if (idx >= size) return size;
+
+    int len = editorUtf8CharLen((unsigned char)s[idx]);
+    if (idx + len > size) return size;
+    return idx + len;
+}
+
 void initEditor() {
     E.cx = 0;
     E.cy = 0;
@@ -112,17 +144,24 @@ void editorMoveCursor(int key) {
     switch (key) {
         case ARROW_LEFT:
             if (E.cx != 0) {
-                E.cx--;
+                if (row) {
+                    E.cx = editorUtf8PrevBoundary(row->chars, row->size, E.cx);
+                } else {
+                    E.cx--;
+                }
                 E.preferredColumn = E.cx;
             } else if (E.cy > 0) {
                 E.cy--;
                 E.cx = E.row[E.cy].size;
+                if (E.mode != MODE_INSERT && E.row[E.cy].size > 0) {
+                    E.cx = editorUtf8PrevBoundary(E.row[E.cy].chars, E.row[E.cy].size, E.row[E.cy].size);
+                }
                 E.preferredColumn = E.cx;
             }
             break;
         case ARROW_RIGHT:
             if (row && E.cx < row->size) {
-                E.cx++;
+                E.cx = editorUtf8NextBoundary(row->chars, row->size, E.cx);
                 E.preferredColumn = E.cx;
             } else if (row && E.cx == row->size && E.mode == MODE_INSERT && E.cy < E.numrows - 1) {
                 E.cy++;
@@ -153,7 +192,7 @@ void editorMoveCursor(int key) {
 
     int maxcol = rowlen;
     if (E.mode != MODE_INSERT && rowlen > 0) {
-        maxcol = rowlen - 1;
+        maxcol = editorUtf8PrevBoundary(row->chars, row->size, row->size);
     }
 
     if (key == ARROW_UP || key == ARROW_DOWN) {
