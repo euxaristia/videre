@@ -188,20 +188,16 @@ int editorSyntaxToColor(int hl) {
 }
 
 void editorUpdateSearchHighlight() {
+  for (int filerow = 0; filerow < E.numrows; filerow++) {
+    editorUpdateSyntax(&E.row[filerow]);
+  }
+
   if (E.search_pattern == NULL || strlen(E.search_pattern) == 0) return;
   
   int qlen = strlen(E.search_pattern);
   
   for (int filerow = 0; filerow < E.numrows; filerow++) {
     erow *row = &E.row[filerow];
-    
-    // Clear previous search highlights first
-    for (int i = 0; i < row->size; i++) {
-      if (row->hl[i] == HL_MATCH || row->hl[i] == HL_MATCH_CURSOR) {
-        row->hl[i] = HL_NORMAL;
-      }
-    }
-    
     char *match = row->chars;
     
     while ((match = strstr(match, E.search_pattern)) != NULL) {

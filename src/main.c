@@ -169,11 +169,6 @@ void editorDrawRows(struct abuf *ab) {
                     is_reverse = 2;  // Reverse video for current match (brighter)
                 }
 
-                // Handle selection background
-                if (is_selected && bg_color < 0) {
-                    abAppend(ab, "\x1b[48;5;242m", 11); // Visual selection background
-                }
-
                 int color = editorSyntaxToColor(hl[j]);
                 
                 // Handle reverse video for search highlighting
@@ -183,10 +178,12 @@ void editorDrawRows(struct abuf *ab) {
                         // Other matches: reverse video with dark background
                         abAppend(ab, "\x1b[7m", 4);  // Enable reverse video
                         abAppend(ab, "\x1b[48;5;94m", 11);  // Dark brown background
+                        current_bg = 94;
                     } else if (is_reverse == 2) {
                         // Current match: reverse video with bright yellow background
                         abAppend(ab, "\x1b[7m", 4);  // Enable reverse video
                         abAppend(ab, "\x1b[48;5;220m", 11);  // Bright yellow/gold background
+                        current_bg = 220;
                     } else {
                         abAppend(ab, "\x1b[27m", 5);  // Disable reverse video
                     }
@@ -213,11 +210,6 @@ void editorDrawRows(struct abuf *ab) {
                 }
                 
                 abAppend(ab, &chars[j], 1);
-                
-                // Reset selection background after character
-                if (is_selected && bg_color < 0) {
-                    abAppend(ab, "\x1b[49m", 5); // Reset background
-                }
             }
             abAppend(ab, "\x1b[39m", 5);
             abAppend(ab, "\x1b[49m", 5);  // Reset background
