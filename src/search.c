@@ -38,6 +38,7 @@ void editorFindCallback(char *query, int key) {
             last_match = current;
             E.cy = current;
             E.cx = match - row->chars;
+            E.preferredColumn = E.cx;
             E.rowoff = E.numrows;
             break;
         }
@@ -53,6 +54,7 @@ void editorFindCallback(char *query, int key) {
 void editorFind() {
     int saved_cx = E.cx;
     int saved_cy = E.cy;
+    int saved_preferredColumn = E.preferredColumn;
     int saved_coloff = E.coloff;
     int saved_rowoff = E.rowoff;
 
@@ -63,6 +65,7 @@ void editorFind() {
     } else {
         E.cx = saved_cx;
         E.cy = saved_cy;
+        E.preferredColumn = saved_preferredColumn;
         E.coloff = saved_coloff;
         E.rowoff = saved_rowoff;
     }
@@ -111,6 +114,7 @@ void editorFindNext(int direction) {
         if (match) {
             E.cy = current_row;
             E.cx = match - row->chars;
+            E.preferredColumn = E.cx;
             editorUpdateSearchHighlight();
             return;
         }
