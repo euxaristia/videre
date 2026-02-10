@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#include <stdint.h>
+#include <locale.h>
 
 // --- Status Message ---
 
@@ -85,6 +87,101 @@ char *editorPrompt(char *prompt, void (*callback)(char *, int)) {
 
 // --- Rendering ---
 
+static int editorUtf8CharLen(unsigned char c) {
+    if ((c & 0x80) == 0) return 1;
+    if ((c & 0xE0) == 0xC0) return 2;
+    if ((c & 0xF0) == 0xE0) return 3;
+    if ((c & 0xF8) == 0xF0) return 4;
+    return 1;
+}
+
+static int editorDecodeUtf8(const char *s, int avail, uint32_t *codepoint) {
+    if (avail <= 0) return 0;
+    const unsigned char c0 = (unsigned char)s[0];
+    int len = editorUtf8CharLen(c0);
+    if (len > avail) len = 1;
+
+    if (len == 1) {
+        *codepoint = c0;
+        return 1;
+    }
+
+    uint32_t cp = c0 & ((1 << (8 - len - 1)) - 1);
+    for (int i = 1; i < len; i++) {
+        unsigned char cx = (unsigned char)s[i];
+        if ((cx & 0xC0) != 0x80) {
+            *codepoint = c0;
+            return 1;
+        }
+        cp = (cp << 6) | (cx & 0x3F);
+    }
+
+    *codepoint = cp;
+    return len;
+}
+
+static int editorCodepointWidth(uint32_t cp) {
+    // Control chars and combining marks are zero-width for cursor math.
+    if (cp < 0x20 || (cp >= 0x7F && cp < 0xA0)) return 0;
+    if ((cp >= 0x0300 && cp <= 0x036F) || (cp >= 0x1AB0 && cp <= 0x1AFF) ||
+        (cp >= 0x1DC0 && cp <= 0x1DFF) || (cp >= 0x20D0 && cp <= 0x20FF) ||
+        (cp >= 0xFE20 && cp <= 0xFE2F) || cp == 0x200D ||
+        (cp >= 0xFE00 && cp <= 0xFE0F)) {
+        return 0;
+    }
+
+    // Common wide ranges (CJK + emoji/pictographs).
+    if ((cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2329 && cp <= 0x232A) ||
+        (cp >= 0x2E80 && cp <= 0xA4CF) || (cp >= 0xAC00 && cp <= 0xD7A3) ||
+        (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE19) ||
+        (cp >= 0xFE30 && cp <= 0xFE6F) || (cp >= 0xFF00 && cp <= 0xFF60) ||
+        (cp >= 0xFFE0 && cp <= 0xFFE6) || (cp >= 0x1F300 && cp <= 0x1FAFF) ||
+        (cp >= 0x2600 && cp <= 0x27BF)) {
+        return 2;
+    }
+
+    return 1;
+}
+
+static int editorDisplayWidthBytes(const char *s, int len) {
+    int width = 0;
+    int i = 0;
+    while (i < len) {
+        uint32_t cp = 0;
+        int clen = editorDecodeUtf8(&s[i], len - i, &cp);
+        int cw = editorCodepointWidth(cp);
+        if (cw < 0) cw = 1;
+        width += cw;
+        i += clen;
+    }
+    return width;
+}
+
+static int editorSnapToUtf8Boundary(const char *s, int size, int idx) {
+    if (idx <= 0) return 0;
+    if (idx >= size) return size;
+    while (idx > 0 && (((unsigned char)s[idx] & 0xC0) == 0x80)) {
+        idx--;
+    }
+    return idx;
+}
+
+static int editorByteIndexFromDisplayCol(const char *s, int len, int target_col) {
+    if (target_col <= 0) return 0;
+    int i = 0;
+    int col = 0;
+    while (i < len) {
+        uint32_t cp = 0;
+        int clen = editorDecodeUtf8(&s[i], len - i, &cp);
+        int cw = editorCodepointWidth(cp);
+        if (cw < 0) cw = 1;
+        if (col + cw > target_col) break;
+        col += cw;
+        i += clen;
+    }
+    return i;
+}
+
 int editorRowIsSelected(int filerow, int x) {
     if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) return 0;
     
@@ -112,11 +209,16 @@ int editorRowIsSelected(int filerow, int x) {
 }
 
 void editorDrawRows(struct abuf *ab) {
+    int gutter_width = editorGetGutterWidth();
+    int gutter_cols = gutter_width > 0 ? gutter_width + 1 : 0;
+    int text_cols = E.screencols - gutter_cols;
+    if (text_cols < 1) text_cols = 1;
     int y;
     for (y = 0; y < E.screenrows; y++) {
         int filerow = y + E.rowoff;
         if (filerow >= E.numrows) {
             if (E.numrows == 0 && y >= E.screenrows / 3 && y < E.screenrows / 3 + 9) {
+                abAppend(ab, "\x1b[2m~\x1b[m", strlen("\x1b[2m~\x1b[m"));
                 const char *welcome[] = {
                     "VIDERE v0.1.0",
                     "",
@@ -130,30 +232,48 @@ void editorDrawRows(struct abuf *ab) {
                 };
                 int msg_idx = y - E.screenrows / 3;
                 int welcomelen = strlen(welcome[msg_idx]);
-                if (welcomelen > E.screencols) welcomelen = E.screencols;
-                int padding = (E.screencols - welcomelen) / 2;
-                if (padding) {
-                    abAppend(ab, "~", 1);
-                    padding--;
-                }
+                if (welcomelen > text_cols) welcomelen = text_cols;
+                int padding = (text_cols - welcomelen) / 2;
                 while (padding-- > 0) abAppend(ab, " ", 1);
                 abAppend(ab, welcome[msg_idx], welcomelen);
             } else {
-                abAppend(ab, "~", 1);
+                abAppend(ab, "\x1b[2m~\x1b[m", strlen("\x1b[2m~\x1b[m"));
             }
         } else {
-            int len = E.row[filerow].size - E.coloff;
-            if (len < 0) len = 0;
-            if (len > E.screencols) len = E.screencols;
+            if (gutter_width > 0) {
+                char gutter[64];
+                int glen = snprintf(gutter, sizeof(gutter), "\x1b[2m%*d \x1b[m", gutter_width, filerow + 1);
+                abAppend(ab, gutter, glen);
+            }
+            int row_coloff = E.coloff;
+            if (row_coloff > E.row[filerow].size) row_coloff = E.row[filerow].size;
+            row_coloff = editorSnapToUtf8Boundary(E.row[filerow].chars, E.row[filerow].size, row_coloff);
+
+            int bytes_avail = E.row[filerow].size - row_coloff;
+            if (bytes_avail < 0) bytes_avail = 0;
             
-            char *chars = &E.row[filerow].chars[E.coloff];
-            unsigned char *hl = &E.row[filerow].hl[E.coloff];
+            char *chars = &E.row[filerow].chars[row_coloff];
+            unsigned char *hl = &E.row[filerow].hl[row_coloff];
             int current_color = -1;
             int current_bg = -1;  // Track background color
             int current_reverse = 0;  // Track reverse video (for search highlighting)
-            int j;
-            for (j = 0; j < len; j++) {
-                int is_selected = editorRowIsSelected(filerow, j + E.coloff);
+            int j = 0;
+            int rendered_cols = 0;
+            while (j < bytes_avail) {
+                uint32_t cp = 0;
+                int clen = editorDecodeUtf8(&chars[j], bytes_avail - j, &cp);
+                int char_width = editorCodepointWidth(cp);
+                if (char_width < 0) char_width = 1;
+
+                if (rendered_cols + char_width > text_cols) break;
+
+                int is_selected = 0;
+                for (int k = 0; k < clen; k++) {
+                    if (editorRowIsSelected(filerow, j + row_coloff + k)) {
+                        is_selected = 1;
+                        break;
+                    }
+                }
                 int bg_color = -1;  // -1 means no special background
                 int is_reverse = 0;  // 0 = normal, 1 = reverse video (search highlight)
                 
@@ -209,7 +329,9 @@ void editorDrawRows(struct abuf *ab) {
                     }
                 }
                 
-                abAppend(ab, &chars[j], 1);
+                abAppend(ab, &chars[j], clen);
+                rendered_cols += char_width;
+                j += clen;
             }
             abAppend(ab, "\x1b[39m", 5);
             abAppend(ab, "\x1b[49m", 5);  // Reset background
@@ -398,8 +520,22 @@ void editorRefreshScreen() {
         editorDrawContextMenu(&ab);
     }
 
+    int gutter_width = editorGetGutterWidth();
+    int gutter_cols = gutter_width > 0 ? gutter_width + 1 : 0;
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.cx - E.coloff) + 1);
+    int cursor_col = 1 + gutter_cols;
+    if (E.cy >= 0 && E.cy < E.numrows) {
+        int start = E.coloff;
+        if (start < 0) start = 0;
+        if (start > E.row[E.cy].size) start = E.row[E.cy].size;
+        start = editorSnapToUtf8Boundary(E.row[E.cy].chars, E.row[E.cy].size, start);
+        int end = E.cx;
+        if (end < start) end = start;
+        if (end > E.row[E.cy].size) end = E.row[E.cy].size;
+        end = editorSnapToUtf8Boundary(E.row[E.cy].chars, E.row[E.cy].size, end);
+        cursor_col += editorDisplayWidthBytes(&E.row[E.cy].chars[start], end - start);
+    }
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, cursor_col);
     
     if (E.statusmsg[0] == ':') {
          snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.screenrows + 2, (int)strlen(E.statusmsg) + 1);
@@ -416,7 +552,7 @@ void editorRefreshScreen() {
 
 int editorHandleMouse() {
     static int last_click_x = -1, last_click_y = -1;
-    static time_t last_click_time = 0;
+    static struct timespec last_click_time = {0, 0};
     
     int b = E.mouse_b;
     int x = E.mouse_x;
@@ -513,16 +649,23 @@ int editorHandleMouse() {
 
     // Only process motion if dragging
     if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
+        if (!E.is_dragging) return 0;
         // Convert screen coordinates to buffer coordinates
         int filerow = y - 1 + E.rowoff;
-        int filecol = x - 1 + E.coloff;
+        int gutter_width = editorGetGutterWidth();
+        int gutter_cols = gutter_width > 0 ? gutter_width + 1 : 0;
+        int text_x = x - gutter_cols;
         
         if (filerow >= 0 && filerow < E.numrows) {
             E.cy = filerow;
-            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
-                E.cx = filecol;
-            } else {
-                E.cx = E.row[E.cy].size;
+            int row_coloff = E.coloff;
+            if (row_coloff > E.row[E.cy].size) row_coloff = E.row[E.cy].size;
+            row_coloff = editorSnapToUtf8Boundary(E.row[E.cy].chars, E.row[E.cy].size, row_coloff);
+            int target_display_col = (text_x <= 0) ? 0 : (text_x - 1);
+            int rel_byte = editorByteIndexFromDisplayCol(&E.row[E.cy].chars[row_coloff], E.row[E.cy].size - row_coloff, target_display_col);
+            E.cx = row_coloff + rel_byte;
+            if (E.mode != MODE_INSERT && E.row[E.cy].size > 0 && E.cx >= E.row[E.cy].size) {
+                E.cx = E.row[E.cy].size - 1;
             }
         }
         
@@ -535,27 +678,44 @@ int editorHandleMouse() {
     if (b == MOUSE_LEFT) {
         // Convert screen coordinates to buffer coordinates
         int filerow = y - 1 + E.rowoff;
-        int filecol = x - 1 + E.coloff;
-        
+        int gutter_width = editorGetGutterWidth();
+        int gutter_cols = gutter_width > 0 ? gutter_width + 1 : 0;
+        int text_x = x - gutter_cols;
+
         if (filerow >= 0 && filerow < E.numrows) {
             E.cy = filerow;
-            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
-                E.cx = filecol;
-            } else {
-                E.cx = E.row[E.cy].size;
+            int row_coloff = E.coloff;
+            if (row_coloff > E.row[E.cy].size) row_coloff = E.row[E.cy].size;
+            row_coloff = editorSnapToUtf8Boundary(E.row[E.cy].chars, E.row[E.cy].size, row_coloff);
+            int target_display_col = (text_x <= 0) ? 0 : (text_x - 1);
+            int rel_byte = editorByteIndexFromDisplayCol(&E.row[E.cy].chars[row_coloff], E.row[E.cy].size - row_coloff, target_display_col);
+            E.cx = row_coloff + rel_byte;
+            if (E.mode != MODE_INSERT && E.row[E.cy].size > 0 && E.cx >= E.row[E.cy].size) {
+                E.cx = E.row[E.cy].size - 1;
             }
         }
-        
-        time_t now = time(NULL);
-        if (x == last_click_x && y == last_click_y && (now - last_click_time) < 1) {
+
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long long elapsed_ms = (now.tv_sec - last_click_time.tv_sec) * 1000LL +
+                               (now.tv_nsec - last_click_time.tv_nsec) / 1000000LL;
+
+        if (x == last_click_x && y == last_click_y && elapsed_ms < 500) {
             // Double-click: select word
             editorSelectWord();
-        } else {
-            // Single click: start dragging
-            E.is_dragging = 1;
+            // Clear any dragging state to prevent accidental drag selection after double-click
+            E.is_dragging = 0;
             if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
-                E.sel_sx = E.cx;
-                E.sel_sy = E.cy;
+                E.mode = MODE_VISUAL;  // Ensure we're in visual mode for the selected word
+            }
+        } else {
+            // Single click: start dragging and reset selection
+            E.is_dragging = 1;
+            E.sel_sx = E.cx;
+            E.sel_sy = E.cy;
+            if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                E.mode = MODE_NORMAL;
+                E.sel_sx = E.sel_sy = -1;
             }
         }
         last_click_x = x;
@@ -953,6 +1113,7 @@ int editorProcessKeypress() {
 }
 
 int main(int argc, char *argv[]) {
+    setlocale(LC_CTYPE, "");
     initEditor();
     enableRawMode();
     if (argc >= 2) {

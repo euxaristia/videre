@@ -222,5 +222,6 @@ void abFree(struct abuf *ab);
 void editorSetStatusMessage(const char *fmt, ...);
 char *editorPrompt(char *prompt, void (*callback)(char *, int));
 void editorRefreshScreen();
+int editorGetGutterWidth(void);
 
 #endif

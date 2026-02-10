@@ -212,6 +212,11 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 void editorScroll() {
+    int gutter_width = editorGetGutterWidth();
+    int gutter_cols = gutter_width > 0 ? gutter_width + 1 : 0;
+    int text_cols = E.screencols - gutter_cols;
+    if (text_cols < 1) text_cols = 1;
+
     // Adjust row offset based on cursor position
     if (E.cy < E.rowoff) {
         E.rowoff = E.cy;
@@ -224,7 +229,7 @@ void editorScroll() {
     if (E.cx < E.coloff) {
         E.coloff = E.cx;
     }
-    if (E.cx >= E.coloff + E.screencols) {
-        E.coloff = E.cx - E.screencols + 1;
+    if (E.cx >= E.coloff + text_cols) {
+        E.coloff = E.cx - text_cols + 1;
     }
 }

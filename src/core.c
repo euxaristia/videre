@@ -48,6 +48,18 @@ void initEditor() {
     else E.screenrows -= 2; 
 }
 
+int editorGetGutterWidth(void) {
+    if (E.filename == NULL && E.numrows == 0) return 0;
+
+    int max_line = E.numrows > 0 ? E.numrows : 1;
+    int digits = 1;
+    while (max_line >= 10) {
+        digits++;
+        max_line /= 10;
+    }
+    return digits;
+}
+
 void editorInsertChar(int c) {
     editorSaveUndoState();
     if (E.cy == E.numrows) {
@@ -112,7 +124,7 @@ void editorMoveCursor(int key) {
             if (row && E.cx < row->size) {
                 E.cx++;
                 E.preferredColumn = E.cx;
-            } else if (row && E.cx == row->size) {
+            } else if (row && E.cx == row->size && E.mode == MODE_INSERT && E.cy < E.numrows - 1) {
                 E.cy++;
                 E.cx = 0;
                 E.preferredColumn = E.cx;
@@ -130,20 +142,32 @@ void editorMoveCursor(int key) {
             break;
     }
 
+    // Never allow virtual line below EOF when buffer has content.
+    if (E.numrows > 0 && E.cy >= E.numrows) {
+        E.cy = E.numrows - 1;
+    }
+    if (E.cy < 0) E.cy = 0;
+
     row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
     int rowlen = row ? row->size : 0;
-    
+
+    int maxcol = rowlen;
+    if (E.mode != MODE_INSERT && rowlen > 0) {
+        maxcol = rowlen - 1;
+    }
+
     if (key == ARROW_UP || key == ARROW_DOWN) {
-        if (E.preferredColumn > rowlen) {
-            E.cx = rowlen;
+        if (E.preferredColumn > maxcol) {
+            E.cx = maxcol;
         } else {
             E.cx = E.preferredColumn;
         }
     } else {
-        if (E.cx > rowlen) {
-            E.cx = rowlen;
+        if (E.cx > maxcol) {
+            E.cx = maxcol;
         }
     }
+    if (E.cx < 0) E.cx = 0;
 }
 
 // Character search functions
