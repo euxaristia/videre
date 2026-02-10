@@ -418,10 +418,9 @@ void editorHandleMouse() {
         last_click_y = y;
         last_click_time = now;
     }
-    // Handle right click - show context menu
+    // Handle right click - paste at click position
     else if (b == MOUSE_RIGHT) {
-        // For now, just enter visual mode at click position
-        // Context menu implementation would go here
+        // Move cursor to click position first
         int filerow = y - 1 + E.rowoff;
         int filecol = x - 1 + E.coloff;
         
@@ -432,8 +431,8 @@ void editorHandleMouse() {
             } else {
                 E.cx = E.row[E.cy].size;
             }
-            // TODO: Show context menu
-            editorSetStatusMessage("Right-click menu not yet implemented");
+            // Paste from clipboard
+            editorPaste();
         }
     }
 }
