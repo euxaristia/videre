@@ -17,7 +17,11 @@ enum editorKey {
     END_KEY,
     PAGE_UP,
     PAGE_DOWN,
-    MOUSE_EVENT
+    MOUSE_EVENT,
+    FIND_CHAR,
+    FIND_CHAR_BACK,
+    TILL_CHAR,
+    TILL_CHAR_BACK
 };
 
 enum editorMode {
@@ -109,6 +113,10 @@ typedef struct {
     char *search_pattern;
     int last_match;
     int search_direction;
+    
+    // Character search state
+    char last_search_char;
+    int last_search_char_found;
     editorSyntax *syntax;
     
     // Registers
@@ -162,6 +170,9 @@ void editorFreeUndoState(editorUndoState *state);
 // Higher level utils
 void editorDeleteRange(int sx, int sy, int ex, int ey);
 void editorSelectWord();
+void editorFindChar(char c, int direction);
+void editorFindCharTill(char c, int direction);
+void editorRepeatCharSearch();
 
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);

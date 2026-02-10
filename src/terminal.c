@@ -141,6 +141,11 @@ int readKey() {
                 case 'H': return HOME_KEY;
                 case 'F': return END_KEY;
             }
+        } else if (seq[0] == 'z') {
+            // Character search sequences: z<char> for forward, Z<char> for backward
+            if (seq[1] && seq[2] == '\0') {
+                return seq[1]; // Return the character to search for
+            }
         }
 
         return '\x1b';

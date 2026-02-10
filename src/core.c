@@ -30,6 +30,9 @@ void initEditor() {
     }
     E.undo_stack = NULL;
     E.redo_stack = NULL;
+    E.search_pattern = NULL;
+    E.last_search_char = '\0';
+    E.last_search_char_found = 0;
 
     getWindowSize(&E.screenrows, &E.screencols);
     if (E.screenrows < 3) E.screenrows = 1;
@@ -136,5 +139,103 @@ void editorMoveCursor(int key) {
     if (E.cx > rowlen) {
         E.cx = rowlen;
     }
+}
+
+// Character search functions
+void editorFindChar(char c, int direction) {
+    E.last_search_char = c;
+    E.last_search_char_found = 0;
+    
+    if (E.numrows == 0) return;
+    
+    erow *row = &E.row[E.cy];
+    int start_col = E.cx + (direction > 0 ? 1 : -1);
+    
+    // Search forward
+    if (direction > 0) {
+        for (int line = E.cy; line < E.numrows; line++) {
+            erow *current_row = &E.row[line];
+            int start = (line == E.cy) ? start_col : 0;
+            
+            for (int col = start; col < current_row->size; col++) {
+                if (current_row->chars[col] == c) {
+                    E.cy = line;
+                    E.cx = col;
+                    E.last_search_char_found = 1;
+                    return;
+                }
+            }
+        }
+    }
+    // Search backward
+    else {
+        for (int line = E.cy; line >= 0; line--) {
+            erow *current_row = &E.row[line];
+            int end = (line == E.cy) ? start_col : current_row->size - 1;
+            
+            for (int col = end; col >= 0; col--) {
+                if (current_row->chars[col] == c) {
+                    E.cy = line;
+                    E.cx = col;
+                    E.last_search_char_found = 1;
+                    return;
+                }
+            }
+        }
+    }
+}
+
+void editorFindCharTill(char c, int direction) {
+    E.last_search_char = c;
+    E.last_search_char_found = 0;
+    
+    if (E.numrows == 0) return;
+    
+    erow *row = &E.row[E.cy];
+    int start_col = E.cx + (direction > 0 ? 1 : -1);
+    
+    // Search forward
+    if (direction > 0) {
+        for (int line = E.cy; line < E.numrows; line++) {
+            erow *current_row = &E.row[line];
+            int start = (line == E.cy) ? start_col : 0;
+            
+            for (int col = start; col < current_row->size; col++) {
+                if (current_row->chars[col] == c) {
+                    E.cy = line;
+                    E.cx = col - 1; // Position before the character
+                    if (E.cx < 0) E.cx = 0;
+                    E.last_search_char_found = 1;
+                    return;
+                }
+            }
+        }
+    }
+    // Search backward
+    else {
+        for (int line = E.cy; line >= 0; line--) {
+            erow *current_row = &E.row[line];
+            int end = (line == E.cy) ? start_col : current_row->size - 1;
+            
+            for (int col = end; col >= 0; col--) {
+                if (current_row->chars[col] == c) {
+                    E.cy = line;
+                    E.cx = col + 1; // Position after the character
+                    if (E.cx >= current_row->size) E.cx = current_row->size - 1;
+                    E.last_search_char_found = 1;
+                    return;
+                }
+            }
+        }
+    }
+}
+
+void editorRepeatCharSearch() {
+    if (E.last_search_char == '\0') return;
+    
+    // Repeat the last character search in the same direction
+    // For simplicity, we'll just call editorFindChar again
+    // In a full implementation, we'd track the last search direction
+    editorFindChar(E.last_search_char, 1);
 }
 

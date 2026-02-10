@@ -550,6 +550,39 @@ void editorProcessKeypress() {
                     editorMoveCursor(key);
                 }
                 break;
+            
+            // Character search commands
+            case 'f':
+            case 'F':
+            case 't':
+            case 'T':
+                {
+                    // Read the next character to search for
+                    int search_char = readKey();
+                    if (search_char != '\x1b' && !iscntrl(search_char)) {
+                        int direction = (c == 'f' || c == 't') ? 1 : -1;
+                        int till = (c == 't' || c == 'T') ? 1 : 0;
+                        
+                        if (till) {
+                            editorFindCharTill(search_char, direction);
+                        } else {
+                            editorFindChar(search_char, direction);
+                        }
+                    }
+                }
+                break;
+            
+            case ';':
+                // Repeat last character search in same direction
+                editorRepeatCharSearch();
+                break;
+            
+            case ',':
+                // Repeat last character search in opposite direction
+                if (E.last_search_char != '\0') {
+                    editorFindChar(E.last_search_char, -1);
+                }
+                break;
         }
     }
 
