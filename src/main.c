@@ -332,29 +332,37 @@ void editorDrawContextMenu(struct abuf *ab) {
 
     char buf[64];
     // Draw shadow/border and items
-    // Dark grey background (236), White text (255)
+    // Dark background (235), Light grey text (252)
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y, x);
     abAppend(ab, buf, strlen(buf));
-    abAppend(ab, "\x1b[48;5;236m\x1b[38;5;255m┌───────────┐", 39);
+    // Border color: medium grey (239)
+    abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m┌───────────┐", 61);
 
     for (int i = 0; i < MENU_COUNT; i++) {
         snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + i + 1, x);
         abAppend(ab, buf, strlen(buf));
-        abAppend(ab, "│", 3);
+        abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m│", 25);
         
         if (i == E.menu_selected) {
-            abAppend(ab, "\x1b[48;5;242m", 11); // Selection highlight
+            // Selected item: Blue background (24), White text (255)
+            abAppend(ab, "\x1b[48;5;24m\x1b[38;5;255m", 22);
         } else {
-            abAppend(ab, "\x1b[48;5;236m", 11);
+            // Normal item: Dark background (235), Light grey text (252)
+            abAppend(ab, "\x1b[48;5;235m\x1b[38;5;252m", 22);
         }
         
-        abAppend(ab, menu_items[i], strlen(menu_items[i]));
-        abAppend(ab, "\x1b[48;5;236m│", 15);
+        if (i == 4) { // Separator
+            abAppend(ab, "───────────", 33);
+        } else {
+            abAppend(ab, menu_items[i], 11);
+        }
+        
+        abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m│", 25);
     }
 
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + MENU_COUNT + 1, x);
     abAppend(ab, buf, strlen(buf));
-    abAppend(ab, "└───────────┘\x1b[m", 39);
+    abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m", 45);
 }
 
 void editorRefreshScreen() {
