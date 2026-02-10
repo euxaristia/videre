@@ -71,6 +71,19 @@ typedef struct erow {
 } erow;
 
 typedef struct {
+    char *chars;
+    int size;
+    int is_line;
+} editorRegister;
+
+typedef struct editorUndoState {
+    int numrows;
+    erow *row;
+    int cx, cy;
+    struct editorUndoState *next;
+} editorUndoState;
+
+typedef struct {
     int cx, cy;
     int rowoff;
     int coloff;
@@ -95,6 +108,14 @@ typedef struct {
     int last_match;
     int search_direction;
     editorSyntax *syntax;
+    
+    // Registers
+    editorRegister registers[256];
+    
+    // Undo/Redo
+    editorUndoState *undo_stack;
+    editorUndoState *redo_stack;
+
     struct termios orig_termios;
 } EditorConfig;
 
@@ -125,6 +146,16 @@ void editorRowDelChar(erow *row, int at);
 void editorFreeRow(erow *row);
 void editorDelRow(int at);
 void editorInsertRow(int at, char *s, size_t len);
+
+// Yank/Paste
+void editorYank(int sx, int sy, int ex, int ey, int is_line);
+void editorPaste();
+
+// Undo/Redo
+void editorSaveUndoState();
+void editorUndo();
+void editorRedo();
+void editorFreeUndoState(editorUndoState *state);
 
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);

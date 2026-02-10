@@ -21,6 +21,14 @@ void initEditor() {
     E.mode = MODE_NORMAL;
     E.is_dragging = 0;
     E.sel_sx = E.sel_sy = -1;
+    
+    for (int i = 0; i < 256; i++) {
+        E.registers[i].chars = NULL;
+        E.registers[i].size = 0;
+        E.registers[i].is_line = 0;
+    }
+    E.undo_stack = NULL;
+    E.redo_stack = NULL;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
     if (E.screenrows < 3) E.screenrows = 1;
@@ -30,6 +38,7 @@ void initEditor() {
 // --- High Level Editing ---
 
 void editorInsertChar(int c) {
+    editorSaveUndoState();
     if (E.cy == E.numrows) {
         editorInsertRow(E.numrows, "", 0);
     }
@@ -38,6 +47,7 @@ void editorInsertChar(int c) {
 }
 
 void editorInsertNewline() {
+    editorSaveUndoState();
     if (E.cx == 0) {
         editorInsertRow(E.cy, "", 0);
     } else {
@@ -56,6 +66,7 @@ void editorDelChar() {
     if (E.cy == E.numrows) return;
     if (E.cx == 0 && E.cy == 0) return;
 
+    editorSaveUndoState();
     erow *row = &E.row[E.cy];
     if (E.cx > 0) {
         editorRowDelChar(row, E.cx - 1);
@@ -473,6 +484,27 @@ void editorProcessKeypress() {
                 }
                 break;
 
+            case 'u':
+                editorUndo();
+                break;
+
+            case 18: // CTRL-R
+                editorRedo();
+                break;
+
+            case 'y':
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                    E.mode = MODE_NORMAL;
+                    E.sel_sx = E.sel_sy = -1;
+                    editorSetStatusMessage("Yanked");
+                }
+                break;
+
+            case 'p':
+                editorPaste();
+                break;
+
             case '\x1b':
                 E.mode = MODE_NORMAL;
                 E.sel_sx = E.sel_sy = -1;
@@ -481,7 +513,10 @@ void editorProcessKeypress() {
 
             case 'x':
                 if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
-                    // TODO: delete selection
+                    editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                    // TODO: actually delete selection
+                    E.mode = MODE_NORMAL;
+                    E.sel_sx = E.sel_sy = -1;
                 } else {
                     editorMoveCursor(ARROW_RIGHT);
                     editorDelChar();
