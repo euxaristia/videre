@@ -10,15 +10,17 @@
 EditorConfig E;
 
 void die(const char *s) {
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    // Force terminal cleanup before exit
+    write(STDOUT_FILENO, "\x1b[?1006l\x1b[?1003l", 16);
+    write(STDOUT_FILENO, "\x1b[?1049l", 8);
+    write(STDOUT_FILENO, "\x1b[?25h", 6);
+    
     perror(s);
     exit(1);
 }
 
 void disableRawMode() {
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &E.orig_termios) == -1)
-        die("tcsetattr");
+    tcsetattr(STDIN_FILENO, TCSANOW, &E.orig_termios);
     
     // Leave alternate screen, disable mouse, show cursor
     write(STDOUT_FILENO, "\x1b[?1006l\x1b[?1003l", 16);

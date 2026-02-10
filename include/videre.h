@@ -3,6 +3,7 @@
 
 #include <termios.h>
 #include <unistd.h>
+#include <time.h>
 
 // Input Key Mapping
 enum editorKey {
@@ -32,7 +33,10 @@ typedef struct {
     int screencols;
     int numrows;
     erow *row;
+    int dirty;
     char *filename;
+    char statusmsg[80];
+    time_t statusmsg_time;
     struct termios orig_termios;
 } EditorConfig;
 
@@ -52,5 +56,8 @@ void editorOpen(char *filename);
 void editorUpdateRow(erow *row);
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
+void editorSetStatusMessage(const char *fmt, ...);
+char *editorPrompt(char *prompt);
+void editorRefreshScreen();
 
 #endif
