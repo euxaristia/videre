@@ -302,6 +302,61 @@ void editorDrawMessageBar(struct abuf *ab) {
     }
 }
 
+// --- Context Menu ---
+
+char *menu_items[] = {
+    " Cut       ",
+    " Copy      ",
+    " Paste     ",
+    " Select All",
+    "-----------",
+    " Undo      ",
+    " Redo      "
+};
+#define MENU_COUNT (int)(sizeof(menu_items) / sizeof(menu_items[0]))
+
+void editorDrawContextMenu(struct abuf *ab) {
+    if (!E.menu_open) return;
+
+    int x = E.menu_x;
+    int y = E.menu_y;
+    
+    // Ensure menu stays within screen bounds
+    int menu_width = 13;
+    int menu_height = MENU_COUNT + 2;
+    
+    if (x + menu_width > E.screencols) x = E.screencols - menu_width;
+    if (y + menu_height > E.screenrows) y = E.screenrows - menu_height;
+    if (x < 1) x = 1;
+    if (y < 1) y = 1;
+
+    char buf[64];
+    // Draw shadow/border and items
+    // Dark grey background (236), White text (255)
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y, x);
+    abAppend(ab, buf, strlen(buf));
+    abAppend(ab, "\x1b[48;5;236m\x1b[38;5;255m┌───────────┐", 25);
+
+    for (int i = 0; i < MENU_COUNT; i++) {
+        snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + i + 1, x);
+        abAppend(ab, buf, strlen(buf));
+        abAppend(ab, "│", 3);
+        
+        if (i == E.menu_selected) {
+            abAppend(ab, "\x1b[48;5;242m", 11); // Selection highlight
+        } else {
+            abAppend(ab, "\x1b[48;5;236m", 11);
+        }
+        
+        abAppend(ab, menu_items[i], strlen(menu_items[i]));
+        abAppend(ab, "\x1b[48;5;236m│", 12);
+    }
+
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + MENU_COUNT + 1, x);
+    abAppend(ab, buf, strlen(buf));
+    abAppend(ab, "└───────────┘\x1b[m", 15);
+}
+
 void editorRefreshScreen() {
     editorScroll();
 
@@ -313,6 +368,10 @@ void editorRefreshScreen() {
     editorDrawRows(&ab);
     editorDrawStatusBar(&ab);
     editorDrawMessageBar(&ab);
+    
+    if (E.menu_open) {
+        editorDrawContextMenu(&ab);
+    }
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.cx - E.coloff) + 1);
@@ -358,6 +417,28 @@ void editorHandleMouse() {
         return;
     }
 
+    // Handle menu interactions during drag (for highlighting)
+    if (E.menu_open && (b == (MOUSE_LEFT | MOUSE_DRAG))) {
+        int menu_width = 13;
+        int menu_height = MENU_COUNT + 2;
+        int mx = E.menu_x;
+        int my = E.menu_y;
+        if (mx + menu_width > E.screencols) mx = E.screencols - menu_width;
+        if (my + menu_height > E.screenrows) my = E.screenrows - menu_height;
+        if (mx < 1) mx = 1;
+        if (my < 1) my = 1;
+
+        if (x >= mx && x < mx + menu_width && y >= my && y < my + menu_height) {
+            int item_idx = y - my - 1;
+            if (item_idx >= 0 && item_idx < MENU_COUNT) {
+                E.menu_selected = item_idx;
+            }
+        } else {
+            E.menu_selected = -1;
+        }
+        return;
+    }
+
     // Only process motion if dragging
     if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
         // Convert screen coordinates to buffer coordinates
@@ -379,8 +460,58 @@ void editorHandleMouse() {
         return;
     }
 
-    // Handle left click - move cursor only on click
     if (b == MOUSE_LEFT) {
+        if (E.menu_open) {
+            // Check if click is inside the menu
+            int menu_width = 13;
+            int menu_height = MENU_COUNT + 2;
+            
+            // Re-calculate adjusted menu position (same logic as in draw)
+            int mx = E.menu_x;
+            int my = E.menu_y;
+            if (mx + menu_width > E.screencols) mx = E.screencols - menu_width;
+            if (my + menu_height > E.screenrows) my = E.screenrows - menu_height;
+            if (mx < 1) mx = 1;
+            if (my < 1) my = 1;
+
+            if (x >= mx && x < mx + menu_width && y >= my && y < my + menu_height) {
+                int item_idx = y - my - 1;
+                if (item_idx >= 0 && item_idx < MENU_COUNT) {
+                    E.menu_selected = item_idx;
+                    // Execute menu action
+                    if (strstr(menu_items[item_idx], " Cut")) {
+                        if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                            editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                            editorDeleteRange(E.sel_sx, E.sel_sy, E.cx, E.cy);
+                            E.mode = MODE_NORMAL;
+                            E.sel_sx = E.sel_sy = -1;
+                        }
+                    } else if (strstr(menu_items[item_idx], " Copy")) {
+                        if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                            editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                            E.mode = MODE_NORMAL;
+                            E.sel_sx = E.sel_sy = -1;
+                        }
+                    } else if (strstr(menu_items[item_idx], " Paste")) {
+                        editorPaste();
+                    } else if (strstr(menu_items[item_idx], " Select All")) {
+                        editorSelectAll();
+                    } else if (strstr(menu_items[item_idx], " Undo")) {
+                        editorUndo();
+                    } else if (strstr(menu_items[item_idx], " Redo")) {
+                        editorRedo();
+                    }
+                }
+                E.menu_open = 0;
+                return;
+            } else {
+                E.menu_open = 0;
+                // Continue to process click if it's outside menu? 
+                // Usually yes, but for now let's just close menu.
+                return;
+            }
+        }
+
         // Convert screen coordinates to buffer coordinates
         int filerow = y - 1 + E.rowoff;
         int filecol = x - 1 + E.coloff;
@@ -410,28 +541,24 @@ void editorHandleMouse() {
         last_click_y = y;
         last_click_time = now;
     }
-    // Handle right click - paste at click position
+    // Handle right click - open context menu
     else if (b == MOUSE_RIGHT) {
-        // Move cursor to click position first
-        int filerow = y - 1 + E.rowoff;
-        int filecol = x - 1 + E.coloff;
-        
-        if (filerow >= 0 && filerow < E.numrows) {
-            E.cy = filerow;
-            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
-                E.cx = filecol;
-            } else {
-                E.cx = E.row[E.cy].size;
-            }
-            // Paste from clipboard
-            editorPaste();
-        }
+        E.menu_open = 1;
+        E.menu_x = x;
+        E.menu_y = y;
+        E.menu_selected = -1;
     }
 }
 
 void editorProcessKeypress() {
     static int quit_times = 1;
     int c = readKey();
+    
+    if (E.menu_open) {
+        E.menu_open = 0;
+        if (c == '\x1b') return;
+        // Fall through to process key if not ESC
+    }
     
     if (c == MOUSE_EVENT) {
         editorHandleMouse();

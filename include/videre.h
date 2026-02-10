@@ -127,6 +127,11 @@ typedef struct {
     editorUndoState *undo_stack;
     editorUndoState *redo_stack;
 
+    // Context Menu State
+    int menu_open;
+    int menu_x, menu_y;
+    int menu_selected;
+
     struct termios orig_termios;
 } EditorConfig;
 
@@ -164,6 +169,7 @@ void editorInsertRow(int at, char *s, size_t len);
 // Yank/Paste
 void editorYank(int sx, int sy, int ex, int ey, int is_line);
 void editorPaste();
+void editorSelectAll();
 
 // Undo/Redo
 void editorSaveUndoState();

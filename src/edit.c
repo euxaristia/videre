@@ -78,3 +78,12 @@ void editorPaste() {
         }
     }
 }
+
+void editorSelectAll() {
+    E.mode = MODE_VISUAL;
+    E.sel_sy = 0;
+    E.sel_sx = 0;
+    E.cy = E.numrows - 1;
+    if (E.numrows > 0) E.cx = E.row[E.cy].size;
+    else E.cx = 0;
+}
