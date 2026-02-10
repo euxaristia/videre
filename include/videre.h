@@ -44,6 +44,9 @@ typedef struct {
     char statusmsg[80];
     time_t statusmsg_time;
     int mode;
+    char *search_pattern;
+    int last_match;
+    int search_direction;
     struct termios orig_termios;
 } EditorConfig;
 
@@ -61,6 +64,7 @@ extern EditorConfig E;
 void die(const char *s);
 void editorOpen(char *filename);
 void editorSave();
+void editorFind();
 void editorUpdateRow(erow *row);
 void editorInsertChar(int c);
 void editorInsertNewline();
@@ -74,7 +78,7 @@ void editorInsertRow(int at, char *s, size_t len);
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
 void editorSetStatusMessage(const char *fmt, ...);
-char *editorPrompt(char *prompt);
+char *editorPrompt(char *prompt, void (*callback)(char *, int));
 void editorRefreshScreen();
 
 #endif
