@@ -165,13 +165,13 @@ void editorDrawStatusBar(struct abuf *ab) {
     
     char status[80], rstatus[80];
     
-    // Left side: filename and modification flag
-    int len = snprintf(status, sizeof(status), "%s%s",
+    // Left side: filename and modification flag with proper spacing
+    int len = snprintf(status, sizeof(status), " %s%s",
         E.filename ? E.filename : "[No Name]",
         E.dirty ? " [+]" : "");
     if (len > (int)sizeof(status) - 1) len = sizeof(status) - 1;
     
-    // Right side: cursor position and scroll indicator
+    // Right side: cursor position and scroll indicator with proper spacing
     char *pos_indicator = "";
     if (E.numrows == 0) {
         pos_indicator = "All";
@@ -186,22 +186,26 @@ void editorDrawStatusBar(struct abuf *ab) {
         pos_indicator = pct_buf;
     }
     
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d,%d-1 %s",
+    int rlen = snprintf(rstatus, sizeof(rstatus), " %d,%d-1 %s ",
         E.cy + 1, E.cx + 1, pos_indicator);
     if (rlen > (int)sizeof(rstatus) - 1) rlen = sizeof(rstatus) - 1;
 
-    if (len > E.screencols) len = E.screencols;
+    // Truncate left side if it's too long
+    if (len > E.screencols - rlen - 1) {
+        len = E.screencols - rlen - 1;
+        if (len < 0) len = 0;
+    }
+    
     abAppend(ab, status, len);
     
-    while (len < E.screencols) {
-        if (E.screencols - len == rlen) {
-            abAppend(ab, rstatus, rlen);
-            break;
-        } else {
-            abAppend(ab, " ", 1);
-            len++;
-        }
+    // Fill middle with spaces
+    while (len < E.screencols - rlen) {
+        abAppend(ab, " ", 1);
+        len++;
     }
+    
+    // Add right side
+    abAppend(ab, rstatus, rlen);
     abAppend(ab, "\x1b[m", 3);
     abAppend(ab, "\r\n", 2);
 }
