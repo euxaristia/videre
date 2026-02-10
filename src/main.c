@@ -185,13 +185,13 @@ void editorDrawStatusBar(struct abuf *ab) {
     
     char status[80], rstatus[80];
     
-    // Left side: filename and modification flag with proper spacing
+    // Left side: filename and modification flag (neovim format)
     int len = snprintf(status, sizeof(status), " %s%s",
         E.filename ? E.filename : "[No Name]",
         E.dirty ? " [+]" : "");
     if (len > (int)sizeof(status) - 1) len = sizeof(status) - 1;
     
-    // Right side: cursor position and scroll indicator with proper spacing
+    // Right side: cursor position and scroll indicator (neovim format)
     char *pos_indicator = "";
     if (E.numrows == 0) {
         pos_indicator = "All";
@@ -206,13 +206,13 @@ void editorDrawStatusBar(struct abuf *ab) {
         pos_indicator = pct_buf;
     }
     
-    int rlen = snprintf(rstatus, sizeof(rstatus), " %d,%d-1 %s ",
+// Neovim format: " line,col-1 indicator" (with leading space)
+    int rlen = snprintf(rstatus, sizeof(rstatus), " %d,%d-1 %s",
         E.cy + 1, E.cx + 1, pos_indicator);
-    if (rlen > (int)sizeof(rstatus) - 1) rlen = sizeof(rstatus) - 1;
 
-    // Truncate left side if it's too long
-    if (len > E.screencols - rlen - 1) {
-        len = E.screencols - rlen - 1;
+    // Truncate left side if it's too long (neovim-style spacing)
+    if (len > E.screencols - rlen) {
+        len = E.screencols - rlen;
         if (len < 0) len = 0;
     }
     
