@@ -509,11 +509,21 @@ void editorProcessKeypress() {
                 break;
 
             case 'u':
-                editorUndo();
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    editorChangeCase(0);  // lowercase
+                } else {
+                    editorUndo();
+                }
                 break;
 
             case 18: // CTRL-R
                 editorRedo();
+                break;
+            
+            case 'U':
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    editorChangeCase(1);  // uppercase
+                }
                 break;
 
             case 'y':
