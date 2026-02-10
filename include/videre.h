@@ -189,6 +189,8 @@ void editorMoveToFileEnd();
 void editorGoToLine(int line_num);
 void editorMoveToPreviousParagraph();
 void editorMoveToNextParagraph();
+void editorChangeCase(int to_upper);
+void editorIndent(int indent);
 
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);

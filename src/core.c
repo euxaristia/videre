@@ -544,3 +544,90 @@ void editorMoveToNextParagraph() {
     E.cy = row;
     E.cx = 0;
 }
+
+// Helper function to change case of a character range
+static void change_case_range(int start_y, int start_x, int end_y, int end_x, int to_upper) {
+    for (int row = start_y; row <= end_y; row++) {
+        if (row < 0 || row >= E.numrows) continue;
+        erow *r = &E.row[row];
+        int col_start = (row == start_y) ? start_x : 0;
+        int col_end = (row == end_y) ? end_x : r->size;
+        
+        for (int col = col_start; col < col_end && col < r->size; col++) {
+            if (to_upper) {
+                r->chars[col] = toupper(r->chars[col]);
+            } else {
+                r->chars[col] = tolower(r->chars[col]);
+            }
+        }
+    }
+}
+
+// Change case of text (gu = lowercase, gU = uppercase)
+void editorChangeCase(int to_upper) {
+    if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) return;
+    
+    int start_y = E.sel_sy;
+    int start_x = E.sel_sx;
+    int end_y = E.cy;
+    int end_x = E.cx;
+    
+    // Normalize range
+    if (start_y > end_y || (start_y == end_y && start_x > end_x)) {
+        int tmp = start_y; start_y = end_y; end_y = tmp;
+        tmp = start_x; start_x = end_x; end_x = tmp;
+    }
+    
+    editorSaveUndoState();
+    change_case_range(start_y, start_x, end_y, end_x, to_upper);
+    
+    E.mode = MODE_NORMAL;
+    E.sel_sx = E.sel_sy = -1;
+}
+
+// Indent/Unindent lines (> and < operators)
+void editorIndent(int indent) {
+    if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) return;
+    
+    int start_y = E.sel_sy;
+    int end_y = E.cy;
+    
+    // Normalize range
+    if (start_y > end_y) {
+        int tmp = start_y; start_y = end_y; end_y = tmp;
+    }
+    
+    editorSaveUndoState();
+    
+    for (int row = start_y; row <= end_y; row++) {
+        if (row < 0 || row >= E.numrows) continue;
+        erow *r = &E.row[row];
+        
+        if (indent) {
+            // Add 4 spaces at beginning
+            char *new_chars = malloc(r->size + 5);
+            if (new_chars) {
+                memcpy(new_chars, "    ", 4);
+                memcpy(new_chars + 4, r->chars, r->size);
+                new_chars[r->size + 4] = '\0';
+                free(r->chars);
+                r->chars = new_chars;
+                r->size += 4;
+            }
+        } else {
+            // Remove up to 4 spaces from beginning
+            int spaces_to_remove = 0;
+            while (spaces_to_remove < 4 && spaces_to_remove < r->size && 
+                   r->chars[spaces_to_remove] == ' ') {
+                spaces_to_remove++;
+            }
+            if (spaces_to_remove > 0) {
+                memmove(r->chars, r->chars + spaces_to_remove, r->size - spaces_to_remove + 1);
+                r->size -= spaces_to_remove;
+            }
+        }
+    }
+    
+    E.mode = MODE_NORMAL;
+    E.sel_sx = E.sel_sy = -1;
+}

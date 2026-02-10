@@ -737,6 +737,19 @@ void editorProcessKeypress() {
             case '}':
                 editorMoveToNextParagraph();
                 break;
+            
+            // Visual mode operators
+            case '>':
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    editorIndent(1);
+                }
+                break;
+            
+            case '<':
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    editorIndent(0);
+                }
+                break;
         }
     }
 
