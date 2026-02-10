@@ -351,7 +351,7 @@ void editorDrawContextMenu(struct abuf *ab) {
             } else {
                 abAppend(ab, menu_items[i], strlen(menu_items[i]));
             }
-            abAppend(ab, "│", 1);
+            abAppend(ab, "│", strlen("│"));
         } else {
             // Normal item: Dark background (235), Light grey text (252)
             abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m│", strlen("\x1b[48;5;235m\x1b[38;5;239m│"));
@@ -468,7 +468,7 @@ void editorHandleMouse() {
             E.menu_y = y;
             E.menu_selected = -1;
             return;
-        } else if (b == MOUSE_RELEASE || (b & MOUSE_DRAG)) {
+        } else if ((b & 0x80) || (b & MOUSE_DRAG)) {
             // Just movement or release: we already updated highlighting
             return;
         } else {
