@@ -21,6 +21,7 @@ void initEditor() {
     E.statusmsg_time = 0;
     E.mode = MODE_NORMAL;
     E.is_dragging = 0;
+    E.paste_buffer = NULL;
     E.sel_sx = E.sel_sy = -1;
     
     for (int i = 0; i < 256; i++) {

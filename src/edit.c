@@ -2,9 +2,43 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+
+static char *base64_encode(const unsigned char *data, size_t input_length) {
+    static const char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    size_t output_length = 4 * ((input_length + 2) / 3);
+    char *encoded_data = malloc(output_length + 1);
+    if (encoded_data == NULL) return NULL;
+
+    for (size_t i = 0, j = 0; i < input_length;) {
+        uint32_t octet_a = i < input_length ? data[i++] : 0;
+        uint32_t octet_b = i < input_length ? data[i++] : 0;
+        uint32_t octet_c = i < input_length ? data[i++] : 0;
+
+        uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+
+        encoded_data[j++] = table[(triple >> 3 * 6) & 0x3F];
+        encoded_data[j++] = table[(triple >> 2 * 6) & 0x3F];
+        encoded_data[j++] = (i > input_length + 1) ? '=' : table[(triple >> 1 * 6) & 0x3F];
+        encoded_data[j++] = (i > input_length) ? '=' : table[(triple >> 0 * 6) & 0x3F];
+    }
+    encoded_data[output_length] = '\0';
+    return encoded_data;
+}
 
 void editorSetClipboard(const char *text) {
     if (!text) return;
+
+    // OSC 52: Native terminal clipboard support (works in Ghostty, Kitty, etc.)
+    char *encoded = base64_encode((const unsigned char *)text, strlen(text));
+    if (encoded) {
+        // ESC ] 52 ; c ; <base64> BEL
+        printf("\x1b]52;c;%s\x07", encoded);
+        fflush(stdout);
+        free(encoded);
+    }
+
+    // External tool fallbacks (for tmux/headless/standard terminals)
     FILE *pipe = popen("wl-copy", "w");
     if (!pipe) pipe = popen("xclip -selection clipboard", "w");
     

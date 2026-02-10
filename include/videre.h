@@ -18,6 +18,7 @@ enum editorKey {
     PAGE_UP,
     PAGE_DOWN,
     MOUSE_EVENT,
+    PASTE_EVENT,
     FIND_CHAR,
     FIND_CHAR_BACK,
     TILL_CHAR,
@@ -110,6 +111,7 @@ typedef struct {
     // Mouse State
     int mouse_x, mouse_y, mouse_b;
     int is_dragging;
+    char *paste_buffer;
 
     char *search_pattern;
     int last_match;

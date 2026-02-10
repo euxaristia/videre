@@ -579,6 +579,22 @@ int editorProcessKeypress() {
         return editorHandleMouse();
     }
 
+    if (c == PASTE_EVENT) {
+        if (E.paste_buffer) {
+            for (int i = 0; E.paste_buffer[i]; i++) {
+                if (E.paste_buffer[i] == '\r' || E.paste_buffer[i] == '\n') {
+                    editorInsertNewline();
+                    if (E.paste_buffer[i] == '\r' && E.paste_buffer[i+1] == '\n') i++;
+                } else {
+                    editorInsertChar(E.paste_buffer[i]);
+                }
+            }
+            free(E.paste_buffer);
+            E.paste_buffer = NULL;
+        }
+        return 1;
+    }
+
     if (E.mode == MODE_INSERT) {
         switch (c) {
             case '\r':

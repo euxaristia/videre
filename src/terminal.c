@@ -13,6 +13,7 @@ static int raw_mode_enabled = 0;
 
 void die(const char *s) {
     // Force terminal cleanup before exit
+    write(STDOUT_FILENO, "\x1b[?2004l", 8); // Disable bracketed paste
     write(STDOUT_FILENO, "\x1b[?1006l\x1b[?1003l", 16);
     write(STDOUT_FILENO, "\x1b[?1049l", 8);
     write(STDOUT_FILENO, "\x1b[?25h", 6);
@@ -26,7 +27,8 @@ void disableRawMode() {
     
     tcsetattr(STDIN_FILENO, TCSANOW, &E.orig_termios);
     
-    // Leave alternate screen, disable mouse, show cursor
+    // Leave alternate screen, disable mouse, disable bracketed paste, show cursor
+    write(STDOUT_FILENO, "\x1b[?2004l", 8);
     write(STDOUT_FILENO, "\x1b[?1006l\x1b[?1003l", 16);
     write(STDOUT_FILENO, "\x1b[?1049l", 8);
     write(STDOUT_FILENO, "\x1b[?25h", 6);
@@ -51,9 +53,10 @@ void enableRawMode() {
 
     if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) == -1) die("tcsetattr");
 
-    // Enter alternate screen, enable mouse (any event mode + SGR), clear screen
+    // Enter alternate screen, enable mouse, enable bracketed paste, clear screen
     write(STDOUT_FILENO, "\x1b[?1049h", 8);
     write(STDOUT_FILENO, "\x1b[?1003h\x1b[?1006h", 16);
+    write(STDOUT_FILENO, "\x1b[?2004h", 8);
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
 }
@@ -66,15 +69,68 @@ int readKey() {
     }
 
     if (c == '\x1b') {
-        char seq[3];
+        char seq[32];
+        int i = 0;
+        
+        // Read the rest of the sequence with a timeout
+        while (i < (int)sizeof(seq) - 1) {
+            if (read(STDIN_FILENO, &seq[i], 1) != 1) break;
+            if (seq[i] == '~' || isalpha(seq[i]) || i > 10) {
+                i++;
+                break;
+            }
+            i++;
+        }
+        seq[i] = '\0';
 
-        if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
-        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+        if (i == 0) return '\x1b';
 
         if (seq[0] == '[') {
-            if (seq[1] >= '0' && seq[1] <= '9') {
-                if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
-                if (seq[2] == '~') {
+            if (isdigit(seq[1])) {
+                if (seq[i-1] == '~') {
+                    if (strncmp(&seq[1], "200", 3) == 0) {
+                        // Bracketed Paste Start: ESC [ 200 ~
+                        size_t bufsize = 1024;
+                        char *pbuf = malloc(bufsize);
+                        size_t plen = 0;
+                        
+                        while (1) {
+                            char pc;
+                            if (read(STDIN_FILENO, &pc, 1) != 1) break;
+                            if (pc == '\x1b') {
+                                char endseq[8];
+                                int ei = 0;
+                                while (ei < 5) {
+                                    if (read(STDIN_FILENO, &endseq[ei], 1) != 1) break;
+                                    ei++;
+                                }
+                                endseq[ei] = '\0';
+                                if (strcmp(endseq, "[201~") == 0) break;
+                                
+                                // Not the end sequence, put ESC back? 
+                                // Simplified: just append ESC and the sequence
+                                if (plen + ei + 2 > bufsize) {
+                                    bufsize *= 2;
+                                    pbuf = realloc(pbuf, bufsize);
+                                }
+                                pbuf[plen++] = '\x1b';
+                                memcpy(&pbuf[plen], endseq, ei);
+                                plen += ei;
+                                continue;
+                            }
+                            
+                            if (plen + 1 >= bufsize) {
+                                bufsize *= 2;
+                                pbuf = realloc(pbuf, bufsize);
+                            }
+                            pbuf[plen++] = pc;
+                        }
+                        pbuf[plen] = '\0';
+                        if (E.paste_buffer) free(E.paste_buffer);
+                        E.paste_buffer = pbuf;
+                        return PASTE_EVENT;
+                    }
+                    
                     switch (seq[1]) {
                         case '1': return HOME_KEY;
                         case '3': return DEL_KEY;
@@ -94,45 +150,29 @@ int readKey() {
                     case 'H': return HOME_KEY;
                     case 'F': return END_KEY;
                     case '<': {
-                        // SGR Mouse Protocol: <button;x;y;m/M
-                        char mouse_seq[64];
-                        int mi = 0;
-                        int max_reads = 100; // Prevent infinite loops
-                        
-                        while (mi < 63 && max_reads-- > 0) {
-                            if (read(STDIN_FILENO, &mouse_seq[mi], 1) != 1) break;
-                            
-                            // Validate input - only allow digits, semicolons, and m/M
-                            if (!isdigit(mouse_seq[mi]) && mouse_seq[mi] != ';' && 
-                                mouse_seq[mi] != 'm' && mouse_seq[mi] != 'M') {
-                                // Invalid character, abort parsing
-                                return '\x1b';
-                            }
-                            
-                            if (mouse_seq[mi] == 'm' || mouse_seq[mi] == 'M') {
+                        // SGR Mouse Protocol already started in seq
+                        // Continue reading until m or M if not already read
+                        int mi = i;
+                        if (seq[mi-1] != 'm' && seq[mi-1] != 'M') {
+                            while (mi < (int)sizeof(seq) - 1) {
+                                if (read(STDIN_FILENO, &seq[mi], 1) != 1) break;
+                                if (seq[mi] == 'm' || seq[mi] == 'M') {
+                                    mi++;
+                                    break;
+                                }
                                 mi++;
-                                break;
                             }
-                            mi++;
+                            seq[mi] = '\0';
                         }
                         
-                        // Ensure we don't overflow
-                        if (mi >= 63) mi = 63;
-                        mouse_seq[mi] = '\0';
-                        
-                        // Validate mouse sequence format before parsing
                         int b, x, y;
-                        if (mi > 0 && sscanf(mouse_seq, "%d;%d;%d", &b, &x, &y) == 3) {
-                            // Validate bounds
-                            if (b >= 0 && b <= 255 && x >= 0 && x <= 10000 && y >= 0 && y <= 10000) {
-                                E.mouse_b = b;
-                                E.mouse_x = x;
-                                E.mouse_y = y;
-                                if (mouse_seq[mi-1] == 'm') E.mouse_b |= 0x80; // Release bit
-                                return MOUSE_EVENT;
-                            }
+                        if (sscanf(&seq[2], "%d;%d;%d", &b, &x, &y) == 3) {
+                            E.mouse_b = b;
+                            E.mouse_x = x;
+                            E.mouse_y = y;
+                            if (seq[mi-1] == 'm') E.mouse_b |= 0x80;
+                            return MOUSE_EVENT;
                         }
-                        return '\x1b';
                     }
                 }
             }
@@ -140,11 +180,6 @@ int readKey() {
             switch (seq[1]) {
                 case 'H': return HOME_KEY;
                 case 'F': return END_KEY;
-            }
-        } else if (seq[0] == 'z') {
-            // Character search sequences: z<char> for forward, Z<char> for backward
-            if (seq[1] && seq[2] == '\0') {
-                return seq[1]; // Return the character to search for
             }
         }
 
