@@ -439,3 +439,41 @@ void editorMatchBracket() {
         }
     }
 }
+
+// Line motions
+void editorMoveToLineStart() {
+    E.cx = 0;
+}
+
+void editorMoveToFirstNonWhitespace() {
+    if (E.cy >= E.numrows) return;
+    erow *row = &E.row[E.cy];
+    int col = 0;
+    while (col < row->size && (row->chars[col] == ' ' || row->chars[col] == '\t')) {
+        col++;
+    }
+    E.cx = col;
+}
+
+void editorMoveToLineEnd() {
+    if (E.cy >= E.numrows) return;
+    E.cx = E.row[E.cy].size;
+}
+
+void editorMoveToFileStart() {
+    E.cy = 0;
+    E.cx = 0;
+}
+
+void editorMoveToFileEnd() {
+    if (E.numrows == 0) return;
+    E.cy = E.numrows - 1;
+    E.cx = E.row[E.cy].size;
+}
+
+void editorGoToLine(int line_num) {
+    if (line_num < 1) line_num = 1;
+    if (line_num > E.numrows) line_num = E.numrows;
+    E.cy = line_num - 1;
+    E.cx = 0;
+}

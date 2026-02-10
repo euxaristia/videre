@@ -667,6 +667,31 @@ void editorProcessKeypress() {
             case 'N':
                 editorFindNext(-1);  // Previous match
                 break;
+            
+            case 'g':
+                {
+                    int next_char = readKey();
+                    if (next_char == 'g') {
+                        editorMoveToFileStart();
+                    }
+                }
+                break;
+            
+            case '0':
+                editorMoveToLineStart();
+                break;
+            
+            case '^':
+                editorMoveToFirstNonWhitespace();
+                break;
+            
+            case '$':
+                editorMoveToLineEnd();
+                break;
+            
+            case 'G':
+                editorMoveToFileEnd();
+                break;
         }
     }
 

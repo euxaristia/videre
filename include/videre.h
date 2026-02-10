@@ -181,6 +181,12 @@ void editorMoveWordForward(int big_word);
 void editorMoveWordBackward(int big_word);
 void editorMoveWordEnd(int big_word);
 void editorMatchBracket();
+void editorMoveToLineStart();
+void editorMoveToFirstNonWhitespace();
+void editorMoveToLineEnd();
+void editorMoveToFileStart();
+void editorMoveToFileEnd();
+void editorGoToLine(int line_num);
 
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
