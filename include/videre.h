@@ -141,7 +141,7 @@ struct abuf {
 extern EditorConfig E;
 
 // Prototypes
-void die(const char *s);
+void die(const char *s) __attribute__((noreturn));
 void editorOpen(char *filename);
 void editorSave();
 void editorFind();

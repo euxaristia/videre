@@ -235,7 +235,7 @@ void editorDrawStatusBar(struct abuf *ab) {
     if (len > (int)sizeof(status) - 1) len = sizeof(status) - 1;
     
     // Right side: cursor position and scroll indicator (neovim format)
-    char *pos_indicator = "";
+    char *pos_indicator;
     if (E.numrows == 0) {
         pos_indicator = "All";
     } else if (E.rowoff == 0) {

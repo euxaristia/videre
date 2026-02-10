@@ -50,7 +50,7 @@ void editorUpdateSyntax(erow *row) {
   if (!new_hl && row->size > 0) die("realloc hl");
   row->hl = new_hl;
   
-  if (row->size > 0) memset(row->hl, HL_NORMAL, row->size);
+  if (row->size > 0 && row->hl != NULL) memset(row->hl, HL_NORMAL, row->size);
 
   if (E.syntax == NULL) return;
 

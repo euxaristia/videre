@@ -28,7 +28,7 @@ void editorInsertRow(int at, char *s, size_t len) {
         
         // Prevent overflow - cap at reasonable maximum
         const size_t MAX_ROWS = 1000000; // 1 million rows max
-        if (new_capacity > MAX_ROWS || new_capacity < E.row_capacity) {
+        if (new_capacity > MAX_ROWS || new_capacity < (size_t)E.row_capacity) {
             die("Too many rows - possible integer overflow");
         }
         
@@ -38,11 +38,12 @@ void editorInsertRow(int at, char *s, size_t len) {
         E.row = new_rows;
     }
     
-    if (at < E.numrows) {
+    if (at < E.numrows && E.row != NULL) {
         memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.numrows - at));
         for (int j = at + 1; j <= E.numrows; j++) E.row[j].idx++;
     }
 
+    if (E.row == NULL) die("E.row is NULL"); // Extra safety for analyzer
     E.row[at].idx = at;
     E.row[at].size = len;
     E.row[at].chars = malloc(len + 1);
@@ -76,7 +77,9 @@ void editorRowInsertChar(erow *row, int at, int c) {
     if (at < 0 || at > row->size) at = row->size;
     row->chars = realloc(row->chars, row->size + 2);
     if (!row->chars) die("realloc");
-    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    if (row->size - at + 1 > 0 && row->chars != NULL) {
+        memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    }
     row->size++;
     row->chars[at] = c;
     editorUpdateRow(row);
@@ -86,7 +89,9 @@ void editorRowInsertChar(erow *row, int at, int c) {
 void editorRowAppendString(erow *row, char *s, size_t len) {
     row->chars = realloc(row->chars, row->size + len + 1);
     if (!row->chars) die("realloc");
-    memcpy(&row->chars[row->size], s, len);
+    if (len > 0 && row->chars != NULL) {
+        memcpy(&row->chars[row->size], s, len);
+    }
     row->size += len;
     row->chars[row->size] = '\0';
     editorUpdateRow(row);
@@ -125,8 +130,10 @@ void editorDeleteRange(int sx, int sy, int ex, int ey) {
         int new_size = sx + (last->size - ex - 1);
         char *new_chars = malloc(new_size + 1);
         if (!new_chars) die("malloc");
-        memcpy(new_chars, first->chars, sx);
-        if (last->size > ex + 1) {
+        if (sx > 0 && first->chars != NULL) {
+            memcpy(new_chars, first->chars, sx);
+        }
+        if (last->size > ex + 1 && last->chars != NULL) {
             memcpy(&new_chars[sx], &last->chars[ex + 1], last->size - ex - 1);
         }
         new_chars[new_size] = '\0';
