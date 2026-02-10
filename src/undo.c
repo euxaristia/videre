@@ -44,19 +44,57 @@ void editorSaveUndoState() {
 }
 
 void editorApplyUndoState(editorUndoState *state) {
-    for (int i = 0; i < E.numrows; i++) editorFreeRow(&E.row[i]);
-    free(E.row);
+    // Free existing rows safely
+    if (E.row) {
+        for (int i = 0; i < E.numrows; i++) editorFreeRow(&E.row[i]);
+        free(E.row);
+        E.row = NULL; // Prevent use-after-free
+    }
 
     E.numrows = state->numrows;
-    E.row = malloc(sizeof(erow) * E.numrows);
-    for (int i = 0; i < E.numrows; i++) {
-        E.row[i].size = state->row[i].size;
-        E.row[i].chars = malloc(state->row[i].size + 1);
-        memcpy(E.row[i].chars, state->row[i].chars, state->row[i].size + 1);
-        E.row[i].hl = malloc(state->row[i].size);
-        memcpy(E.row[i].hl, state->row[i].hl, state->row[i].size);
-        E.row[i].hl_open_comment = state->row[i].hl_open_comment;
+    if (E.numrows > 0) {
+        E.row = malloc(sizeof(erow) * E.numrows);
+        if (!E.row) {
+            E.numrows = 0;
+            die("malloc failed in undo");
+            return;
+        }
+        
+        for (int i = 0; i < E.numrows; i++) {
+            E.row[i].size = state->row[i].size;
+            E.row[i].chars = malloc(state->row[i].size + 1);
+            if (!E.row[i].chars) {
+                // Cleanup on failure
+                for (int j = 0; j < i; j++) {
+                    free(E.row[j].chars);
+                }
+                free(E.row);
+                E.row = NULL;
+                E.numrows = 0;
+                die("malloc failed in undo row");
+                return;
+            }
+            memcpy(E.row[i].chars, state->row[i].chars, state->row[i].size + 1);
+            
+            // Copy syntax highlighting if present
+            if (state->row[i].hl) {
+                E.row[i].hl = malloc(state->row[i].size);
+                if (!E.row[i].hl) {
+                    free(E.row[i].chars);
+                    E.row[i].chars = NULL;
+                    E.row[i].size = 0;
+                    continue; // Skip this row but continue with others
+                }
+                memcpy(E.row[i].hl, state->row[i].hl, state->row[i].size);
+            } else {
+                E.row[i].hl = NULL;
+            }
+            E.row[i].hl_open_comment = state->row[i].hl_open_comment;
+        }
+    } else {
+        E.row = NULL;
     }
+    
     E.cx = state->cx;
     E.cy = state->cy;
     E.dirty++;

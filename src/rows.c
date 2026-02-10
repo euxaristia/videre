@@ -23,7 +23,16 @@ void editorInsertRow(int at, char *s, size_t len) {
     if (at < 0 || at > E.numrows) return;
 
     if (E.numrows >= E.row_capacity) {
-        E.row_capacity = E.row_capacity == 0 ? 128 : E.row_capacity * 2;
+        // Check for integer overflow before multiplication
+        size_t new_capacity = E.row_capacity == 0 ? 128 : (size_t)E.row_capacity * 2;
+        
+        // Prevent overflow - cap at reasonable maximum
+        const size_t MAX_ROWS = 1000000; // 1 million rows max
+        if (new_capacity > MAX_ROWS || new_capacity < E.row_capacity) {
+            die("Too many rows - possible integer overflow");
+        }
+        
+        E.row_capacity = (int)new_capacity;
         erow *new_rows = realloc(E.row, sizeof(erow) * E.row_capacity);
         if (!new_rows) die("realloc");
         E.row = new_rows;

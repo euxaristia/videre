@@ -97,23 +97,40 @@ int readKey() {
                         // SGR Mouse Protocol: <button;x;y;m/M
                         char mouse_seq[64];
                         int mi = 0;
-                        while (mi < 63) {
+                        int max_reads = 100; // Prevent infinite loops
+                        
+                        while (mi < 63 && max_reads-- > 0) {
                             if (read(STDIN_FILENO, &mouse_seq[mi], 1) != 1) break;
+                            
+                            // Validate input - only allow digits, semicolons, and m/M
+                            if (!isdigit(mouse_seq[mi]) && mouse_seq[mi] != ';' && 
+                                mouse_seq[mi] != 'm' && mouse_seq[mi] != 'M') {
+                                // Invalid character, abort parsing
+                                return '\x1b';
+                            }
+                            
                             if (mouse_seq[mi] == 'm' || mouse_seq[mi] == 'M') {
                                 mi++;
                                 break;
                             }
                             mi++;
                         }
+                        
+                        // Ensure we don't overflow
+                        if (mi >= 63) mi = 63;
                         mouse_seq[mi] = '\0';
                         
+                        // Validate mouse sequence format before parsing
                         int b, x, y;
-                        if (sscanf(mouse_seq, "%d;%d;%d", &b, &x, &y) == 3) {
-                            E.mouse_b = b;
-                            E.mouse_x = x;
-                            E.mouse_y = y;
-                            if (mouse_seq[mi-1] == 'm') E.mouse_b |= 0x80; // Release bit
-                            return MOUSE_EVENT;
+                        if (mi > 0 && sscanf(mouse_seq, "%d;%d;%d", &b, &x, &y) == 3) {
+                            // Validate bounds
+                            if (b >= 0 && b <= 255 && x >= 0 && x <= 10000 && y >= 0 && y <= 10000) {
+                                E.mouse_b = b;
+                                E.mouse_x = x;
+                                E.mouse_y = y;
+                                if (mouse_seq[mi-1] == 'm') E.mouse_b |= 0x80; // Release bit
+                                return MOUSE_EVENT;
+                            }
                         }
                         return '\x1b';
                     }

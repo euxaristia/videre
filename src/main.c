@@ -13,8 +13,28 @@
 void editorSetStatusMessage(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
+    
+    // Basic format string validation - prevent format string attacks
+    if (fmt) {
+        for (const char *p = fmt; *p; p++) {
+            if (*p == '%' && *(p + 1) != '\0' && 
+                !strchr("diouxXfFeEgGcsaAn", *(p + 1))) {
+                // Invalid format specifier, abort
+                va_end(ap);
+                snprintf(E.statusmsg, sizeof(E.statusmsg), "Invalid format");
+                E.statusmsg_time = time(NULL);
+                return;
+            }
+        }
+    }
+    
+    int len = vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
     va_end(ap);
+    
+    // Ensure null termination
+    if (len >= (int)sizeof(E.statusmsg)) {
+        E.statusmsg[sizeof(E.statusmsg) - 1] = '\0';
+    }
     E.statusmsg_time = time(NULL);
 }
 

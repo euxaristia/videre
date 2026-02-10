@@ -95,7 +95,7 @@ typedef struct {
     erow *row;
     int dirty;
     char *filename;
-    char statusmsg[80];
+    char statusmsg[256];
     time_t statusmsg_time;
     int mode;
     
