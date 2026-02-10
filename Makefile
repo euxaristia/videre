@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude -O2
 TARGET = videre
 
-SRC = $(wildcard src/*.c)
+SRC = src/main.c src/terminal.c src/fileio.c src/buffer.c
 OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)
