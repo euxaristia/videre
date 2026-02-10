@@ -42,7 +42,7 @@ void enableRawMode() {
 
     if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) == -1) die("tcsetattr");
 
-    // Enter alternate screen, enable mouse, clear screen
+    // Enter alternate screen, enable mouse (any event mode + SGR), clear screen
     write(STDOUT_FILENO, "\x1b[?1049h", 8);
     write(STDOUT_FILENO, "\x1b[?1003h\x1b[?1006h", 16);
     write(STDOUT_FILENO, "\x1b[2J", 4);
@@ -84,6 +84,30 @@ int readKey() {
                     case 'D': return ARROW_LEFT;
                     case 'H': return HOME_KEY;
                     case 'F': return END_KEY;
+                    case '<': {
+                        // SGR Mouse Protocol: <button;x;y;m/M
+                        char mouse_seq[64];
+                        int mi = 0;
+                        while (mi < 63) {
+                            if (read(STDIN_FILENO, &mouse_seq[mi], 1) != 1) break;
+                            if (mouse_seq[mi] == 'm' || mouse_seq[mi] == 'M') {
+                                mi++;
+                                break;
+                            }
+                            mi++;
+                        }
+                        mouse_seq[mi] = '\0';
+                        
+                        int b, x, y;
+                        if (sscanf(mouse_seq, "%d;%d;%d", &b, &x, &y) == 3) {
+                            E.mouse_b = b;
+                            E.mouse_x = x;
+                            E.mouse_y = y;
+                            if (mouse_seq[mi-1] == 'm') E.mouse_b |= 0x80; // Release bit
+                            return MOUSE_EVENT;
+                        }
+                        return '\x1b';
+                    }
                 }
             }
         } else if (seq[0] == 'O') {

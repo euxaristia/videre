@@ -19,6 +19,8 @@ void initEditor() {
     E.statusmsg[0] = '\0';
     E.statusmsg_time = 0;
     E.mode = MODE_NORMAL;
+    E.is_dragging = 0;
+    E.sel_sx = E.sel_sy = -1;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
     if (E.screenrows < 3) E.screenrows = 1;
@@ -59,10 +61,7 @@ void editorDelChar() {
         editorRowDelChar(row, E.cx - 1);
         E.cx--;
     } else {
-        // Concatenate with previous row
         E.cx = E.row[E.cy - 1].size;
-        // Need a row append function in rows.c or here
-        // For simplicity, let's just do it here or add to rows.c
         row = &E.row[E.cy];
         E.row[E.cy - 1].chars = realloc(E.row[E.cy - 1].chars, E.row[E.cy - 1].size + row->size + 1);
         memcpy(&E.row[E.cy - 1].chars[E.row[E.cy - 1].size], row->chars, row->size);
@@ -149,6 +148,32 @@ void editorScroll() {
 
 // --- Rendering ---
 
+int editorRowIsSelected(int filerow, int x) {
+    if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) return 0;
+    
+    int sy = E.sel_sy, ey = E.cy;
+    int sx = E.sel_sx, ex = E.cx;
+    
+    if (sy > ey) {
+        int tmp = sy; sy = ey; ey = tmp;
+        tmp = sx; sx = ex; ex = tmp;
+    } else if (sy == ey && sx > ex) {
+        int tmp = sx; sx = ex; ex = tmp;
+    }
+    
+    if (E.mode == MODE_VISUAL_LINE) {
+        return (filerow >= sy && filerow <= ey);
+    }
+    
+    if (filerow < sy || filerow > ey) return 0;
+    if (filerow > sy && filerow < ey) return 1;
+    if (sy == ey) return (x >= sx && x <= ex);
+    if (filerow == sy) return (x >= sx);
+    if (filerow == ey) return (x <= ex);
+    
+    return 0;
+}
+
 void editorDrawRows(struct abuf *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
@@ -189,21 +214,23 @@ void editorDrawRows(struct abuf *ab) {
             int current_color = -1;
             int j;
             for (j = 0; j < len; j++) {
-                if (hl[j] == HL_NORMAL) {
-                    if (current_color != -1) {
-                        abAppend(ab, "\x1b[39m", 5);
-                        current_color = -1;
-                    }
-                    abAppend(ab, &chars[j], 1);
-                } else {
-                    int color = editorSyntaxToColor(hl[j]);
-                    if (color != current_color) {
-                        current_color = color;
-                        char buf[16];
-                        int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
-                        abAppend(ab, buf, clen);
-                    }
-                    abAppend(ab, &chars[j], 1);
+                int is_selected = editorRowIsSelected(filerow, j + E.coloff);
+                
+                if (is_selected) {
+                    abAppend(ab, "\x1b[48;5;242m", 11); // Visual selection background
+                }
+
+                int color = editorSyntaxToColor(hl[j]);
+                if (color != current_color) {
+                    current_color = color;
+                    char buf[16];
+                    int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+                    abAppend(ab, buf, clen);
+                }
+                abAppend(ab, &chars[j], 1);
+                
+                if (is_selected) {
+                    abAppend(ab, "\x1b[49m", 5); // Reset background
                 }
             }
             abAppend(ab, "\x1b[39m", 5);
@@ -220,6 +247,8 @@ void editorDrawStatusBar(struct abuf *ab) {
     
     char *mode_str = " NORMAL ";
     if (E.mode == MODE_INSERT) mode_str = " INSERT ";
+    else if (E.mode == MODE_VISUAL) mode_str = " VISUAL ";
+    else if (E.mode == MODE_VISUAL_LINE) mode_str = " V-LINE ";
     
     int len = snprintf(status, sizeof(status), "%s %s%s",
         mode_str,
@@ -322,10 +351,66 @@ void editorMoveCursor(int key) {
     }
 }
 
+void editorHandleMouse() {
+    int b = E.mouse_b;
+    int x = E.mouse_x;
+    int y = E.mouse_y;
+
+    if (b & 0x40) { // Wheel
+        if ((b & 0x3) == 0) { // Up
+            int times = 3;
+            while (times--) {
+                if (E.rowoff > 0) E.rowoff--;
+            }
+        } else if ((b & 0x3) == 1) { // Down
+            int times = 3;
+            while (times--) {
+                if (E.rowoff + E.screenrows < E.numrows) E.rowoff++;
+            }
+        }
+        return;
+    }
+
+    if (b & 0x80) { // Release
+        E.is_dragging = 0;
+        return;
+    }
+
+    // Convert screen coordinates to buffer coordinates
+    int filerow = y - 1 + E.rowoff;
+    int filecol = x - 1 + E.coloff;
+    
+    if (filerow >= 0 && filerow < E.numrows) {
+        E.cy = filerow;
+        if (filecol >= 0 && filecol <= E.row[E.cy].size) {
+            E.cx = filecol;
+        } else {
+            E.cx = E.row[E.cy].size;
+        }
+    }
+
+    if (b == MOUSE_LEFT) {
+        E.is_dragging = 1;
+        if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
+            E.sel_sx = E.cx;
+            E.sel_sy = E.cy;
+        }
+    } else if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
+        if (E.mode == MODE_NORMAL) {
+            E.mode = MODE_VISUAL;
+        }
+    }
+}
+
 void editorProcessKeypress() {
     static int quit_times = 1;
     int c = readKey();
     
+    if (c == MOUSE_EVENT) {
+        editorHandleMouse();
+        return;
+    }
+
     if (E.mode == MODE_INSERT) {
         switch (c) {
             case '\r':
@@ -334,11 +419,10 @@ void editorProcessKeypress() {
             case '\x1b':
                 E.mode = MODE_NORMAL;
                 editorSetStatusMessage("");
-                // Move cursor back if at end of line to match vim
                 if (E.cx > 0) E.cx--;
                 break;
             case 127:
-            case 8: // Ctrl-H
+            case 8: 
             case BACKSPACE:
                 editorDelChar();
                 break;
@@ -359,22 +443,49 @@ void editorProcessKeypress() {
                 break;
         }
     } else {
-        // Normal Mode
+        // Normal / Visual Mode
         switch (c) {
             case 'i':
                 E.mode = MODE_INSERT;
+                E.sel_sx = E.sel_sy = -1;
                 editorSetStatusMessage("-- INSERT --");
                 break;
 
-            case 'a':
-                E.mode = MODE_INSERT;
-                editorSetStatusMessage("-- INSERT --");
-                editorMoveCursor(ARROW_RIGHT);
+            case 'v':
+                if (E.mode == MODE_VISUAL) {
+                    E.mode = MODE_NORMAL;
+                    E.sel_sx = E.sel_sy = -1;
+                } else {
+                    E.mode = MODE_VISUAL;
+                    E.sel_sx = E.cx;
+                    E.sel_sy = E.cy;
+                }
+                break;
+
+            case 'V':
+                if (E.mode == MODE_VISUAL_LINE) {
+                    E.mode = MODE_NORMAL;
+                    E.sel_sx = E.sel_sy = -1;
+                } else {
+                    E.mode = MODE_VISUAL_LINE;
+                    E.sel_sx = 0;
+                    E.sel_sy = E.cy;
+                }
+                break;
+
+            case '\x1b':
+                E.mode = MODE_NORMAL;
+                E.sel_sx = E.sel_sy = -1;
+                editorSetStatusMessage("");
                 break;
 
             case 'x':
-                editorMoveCursor(ARROW_RIGHT);
-                editorDelChar();
+                if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                    // TODO: delete selection
+                } else {
+                    editorMoveCursor(ARROW_RIGHT);
+                    editorDelChar();
+                }
                 break;
 
             case 3: // CTRL-C

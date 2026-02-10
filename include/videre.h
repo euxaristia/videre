@@ -16,13 +16,26 @@ enum editorKey {
     HOME_KEY,
     END_KEY,
     PAGE_UP,
-    PAGE_DOWN
+    PAGE_DOWN,
+    MOUSE_EVENT
 };
 
 enum editorMode {
     MODE_NORMAL,
     MODE_INSERT,
-    MODE_COMMAND
+    MODE_COMMAND,
+    MODE_VISUAL,
+    MODE_VISUAL_LINE
+};
+
+enum mouseButton {
+    MOUSE_LEFT = 0,
+    MOUSE_MIDDLE = 1,
+    MOUSE_RIGHT = 2,
+    MOUSE_RELEASE = 3,
+    MOUSE_WHEEL_UP = 64,
+    MOUSE_WHEEL_DOWN = 65,
+    MOUSE_DRAG = 32
 };
 
 // Syntax Highlighting
@@ -34,6 +47,7 @@ enum editorMode {
 #define HL_STRING 5
 #define HL_NUMBER 6
 #define HL_MATCH 7
+#define HL_VISUAL 8
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
 #define HL_HIGHLIGHT_STRINGS (1<<1)
@@ -69,6 +83,14 @@ typedef struct {
     char statusmsg[80];
     time_t statusmsg_time;
     int mode;
+    
+    // Selection/Visual Mode
+    int sel_sx, sel_sy; // Selection start
+    
+    // Mouse State
+    int mouse_x, mouse_y, mouse_b;
+    int is_dragging;
+
     char *search_pattern;
     int last_match;
     int search_direction;
