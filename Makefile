@@ -52,8 +52,7 @@ fuzz-build:
 	make clean
 	CC=afl-clang-fast CFLAGS="-Wall -Wextra -Iinclude -O2 -g -fsanitize=address,undefined" make $(TARGET)
 	afl-clang-fast -Wall -Wextra -Iinclude -O2 -g -fsanitize=address,undefined \
-		tests/fuzz_target.c src/core.c src/rows.c src/fileio.c src/search.c \
-		src/syntax.c src/edit.c src/undo.c src/buffer.c -o fuzz/fuzz_target
+		tests/fuzz_target.c -o fuzz/fuzz_target
 
 fuzz-run: fuzz-build
 	@echo "Starting AFL fuzzing (this will run for a long time)..."
