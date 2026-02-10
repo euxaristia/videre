@@ -362,7 +362,7 @@ void editorDrawContextMenu(struct abuf *ab) {
 
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", y + MENU_COUNT + 1, x);
     abAppend(ab, buf, strlen(buf));
-    abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m", 45);
+    abAppend(ab, "\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m", 64);
 }
 
 void editorRefreshScreen() {
@@ -405,28 +405,7 @@ void editorHandleMouse() {
     int x = E.mouse_x;
     int y = E.mouse_y;
 
-    if (b & 0x40) { // Wheel
-        if ((b & 0x3) == 0) { // Up
-            int times = 3;
-            while (times--) {
-                if (E.rowoff > 0) E.rowoff--;
-            }
-        } else if ((b & 0x3) == 1) { // Down
-            int times = 3;
-            while (times--) {
-                if (E.rowoff + E.screenrows < E.numrows) E.rowoff++;
-            }
-        }
-        return;
-    }
-
-    if (b & 0x80) { // Release
-        E.is_dragging = 0;
-        return;
-    }
-
-    // Handle menu interactions during drag (for highlighting)
-    if (E.menu_open && (b == (MOUSE_LEFT | MOUSE_DRAG))) {
+    if (E.menu_open) {
         int menu_width = 13;
         int menu_height = MENU_COUNT + 2;
         int mx = E.menu_x;
@@ -440,123 +419,59 @@ void editorHandleMouse() {
             int item_idx = y - my - 1;
             if (item_idx >= 0 && item_idx < MENU_COUNT) {
                 E.menu_selected = item_idx;
+            } else {
+                E.menu_selected = -1;
             }
         } else {
             E.menu_selected = -1;
         }
-        return;
-    }
 
-    // Only process motion if dragging
-    if (b == (MOUSE_LEFT | MOUSE_DRAG)) {
-        // Convert screen coordinates to buffer coordinates
-        int filerow = y - 1 + E.rowoff;
-        int filecol = x - 1 + E.coloff;
-        
-        if (filerow >= 0 && filerow < E.numrows) {
-            E.cy = filerow;
-            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
-                E.cx = filecol;
-            } else {
-                E.cx = E.row[E.cy].size;
-            }
-        }
-        
-        if (E.mode == MODE_NORMAL) {
-            E.mode = MODE_VISUAL;
-        }
-        return;
-    }
-
-    if (b == MOUSE_LEFT) {
-        if (E.menu_open) {
-            // Check if click is inside the menu
-            int menu_width = 13;
-            int menu_height = MENU_COUNT + 2;
-            
-            // Re-calculate adjusted menu position (same logic as in draw)
-            int mx = E.menu_x;
-            int my = E.menu_y;
-            if (mx + menu_width > E.screencols) mx = E.screencols - menu_width;
-            if (my + menu_height > E.screenrows) my = E.screenrows - menu_height;
-            if (mx < 1) mx = 1;
-            if (my < 1) my = 1;
-
-            if (x >= mx && x < mx + menu_width && y >= my && y < my + menu_height) {
-                int item_idx = y - my - 1;
-                if (item_idx >= 0 && item_idx < MENU_COUNT) {
-                    E.menu_selected = item_idx;
-                    // Execute menu action
-                    if (strstr(menu_items[item_idx], " Cut")) {
-                        if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
-                            editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
-                            editorDeleteRange(E.sel_sx, E.sel_sy, E.cx, E.cy);
-                            E.mode = MODE_NORMAL;
-                            E.sel_sx = E.sel_sy = -1;
-                        }
-                    } else if (strstr(menu_items[item_idx], " Copy")) {
-                        if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
-                            editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
-                            E.mode = MODE_NORMAL;
-                            E.sel_sx = E.sel_sy = -1;
-                        }
-                    } else if (strstr(menu_items[item_idx], " Paste")) {
-                        editorPaste();
-                    } else if (strstr(menu_items[item_idx], " Select All")) {
-                        editorSelectAll();
-                    } else if (strstr(menu_items[item_idx], " Undo")) {
-                        editorUndo();
-                    } else if (strstr(menu_items[item_idx], " Redo")) {
-                        editorRedo();
+        if (b == MOUSE_LEFT) {
+            int item_idx = E.menu_selected;
+            if (item_idx >= 0 && item_idx < MENU_COUNT) {
+                // Execute menu action
+                if (strstr(menu_items[item_idx], " Cut")) {
+                    if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                        editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                        editorDeleteRange(E.sel_sx, E.sel_sy, E.cx, E.cy);
+                        E.mode = MODE_NORMAL;
+                        E.sel_sx = E.sel_sy = -1;
                     }
+                } else if (strstr(menu_items[item_idx], " Copy")) {
+                    if (E.mode == MODE_VISUAL || E.mode == MODE_VISUAL_LINE) {
+                        editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
+                        E.mode = MODE_NORMAL;
+                        E.sel_sx = E.sel_sy = -1;
+                    }
+                } else if (strstr(menu_items[item_idx], " Paste")) {
+                    editorPaste();
+                } else if (strstr(menu_items[item_idx], " Select All")) {
+                    editorSelectAll();
+                } else if (strstr(menu_items[item_idx], " Undo")) {
+                    editorUndo();
+                } else if (strstr(menu_items[item_idx], " Redo")) {
+                    editorRedo();
                 }
-                E.menu_open = 0;
-                return;
-            } else {
-                E.menu_open = 0;
-                // Continue to process click if it's outside menu? 
-                // Usually yes, but for now let's just close menu.
-                return;
             }
-        }
-
-        // Convert screen coordinates to buffer coordinates
-        int filerow = y - 1 + E.rowoff;
-        int filecol = x - 1 + E.coloff;
-        
-        if (filerow >= 0 && filerow < E.numrows) {
-            E.cy = filerow;
-            if (filecol >= 0 && filecol <= E.row[E.cy].size) {
-                E.cx = filecol;
-            } else {
-                E.cx = E.row[E.cy].size;
-            }
-        }
-        
-        time_t now = time(NULL);
-        if (x == last_click_x && y == last_click_y && (now - last_click_time) < 1) {
-            // Double-click: select word
-            editorSelectWord();
+            E.menu_open = 0;
+            return;
+        } else if (b == MOUSE_RIGHT) {
+            // Right-click while menu is open: move the menu
+            E.menu_x = x;
+            E.menu_y = y;
+            E.menu_selected = -1;
+            return;
+        } else if (b == MOUSE_RELEASE || (b & MOUSE_DRAG)) {
+            // Just movement or release: we already updated highlighting
+            return;
         } else {
-            // Single click: start dragging
-            E.is_dragging = 1;
-            if (E.mode != MODE_VISUAL && E.mode != MODE_VISUAL_LINE) {
-                E.sel_sx = E.cx;
-                E.sel_sy = E.cy;
-            }
+            // Click outside menu: close it
+            E.menu_open = 0;
+            return;
         }
-        last_click_x = x;
-        last_click_y = y;
-        last_click_time = now;
     }
-    // Handle right click - open context menu
-    else if (b == MOUSE_RIGHT) {
-        E.menu_open = 1;
-        E.menu_x = x;
-        E.menu_y = y;
-        E.menu_selected = -1;
-    }
-}
+
+    if (b & 0x40) { // Wheel
 
 void editorProcessKeypress() {
     static int quit_times = 1;
