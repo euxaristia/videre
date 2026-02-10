@@ -225,6 +225,7 @@ class ViEditor {
     let state: EditorState
     var shouldExit: Bool = false
     var terminalSize: TerminalSize = TerminalSize()
+    private var originalTermios = termios()
 
     // ESC spam detection
     private var escPressCount = 0
@@ -303,11 +304,9 @@ class ViEditor {
 
     func run() {
         setupTerminal()
-        
-        // Ensure cleanup happens on crash/force-exit
-        SignalHandler.register { [weak self] in
-            self?.restoreTerminal()
-        }
+
+        // Register signal handlers for clean exit (signal-safe, no closures)
+        SignalHandler.register()
         
         defer { restoreTerminal() }
 
@@ -401,10 +400,21 @@ class ViEditor {
     // MARK: - Terminal Control
 
     private func setupTerminal() {
-        // Disable canonical mode and echo
-        var settings = termios()
-        tcgetattr(STDIN_FILENO, &settings)
-        settings.c_lflag &= ~tcflag_t(ICANON | ECHO)
+        // Save original terminal settings BEFORE any modification
+        tcgetattr(STDIN_FILENO, &originalTermios)
+        savedOriginalTermios = originalTermios
+        hasSavedTermios = true
+
+        // Configure raw mode
+        var settings = originalTermios
+        settings.c_lflag &= ~tcflag_t(ICANON | ECHO | ISIG)
+        #if canImport(Glibc) || canImport(Musl)
+            settings.c_cc.6 = 1   // VMIN  - minimum bytes to read
+            settings.c_cc.5 = 0   // VTIME - no timeout
+        #else
+            settings.c_cc.16 = 1  // VMIN
+            settings.c_cc.17 = 0  // VTIME
+        #endif
         tcsetattr(STDIN_FILENO, TCSANOW, &settings)
 
         // Enter alternate screen buffer (saves current terminal content)
@@ -419,17 +429,24 @@ class ViEditor {
     }
 
     func restoreTerminal() {
-        // Restore canonical mode and echo
-        var settings = termios()
-        tcgetattr(STDIN_FILENO, &settings)
-        settings.c_lflag |= tcflag_t(ICANON | ECHO)
-        tcsetattr(STDIN_FILENO, TCSANOW, &settings)
+        // Use POSIX write() for escape sequences — async-signal-safe
+        let disableMouse = "\u{001B}[?1006l\u{001B}[?1003l"
+        disableMouse.withCString { ptr in
+            _ = write(STDOUT_FILENO, ptr, strlen(ptr))
+        }
 
-        // Disable mouse tracking
-        print("\u{001B}[?1006l\u{001B}[?1003l", terminator: "")
-        // Leave alternate screen buffer (restores original terminal content)
-        print("\u{001B}[?1049l", terminator: "")
-        fflush(stdout)
+        let leaveAltScreen = "\u{001B}[?1049l"
+        leaveAltScreen.withCString { ptr in
+            _ = write(STDOUT_FILENO, ptr, strlen(ptr))
+        }
+
+        let showCursor = "\u{001B}[?25h"
+        showCursor.withCString { ptr in
+            _ = write(STDOUT_FILENO, ptr, strlen(ptr))
+        }
+
+        // Restore original terminal settings (saved before setupTerminal modified them)
+        tcsetattr(STDIN_FILENO, TCSANOW, &originalTermios)
     }
 
     private func readCharacter() -> Character? {
@@ -454,40 +471,54 @@ class ViEditor {
                 var thirdBuffer: [UInt8] = [0]
                 let thirdN = read(STDIN_FILENO, &thirdBuffer, 1)
 
-                // Restore blocking mode after reading the sequence
-                _ = fcntl(STDIN_FILENO, F_SETFL, flags)
-
                 if thirdN > 0 {
                     switch thirdBuffer[0] {
-                    case 0x41: return "↑"  // Up arrow (ESC [ A)
-                    case 0x42: return "↓"  // Down arrow (ESC [ B)
-                    case 0x43: return "→"  // Right arrow (ESC [ C)
-                    case 0x44: return "←"  // Left arrow (ESC [ D)
+                    case 0x41:  // Up arrow (ESC [ A)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+                        return "↑"
+                    case 0x42:  // Down arrow (ESC [ B)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+                        return "↓"
+                    case 0x43:  // Right arrow (ESC [ C)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+                        return "→"
+                    case 0x44:  // Left arrow (ESC [ D)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+                        return "←"
                     case 0x33:  // Could be Delete (ESC [ 3 ~)
                         var fourthBuffer: [UInt8] = [0]
                         let fourthN = read(STDIN_FILENO, &fourthBuffer, 1)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
                         if fourthN > 0 && fourthBuffer[0] == 0x7E {  // '~'
                             return "⌦"  // Delete key
                         }
-                    case 0x48: return "↖"  // Home (ESC [ H)
-                    case 0x46: return "↘"  // End (ESC [ F)
+                    case 0x48:  // Home (ESC [ H)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+                        return "↖"
+                    case 0x46:  // End (ESC [ F)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
+                        return "↘"
                     case 0x3C:  // SGR Mouse Protocol (ESC [ < ...)
+                        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
                         return readMouseSequence()
                     default:
-                        // Unknown CSI sequence - drain remaining bytes until terminator
+                        // Unknown CSI sequence - drain remaining bytes in non-blocking mode
                         // CSI sequences end with a byte in range 0x40-0x7E (@ through ~)
                         if thirdBuffer[0] < 0x40 || thirdBuffer[0] > 0x7E {
-                            // Third byte is not a terminator, keep reading
                             var drainBuffer: [UInt8] = [0]
-                            while true {
+                            var drainCount = 0
+                            while drainCount < 32 {
                                 let drainN = read(STDIN_FILENO, &drainBuffer, 1)
                                 if drainN <= 0 { break }
-                                // CSI sequence terminates at byte in 0x40-0x7E range
+                                drainCount += 1
                                 if drainBuffer[0] >= 0x40 && drainBuffer[0] <= 0x7E { break }
                             }
                         }
                     }
                 }
+
+                // Restore blocking mode after CSI handling
+                _ = fcntl(STDIN_FILENO, F_SETFL, flags)
             } else {
                 // No escape sequence, restore blocking mode
                 _ = fcntl(STDIN_FILENO, F_SETFL, flags)
@@ -538,15 +569,45 @@ class ViEditor {
     }
 
     private func readMouseSequence() -> Character? {
+        // Read mouse sequence with non-blocking mode and byte limit to prevent hangs
+        let flags = fcntl(STDIN_FILENO, F_GETFL, 0)
+        _ = fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK)
+
         var seq = ""
         var buffer: [UInt8] = [0]
-        while true {
+        var bytesRead = 0
+        let maxBytes = 32  // SGR mouse sequences are typically <20 bytes
+
+        while bytesRead < maxBytes {
             let n = read(STDIN_FILENO, &buffer, 1)
-            guard n > 0 else { break }
+            if n <= 0 {
+                // No more data available in non-blocking mode
+                // If we have partial data, wait briefly for more
+                if seq.isEmpty || bytesRead == 0 {
+                    break
+                }
+                // Small busy-wait: try a few more times before giving up
+                var retries = 0
+                var got = false
+                while retries < 100 {
+                    var ts = timespec(tv_sec: 0, tv_nsec: 1_000_000) // 1ms
+                    nanosleep(&ts, nil)
+                    let n2 = read(STDIN_FILENO, &buffer, 1)
+                    if n2 > 0 {
+                        got = true
+                        break
+                    }
+                    retries += 1
+                }
+                if !got { break }
+            }
             let char = Character(UnicodeScalar(buffer[0]))
             seq.append(char)
+            bytesRead += 1
             if char == "m" || char == "M" { break }
         }
+
+        _ = fcntl(STDIN_FILENO, F_SETFL, flags)
         
         // Format is <button>;<x>;<y><m/M>
         let parts = seq.dropLast().split(separator: ";")
