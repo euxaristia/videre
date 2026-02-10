@@ -223,13 +223,8 @@ void editorDrawMessageBar(struct abuf *ab) {
     }
     
     if (mode_msg[0] != '\0') {
-        // Display mode indicator centered
-        int mode_len = strlen(mode_msg);
-        int padding = (E.screencols - mode_len) / 2;
-        if (padding > 0) {
-            while (padding-- > 0) abAppend(ab, " ", 1);
-        }
-        abAppend(ab, mode_msg, mode_len);
+        // Display mode indicator on the left (standard editor behavior)
+        abAppend(ab, mode_msg, strlen(mode_msg));
     } else {
         // Display status message if active
         int msglen = strlen(E.statusmsg);
