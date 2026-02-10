@@ -149,28 +149,60 @@ void editorDrawRows(struct abuf *ab) {
             char *chars = &E.row[filerow].chars[E.coloff];
             unsigned char *hl = &E.row[filerow].hl[E.coloff];
             int current_color = -1;
+            int current_bg = -1;  // Track background color
             int j;
             for (j = 0; j < len; j++) {
                 int is_selected = editorRowIsSelected(filerow, j + E.coloff);
+                int bg_color = -1;  // -1 means no special background
                 
+                // Determine background color
                 if (is_selected) {
+                    bg_color = 242;  // Visual selection background
+                }
+                
+                // Search match highlighting (background colors like neovim)
+                if (hl[j] == HL_MATCH) {
+                    bg_color = 172;  // Muted orange/gold for other matches
+                } else if (hl[j] == HL_MATCH_CURSOR) {
+                    bg_color = 166;  // Brownish-orange for current match
+                }
+
+                // Handle selection background
+                if (is_selected && bg_color < 0) {
                     abAppend(ab, "\x1b[48;5;242m", 11); // Visual selection background
                 }
 
                 int color = editorSyntaxToColor(hl[j]);
+                
+                // Change color if needed
                 if (color != current_color) {
                     current_color = color;
                     char buf[16];
                     int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
                     abAppend(ab, buf, clen);
                 }
+                
+                // Change background if needed
+                if (bg_color != current_bg) {
+                    current_bg = bg_color;
+                    if (bg_color >= 0) {
+                        char buf[16];
+                        int clen = snprintf(buf, sizeof(buf), "\x1b[48;5;%dm", bg_color);
+                        abAppend(ab, buf, clen);
+                    } else {
+                        abAppend(ab, "\x1b[49m", 5); // Reset background
+                    }
+                }
+                
                 abAppend(ab, &chars[j], 1);
                 
-                if (is_selected) {
+                // Reset selection background after character
+                if (is_selected && bg_color < 0) {
                     abAppend(ab, "\x1b[49m", 5); // Reset background
                 }
             }
             abAppend(ab, "\x1b[39m", 5);
+            abAppend(ab, "\x1b[49m", 5);  // Reset background
         }
 
         abAppend(ab, "\x1b[K", 3);
@@ -583,6 +615,26 @@ void editorProcessKeypress() {
                 if (E.last_search_char != '\0') {
                     editorFindChar(E.last_search_char, -1);
                 }
+                break;
+            
+            // Word motions
+            case 'w':
+                editorMoveWordForward(0);  // word
+                break;
+            case 'W':
+                editorMoveWordForward(1);  // WORD
+                break;
+            case 'b':
+                editorMoveWordBackward(0);  // word
+                break;
+            case 'B':
+                editorMoveWordBackward(1);  // WORD
+                break;
+            case 'e':
+                editorMoveWordEnd(0);  // word
+                break;
+            case 'E':
+                editorMoveWordEnd(1);  // WORD
                 break;
         }
     }

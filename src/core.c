@@ -239,3 +239,170 @@ void editorRepeatCharSearch() {
     editorFindChar(E.last_search_char, 1);
 }
 
+// Word motion helpers
+static int is_word_char(char c) {
+    return isalnum(c) || c == '_';
+}
+
+static int is_blank(char c) {
+    return c == ' ' || c == '\t';
+}
+
+// Move forward to start of next word (w command)
+void editorMoveWordForward(int big_word) {
+    if (E.numrows == 0) return;
+    
+    int row = E.cy;
+    int col = E.cx;
+    
+    while (row < E.numrows) {
+        erow *current_row = &E.row[row];
+        
+        // Skip current word if we're on one
+        if (col < current_row->size) {
+            if (big_word) {
+                // BIG WORD: skip non-whitespace
+                while (col < current_row->size && !is_blank(current_row->chars[col])) {
+                    col++;
+                }
+            } else {
+                // word: skip word characters
+                if (is_word_char(current_row->chars[col])) {
+                    while (col < current_row->size && is_word_char(current_row->chars[col])) {
+                        col++;
+                    }
+                } else {
+                    // skip non-word, non-whitespace characters
+                    while (col < current_row->size && !is_word_char(current_row->chars[col]) && !is_blank(current_row->chars[col])) {
+                        col++;
+                    }
+                }
+            }
+        }
+        
+        // Skip whitespace
+        while (col < current_row->size && is_blank(current_row->chars[col])) {
+            col++;
+        }
+        
+        // If we found a non-whitespace character, we're at the start of next word
+        if (col < current_row->size) {
+            E.cy = row;
+            E.cx = col;
+            return;
+        }
+        
+        // Move to next line
+        row++;
+        col = 0;
+    }
+    
+    // If we reached the end, go to end of last line
+    if (E.numrows > 0) {
+        E.cy = E.numrows - 1;
+        E.cx = E.row[E.cy].size;
+    }
+}
+
+// Move backward to start of previous word (b command)
+void editorMoveWordBackward(int big_word) {
+    if (E.numrows == 0) return;
+    
+    int row = E.cy;
+    int col = E.cx - 1;  // Start from character before cursor
+    
+    while (row >= 0) {
+        erow *current_row = &E.row[row];
+        
+        // Skip whitespace going backward
+        while (col >= 0 && is_blank(current_row->chars[col])) {
+            col--;
+        }
+        
+        // If we found a non-whitespace character
+        if (col >= 0) {
+            int end_col = col;
+            
+            if (big_word) {
+                // BIG WORD: skip non-whitespace backward
+                while (col >= 0 && !is_blank(current_row->chars[col])) {
+                    col--;
+                }
+            } else {
+                // word: skip word characters backward
+                if (is_word_char(current_row->chars[col])) {
+                    while (col >= 0 && is_word_char(current_row->chars[col])) {
+                        col--;
+                    }
+                } else {
+                    // skip non-word, non-whitespace characters backward
+                    while (col >= 0 && !is_word_char(current_row->chars[col]) && !is_blank(current_row->chars[col])) {
+                        col--;
+                    }
+                }
+            }
+            
+            E.cy = row;
+            E.cx = col + 1;
+            return;
+        }
+        
+        // Move to previous line
+        row--;
+        if (row >= 0) {
+            col = E.row[row].size - 1;
+        }
+    }
+    
+    // If we reached the beginning
+    E.cy = 0;
+    E.cx = 0;
+}
+
+// Move forward to end of word (e command)
+void editorMoveWordEnd(int big_word) {
+    if (E.numrows == 0) return;
+    
+    int row = E.cy;
+    int col = E.cx + 1;  // Start from character after cursor
+    
+    while (row < E.numrows) {
+        erow *current_row = &E.row[row];
+        
+        // Skip whitespace
+        while (col < current_row->size && is_blank(current_row->chars[col])) {
+            col++;
+        }
+        
+        // If we found a non-whitespace character
+        if (col < current_row->size) {
+            if (big_word) {
+                // BIG WORD: skip to end of non-whitespace
+                while (col < current_row->size - 1 && !is_blank(current_row->chars[col + 1])) {
+                    col++;
+                }
+            } else {
+                // word: skip to end of word characters
+                if (is_word_char(current_row->chars[col])) {
+                    while (col < current_row->size - 1 && is_word_char(current_row->chars[col + 1])) {
+                        col++;
+                    }
+                } else {
+                    // skip to end of non-word, non-whitespace characters
+                    while (col < current_row->size - 1 && !is_word_char(current_row->chars[col + 1]) && !is_blank(current_row->chars[col + 1])) {
+                        col++;
+                    }
+                }
+            }
+            
+            E.cy = row;
+            E.cx = col;
+            return;
+        }
+        
+        // Move to next line
+        row++;
+        col = 0;
+    }
+}
+

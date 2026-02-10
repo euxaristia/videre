@@ -1,8 +1,0 @@
-# environment variables:
-AFL_CUSTOM_INFO_PROGRAM=fuzz/fuzz_target
-AFL_CUSTOM_INFO_PROGRAM_ARGV=
-AFL_CUSTOM_INFO_OUT=fuzz/output/default
-AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
-AFL_SKIP_CPUFREQ=1
-# command line:
-'afl-fuzz' '-i' 'fuzz/input' '-o' 'fuzz/output' '--' 'fuzz/fuzz_target'

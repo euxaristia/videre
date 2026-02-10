@@ -72,7 +72,6 @@ void editorUpdateSyntax(erow *row) {
   int i = 0;
   while (i < row->size) {
     char c = row->chars[i];
-    unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
     // Single-line comments
     if (scs_len && !in_string && !in_comment) {
@@ -129,12 +128,18 @@ void editorUpdateSyntax(erow *row) {
 
     // Numbers
     if (E.syntax->flags & HL_HIGHLIGHT_NUMBERS) {
-      if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
-          (c == '.' && prev_hl == HL_NUMBER)) {
-        row->hl[i] = HL_NUMBER;
-        i++;
-        prev_sep = 0;
-        continue;
+      if ((isdigit(c) && prev_sep) ||
+          (c == '.' && prev_sep && i + 1 < row->size && isdigit(row->chars[i + 1]))) {
+        int j = i;
+        if (isdigit(c)) {
+          while (j < row->size && (isdigit(row->chars[j]) || row->chars[j] == '.')) j++;
+        }
+        if (j > i) {
+          memset(&row->hl[i], HL_NUMBER, j - i);
+          i = j;
+          prev_sep = 0;
+          continue;
+        }
       }
     }
 
@@ -175,8 +180,37 @@ int editorSyntaxToColor(int hl) {
     case HL_KEYWORD2: return 36; // Cyan
     case HL_STRING: return 35; // Magenta
     case HL_NUMBER: return 31; // Red
-    case HL_MATCH: return 34; // Blue
+    case HL_MATCH: return 34; // Blue (dim)
+    case HL_MATCH_CURSOR: return 33; // Yellow (bright - current match)
+    case HL_VISUAL: return 38; // Grey
     default: return 37; // White
+  }
+}
+
+void editorUpdateSearchHighlight() {
+  if (E.search_pattern == NULL || strlen(E.search_pattern) == 0) return;
+  
+  int qlen = strlen(E.search_pattern);
+  
+  for (int filerow = 0; filerow < E.numrows; filerow++) {
+    erow *row = &E.row[filerow];
+    char *match = row->chars;
+    
+    while ((match = strstr(match, E.search_pattern)) != NULL) {
+      int match_col = match - row->chars;
+      
+      // Check if this is the current cursor position (bright highlight)
+      if (filerow == E.cy && match_col <= E.cx && E.cx < match_col + qlen) {
+        for (int i = 0; i < qlen; i++) {
+          row->hl[match_col + i] = HL_MATCH_CURSOR;
+        }
+      } else {
+        for (int i = 0; i < qlen; i++) {
+          row->hl[match_col + i] = HL_MATCH;
+        }
+      }
+      match++;
+    }
   }
 }
 

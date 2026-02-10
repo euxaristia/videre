@@ -51,6 +51,7 @@ enum mouseButton {
 #define HL_STRING 5
 #define HL_NUMBER 6
 #define HL_MATCH 7
+#define HL_MATCH_CURSOR 9
 #define HL_VISUAL 8
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
@@ -148,6 +149,7 @@ void editorUpdateRow(erow *row);
 void editorUpdateSyntax(erow *row);
 int editorSyntaxToColor(int hl);
 void editorSelectSyntaxHighlight();
+void editorUpdateSearchHighlight();
 void editorInsertChar(int c);
 void editorInsertNewline();
 void editorDelChar();
@@ -173,6 +175,9 @@ void editorSelectWord();
 void editorFindChar(char c, int direction);
 void editorFindCharTill(char c, int direction);
 void editorRepeatCharSearch();
+void editorMoveWordForward(int big_word);
+void editorMoveWordBackward(int big_word);
+void editorMoveWordEnd(int big_word);
 
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);

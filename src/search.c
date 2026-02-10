@@ -9,6 +9,7 @@ void editorFindCallback(char *query, int key) {
     if (key == '\r' || key == '\x1b') {
         last_match = -1;
         direction = 1;
+        E.search_pattern = NULL;
         return;
     } else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
         direction = 1;
@@ -33,9 +34,15 @@ void editorFindCallback(char *query, int key) {
             last_match = current;
             E.cy = current;
             E.cx = match - row->chars;
-            E.rowoff = E.numrows; // Force scroll to match
+            E.rowoff = E.numrows;
             break;
         }
+    }
+
+    if (query && strlen(query) > 0) {
+        if (E.search_pattern) free(E.search_pattern);
+        E.search_pattern = strdup(query);
+        editorUpdateSearchHighlight();
     }
 }
 
@@ -45,7 +52,7 @@ void editorFind() {
     int saved_coloff = E.coloff;
     int saved_rowoff = E.rowoff;
 
-    char *query = editorPrompt("Search: %s (Use ESC/Arrows/Enter)", editorFindCallback);
+    char *query = editorPrompt("/%s", editorFindCallback);
 
     if (query) {
         free(query);
