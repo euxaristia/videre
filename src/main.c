@@ -159,9 +159,9 @@ void editorDrawRows(struct abuf *ab) {
 }
 
 void editorDrawStatusBar(struct abuf *ab) {
-    // Neovim-style status bar: grey background (ANSI 250) with black text (ANSI 30)
+    // Neovim-style status bar: grey background (ANSI 250) with dark grey text (ANSI 240) for better contrast
     abAppend(ab, "\x1b[48;5;250m", 11);
-    abAppend(ab, "\x1b[38;5;30m", 11);
+    abAppend(ab, "\x1b[38;5;240m", 11);
     
     char status[80], rstatus[80];
     
