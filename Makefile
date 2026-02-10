@@ -1,6 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude -O2
 TARGET = videre
+PREFIX = /usr/local
+BINDIR = $(PREFIX)/bin
 
 SRC = src/main.c src/terminal.c src/fileio.c src/buffer.c src/rows.c src/search.c src/syntax.c src/edit.c src/undo.c src/core.c
 OBJ = $(SRC:.c=.o)
@@ -97,8 +99,33 @@ memcheck: $(TARGET)
 		echo "Valgrind not installed. Install with: sudo apt-get install valgrind"; \
 	fi
 
+# Installation
+install: $(TARGET)
+	install -d $(DESTDIR)$(BINDIR)
+	install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
+	@echo "Installed $(TARGET) to $(DESTDIR)$(BINDIR)/$(TARGET)"
+	@echo "Run 'videre' to start the editor"
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(TARGET)
+	@echo "Removed $(TARGET) from $(DESTDIR)$(BINDIR)/"
+
+dev-uninstall:
+	rm -f $(HOME)/.local/bin/$(TARGET)
+	@echo "Removed $(TARGET) from $(HOME)/.local/bin/"
+
+# Development install (to current user's bin)
+dev-install: $(TARGET)
+	install -d $(HOME)/.local/bin
+	install -m 755 $(TARGET) $(HOME)/.local/bin/$(TARGET)
+	@echo "Installed $(TARGET) to $(HOME)/.local/bin/$(TARGET)"
+	@if ! echo $PATH | grep -q "$(HOME)/.local/bin"; then \
+		echo "NOTE: Add $(HOME)/.local/bin to your PATH"; \
+		echo "export PATH=\"$$HOME/.local/bin:$$PATH\""; \
+	fi
+
 clean:
 	rm -f $(OBJ) $(TARGET) run_tests fuzz/fuzz_target
 	rm -rf fuzz/output
 
-.PHONY: all clean test fuzz-setup fuzz-build fuzz-run fuzz-parallel fuzz-analyze security-scan memcheck
+.PHONY: all clean install uninstall dev-install dev-uninstall test fuzz-setup fuzz-build fuzz-run fuzz-parallel fuzz-analyze security-scan memcheck
