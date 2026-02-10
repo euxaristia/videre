@@ -63,3 +63,52 @@ void editorFind() {
         E.rowoff = saved_rowoff;
     }
 }
+
+void editorFindNext(int direction) {
+    if (E.search_pattern == NULL || strlen(E.search_pattern) == 0) return;
+    
+    int current_row = E.cy;
+    int current_col = E.cx + (direction > 0 ? 1 : -1);
+    
+    // Search from current position
+    for (int i = 0; i < E.numrows; i++) {
+        current_row += direction;
+        if (current_row < 0) current_row = E.numrows - 1;
+        if (current_row >= E.numrows) current_row = 0;
+        
+        erow *row = &E.row[current_row];
+        char *match = NULL;
+        
+        if (direction > 0) {
+            // Search forward
+            if (current_row == E.cy) {
+                // Same row, search from current position
+                if (current_col < row->size) {
+                    match = strstr(&row->chars[current_col], E.search_pattern);
+                }
+            } else {
+                // Different row, search from beginning
+                match = strstr(row->chars, E.search_pattern);
+            }
+        } else {
+            // Search backward - need to search manually
+            int search_len = strlen(E.search_pattern);
+            int start = (current_row == E.cy) ? current_col : row->size - 1;
+            
+            for (int col = start; col >= 0; col--) {
+                if (col + search_len <= row->size && 
+                    strncmp(&row->chars[col], E.search_pattern, search_len) == 0) {
+                    match = &row->chars[col];
+                    break;
+                }
+            }
+        }
+        
+        if (match) {
+            E.cy = current_row;
+            E.cx = match - row->chars;
+            editorUpdateSearchHighlight();
+            return;
+        }
+    }
+}

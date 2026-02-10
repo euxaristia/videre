@@ -150,21 +150,23 @@ void editorDrawRows(struct abuf *ab) {
             unsigned char *hl = &E.row[filerow].hl[E.coloff];
             int current_color = -1;
             int current_bg = -1;  // Track background color
+            int current_reverse = 0;  // Track reverse video (for search highlighting)
             int j;
             for (j = 0; j < len; j++) {
                 int is_selected = editorRowIsSelected(filerow, j + E.coloff);
                 int bg_color = -1;  // -1 means no special background
+                int is_reverse = 0;  // 0 = normal, 1 = reverse video (search highlight)
                 
-                // Determine background color
+                // Determine background color for selection
                 if (is_selected) {
                     bg_color = 242;  // Visual selection background
                 }
                 
-                // Search match highlighting (background colors like neovim)
+                // Search match highlighting (reverse video like neovim)
                 if (hl[j] == HL_MATCH) {
-                    bg_color = 172;  // Muted orange/gold for other matches
+                    is_reverse = 1;  // Reverse video for other matches
                 } else if (hl[j] == HL_MATCH_CURSOR) {
-                    bg_color = 166;  // Brownish-orange for current match
+                    is_reverse = 2;  // Reverse video for current match (brighter)
                 }
 
                 // Handle selection background
@@ -174,16 +176,32 @@ void editorDrawRows(struct abuf *ab) {
 
                 int color = editorSyntaxToColor(hl[j]);
                 
-                // Change color if needed
-                if (color != current_color) {
+                // Handle reverse video for search highlighting
+                if (is_reverse != current_reverse) {
+                    current_reverse = is_reverse;
+                    if (is_reverse == 1) {
+                        // Other matches: reverse video with dark background
+                        abAppend(ab, "\x1b[7m", 4);  // Enable reverse video
+                        abAppend(ab, "\x1b[48;5;94m", 11);  // Dark brown background
+                    } else if (is_reverse == 2) {
+                        // Current match: reverse video with bright yellow background
+                        abAppend(ab, "\x1b[7m", 4);  // Enable reverse video
+                        abAppend(ab, "\x1b[48;5;220m", 11);  // Bright yellow/gold background
+                    } else {
+                        abAppend(ab, "\x1b[27m", 5);  // Disable reverse video
+                    }
+                }
+                
+                // Change color if needed (only if not in reverse video mode)
+                if (!is_reverse && color != current_color) {
                     current_color = color;
                     char buf[16];
                     int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
                     abAppend(ab, buf, clen);
                 }
                 
-                // Change background if needed
-                if (bg_color != current_bg) {
+                // Change background if needed (only if not in reverse video mode)
+                if (!is_reverse && bg_color != current_bg) {
                     current_bg = bg_color;
                     if (bg_color >= 0) {
                         char buf[16];
@@ -203,6 +221,7 @@ void editorDrawRows(struct abuf *ab) {
             }
             abAppend(ab, "\x1b[39m", 5);
             abAppend(ab, "\x1b[49m", 5);  // Reset background
+            abAppend(ab, "\x1b[27m", 5);   // Reset reverse video
         }
 
         abAppend(ab, "\x1b[K", 3);
@@ -635,6 +654,18 @@ void editorProcessKeypress() {
                 break;
             case 'E':
                 editorMoveWordEnd(1);  // WORD
+                break;
+            
+            case '%':
+                editorMatchBracket();
+                break;
+            
+            case 'n':
+                editorFindNext(1);  // Next match
+                break;
+            
+            case 'N':
+                editorFindNext(-1);  // Previous match
                 break;
         }
     }

@@ -175,3 +175,21 @@ int getWindowSize(int *rows, int *cols) {
         return 0;
     }
 }
+
+void editorScroll() {
+    // Adjust row offset based on cursor position
+    if (E.cy < E.rowoff) {
+        E.rowoff = E.cy;
+    }
+    if (E.cy >= E.rowoff + E.screenrows) {
+        E.rowoff = E.cy - E.screenrows + 1;
+    }
+    
+    // Adjust column offset based on cursor position
+    if (E.cx < E.coloff) {
+        E.coloff = E.cx;
+    }
+    if (E.cx >= E.coloff + E.screencols) {
+        E.coloff = E.cx - E.screencols + 1;
+    }
+}

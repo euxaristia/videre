@@ -57,7 +57,7 @@ void editorInsertNewline() {
         editorInsertRow(E.cy + 1, &row->chars[E.cx], row->size - E.cx);
         row = &E.row[E.cy];
         row->size = E.cx;
-        row->chars[row->size] = 0;
+        row->chars[row->size] = '\0';
         editorUpdateRow(row);
     }
     E.cy++;
@@ -75,30 +75,9 @@ void editorDelChar() {
         E.cx--;
     } else {
         E.cx = E.row[E.cy - 1].size;
-        row = &E.row[E.cy];
-        E.row[E.cy - 1].chars = realloc(E.row[E.cy - 1].chars, E.row[E.cy - 1].size + row->size + 1);
-        memcpy(&E.row[E.cy - 1].chars[E.row[E.cy - 1].size], row->chars, row->size);
-        E.row[E.cy - 1].size += row->size;
-        E.row[E.cy - 1].chars[E.row[E.cy - 1].size] = 0;
-        editorUpdateRow(&E.row[E.cy - 1]);
-        
+        editorRowAppendString(&E.row[E.cy - 1], row->chars, row->size);
         editorDelRow(E.cy);
         E.cy--;
-    }
-}
-
-void editorScroll() {
-    if (E.cy < E.rowoff) {
-        E.rowoff = E.cy;
-    }
-    if (E.cy >= E.rowoff + E.screenrows) {
-        E.rowoff = E.cy - E.screenrows + 1;
-    }
-    if (E.cx < E.coloff) {
-        E.coloff = E.cx;
-    }
-    if (E.cx >= E.coloff + E.screencols) {
-        E.coloff = E.cx - E.screencols + 1;
     }
 }
 
@@ -190,11 +169,9 @@ void editorFindCharTill(char c, int direction) {
     E.last_search_char_found = 0;
     
     if (E.numrows == 0) return;
-    
-    erow *row = &E.row[E.cy];
     int start_col = E.cx + (direction > 0 ? 1 : -1);
     
-    // Search forward
+    // Search forward (t = till, stop before)
     if (direction > 0) {
         for (int line = E.cy; line < E.numrows; line++) {
             erow *current_row = &E.row[line];
@@ -321,8 +298,6 @@ void editorMoveWordBackward(int big_word) {
         
         // If we found a non-whitespace character
         if (col >= 0) {
-            int end_col = col;
-            
             if (big_word) {
                 // BIG WORD: skip non-whitespace backward
                 while (col >= 0 && !is_blank(current_row->chars[col])) {
@@ -406,3 +381,61 @@ void editorMoveWordEnd(int big_word) {
     }
 }
 
+// Bracket matching - find matching bracket for () [] {}
+void editorMatchBracket() {
+    if (E.numrows == 0) return;
+    if (E.cy >= E.numrows) return;
+    
+    erow *row = &E.row[E.cy];
+    if (E.cx >= row->size) return;
+    
+    char current = row->chars[E.cx];
+    char target = 0;
+    int direction = 0;
+    int depth = 1;
+    
+    // Determine what we're looking for
+    switch (current) {
+        case '(': target = ')'; direction = 1; break;
+        case ')': target = '('; direction = -1; break;
+        case '[': target = ']'; direction = 1; break;
+        case ']': target = '['; direction = -1; break;
+        case '{': target = '}'; direction = 1; break;
+        case '}': target = '{'; direction = -1; break;
+        default: return;  // Not on a bracket
+    }
+    
+    int row_idx = E.cy;
+    int col_idx = E.cx + direction;
+    
+    while (row_idx >= 0 && row_idx < E.numrows) {
+        row = &E.row[row_idx];
+        
+        while (col_idx >= 0 && col_idx < row->size) {
+            char c = row->chars[col_idx];
+            
+            if (c == current) {
+                depth++;
+            } else if (c == target) {
+                depth--;
+                if (depth == 0) {
+                    E.cy = row_idx;
+                    E.cx = col_idx;
+                    return;
+                }
+            }
+            
+            col_idx += direction;
+        }
+        
+        // Move to next/previous line
+        row_idx += direction;
+        if (direction > 0) {
+            col_idx = 0;
+        } else {
+            if (row_idx >= 0) {
+                col_idx = E.row[row_idx].size - 1;
+            }
+        }
+    }
+}
