@@ -226,7 +226,7 @@ void editorDrawRows(struct abuf *ab) {
                     "https://github.com/euxaristia/videre",
                     "",
                     "type  :q<Enter>               to exit         ",
-                    "type  :help<Enter>            for help        ",
+                    "type  :wq<Enter>              save and exit   ",
                     "",
                     "Maintainer: euxaristia",
                 };
@@ -866,7 +866,6 @@ int editorProcessKeypress() {
                     editorYank(E.sel_sx, E.sel_sy, E.cx, E.cy, E.mode == MODE_VISUAL_LINE);
                     E.mode = MODE_NORMAL;
                     E.sel_sx = E.sel_sy = -1;
-                    editorSetStatusMessage("Yanked");
                 }
                 break;
 
@@ -928,8 +927,6 @@ int editorProcessKeypress() {
                         } else if (strcmp(cmd, "wq") == 0) {
                             editorSave();
                             exit(0);
-                        } else if (strcmp(cmd, "help") == 0) {
-                            editorSetStatusMessage("Help not yet implemented");
                         } else {
                             editorSetStatusMessage("Not an editor command: %s", cmd);
                         }

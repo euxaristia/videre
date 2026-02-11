@@ -745,14 +745,13 @@ void editorSetMark(int mark) {
     E.mark_x[idx] = E.cx;
     E.mark_y[idx] = E.cy;
     E.mark_set[idx] = 1;
-    editorSetStatusMessage("Mark '%c' set", mark);
 }
 
 void editorGoToMark(int mark) {
     if (mark < 'a' || mark > 'z') return;
     int idx = mark - 'a';
     if (!E.mark_set[idx]) {
-        editorSetStatusMessage("Mark '%c' not set", mark);
+        editorSetStatusMessage("E20: Mark not set");
         return;
     }
     E.cy = E.mark_y[idx];
@@ -763,5 +762,4 @@ void editorGoToMark(int mark) {
     if (E.cx > E.row[E.cy].size) E.cx = E.row[E.cy].size;
     
     E.preferredColumn = E.cx;
-    editorSetStatusMessage("Jumped to mark '%c'", mark);
 }
