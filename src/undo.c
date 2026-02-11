@@ -4,6 +4,10 @@
 
 void editorFreeUndoState(editorUndoState *state) {
     if (!state) return;
+    if (!state->row) {
+        free(state);
+        return;
+    }
     for (int i = 0; i < state->numrows; i++) {
         free(state->row[i].chars);
         free(state->row[i].hl);
@@ -14,24 +18,75 @@ void editorFreeUndoState(editorUndoState *state) {
 
 editorUndoState *editorCreateUndoState() {
     editorUndoState *state = malloc(sizeof(editorUndoState));
+    if (!state) return NULL;
+    
     state->numrows = E.numrows;
     state->cx = E.cx;
     state->cy = E.cy;
-    state->row = malloc(sizeof(erow) * E.numrows);
-    for (int i = 0; i < E.numrows; i++) {
-        state->row[i].size = E.row[i].size;
-        state->row[i].chars = malloc(E.row[i].size + 1);
-        memcpy(state->row[i].chars, E.row[i].chars, E.row[i].size + 1);
-        state->row[i].hl = malloc(E.row[i].size);
-        memcpy(state->row[i].hl, E.row[i].hl, E.row[i].size);
-        state->row[i].hl_open_comment = E.row[i].hl_open_comment;
+    
+    if (E.numrows > 0) {
+        if (!E.row) {
+            free(state);
+            return NULL;
+        }
+        // Prevent integer overflow
+        if (E.numrows > 1000000) { // Same limit as in rows.c
+            free(state);
+            return NULL;
+        }
+        state->row = malloc(sizeof(erow) * E.numrows);
+        if (!state->row) {
+            free(state);
+            return NULL;
+        }
+        
+        for (int i = 0; i < E.numrows; i++) {
+            state->row[i].size = E.row[i].size;
+            state->row[i].chars = malloc(E.row[i].size + 1);
+            if (!state->row[i].chars) {
+                // Cleanup
+                for (int j = 0; j < i; j++) {
+                    free(state->row[j].chars);
+                    free(state->row[j].hl);
+                }
+                free(state->row);
+                free(state);
+                return NULL;
+            }
+            memcpy(state->row[i].chars, E.row[i].chars, E.row[i].size + 1);
+            
+            if (E.row[i].hl) {
+                state->row[i].hl = malloc(E.row[i].size);
+                if (!state->row[i].hl) {
+                    // Non-fatal, just skip hl for this row or cleanup?
+                    // For security, let's be consistent
+                    free(state->row[i].chars);
+                    for (int j = 0; j < i; j++) {
+                        free(state->row[j].chars);
+                        free(state->row[j].hl);
+                    }
+                    free(state->row);
+                    free(state);
+                    return NULL;
+                }
+                memcpy(state->row[i].hl, E.row[i].hl, E.row[i].size);
+            } else {
+                state->row[i].hl = NULL;
+            }
+            state->row[i].hl_open_comment = E.row[i].hl_open_comment;
+        }
+    } else {
+        state->row = NULL;
     }
+    
     state->next = NULL;
     return state;
 }
 
 void editorSaveUndoState() {
     editorUndoState *state = editorCreateUndoState();
+    if (!state) return;
+    
     state->next = E.undo_stack;
     E.undo_stack = state;
 
@@ -67,6 +122,7 @@ void editorApplyUndoState(editorUndoState *state) {
                 // Cleanup on failure
                 for (int j = 0; j < i; j++) {
                     free(E.row[j].chars);
+                    free(E.row[j].hl);
                 }
                 free(E.row);
                 E.row = NULL;
@@ -104,6 +160,7 @@ void editorUndo() {
     if (!E.undo_stack) return;
     
     editorUndoState *redo_state = editorCreateUndoState();
+    if (!redo_state) return;
     redo_state->next = E.redo_stack;
     E.redo_stack = redo_state;
 
@@ -112,13 +169,13 @@ void editorUndo() {
     
     editorApplyUndoState(undo_state);
     editorFreeUndoState(undo_state);
-    editorSetStatusMessage("Undo");
 }
 
 void editorRedo() {
     if (!E.redo_stack) return;
 
     editorUndoState *undo_state = editorCreateUndoState();
+    if (!undo_state) return;
     undo_state->next = E.undo_stack;
     E.undo_stack = undo_state;
 
@@ -127,6 +184,4 @@ void editorRedo() {
 
     editorApplyUndoState(redo_state);
     editorFreeUndoState(redo_state);
-    editorSetStatusMessage("Redo");
 }
-
