@@ -381,8 +381,8 @@ void editorDrawStatusBar(struct abuf *ab) {
         pos_indicator = pct_buf;
     }
     
-// Neovim format: " line,col-1 indicator" (with leading space)
-    int rlen = snprintf(rstatus, sizeof(rstatus), " %d,%d-1 %s",
+// Neovim format: " line,col-1  indicator" (with leading space and separator gap)
+    int rlen = snprintf(rstatus, sizeof(rstatus), " %d,%d-1  %s",
         E.cy + 1, E.cx + 1, pos_indicator);
 
     // Truncate left side if it's too long (neovim-style spacing)
@@ -629,14 +629,21 @@ int editorHandleMouse() {
         if ((b & 0x3) == 0) { // Up
             int times = 3;
             while (times--) {
-                if (E.rowoff > 0) E.rowoff--;
+                if (E.rowoff > 0) {
+                    E.rowoff--;
+                    if (E.cy > 0) E.cy--;
+                }
             }
         } else if ((b & 0x3) == 1) { // Down
             int times = 3;
             while (times--) {
-                if (E.rowoff + E.screenrows < E.numrows) E.rowoff++;
+                if (E.rowoff + E.screenrows < E.numrows) {
+                    E.rowoff++;
+                    if (E.cy < E.numrows - 1) E.cy++;
+                }
             }
         }
+        E.preferredColumn = E.cx;
         return 1;
     }
 
