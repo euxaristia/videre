@@ -381,9 +381,10 @@ void editorDrawStatusBar(struct abuf *ab) {
         pos_indicator = pct_buf;
     }
     
-// Neovim format: " line,col-1  indicator" (with leading space and separator gap)
-    int rlen = snprintf(rstatus, sizeof(rstatus), " %d,%d-1  %s",
-        E.cy + 1, E.cx + 1, pos_indicator);
+    // Neovim-style ruler spacing: padded location field before Top/Bot/All/%.
+    char loc[32];
+    snprintf(loc, sizeof(loc), "%d,%d-1", E.cy + 1, E.cx + 1);
+    int rlen = snprintf(rstatus, sizeof(rstatus), " %-14s %s", loc, pos_indicator);
 
     // Truncate left side if it's too long (neovim-style spacing)
     if (len > E.screencols - rlen) {
