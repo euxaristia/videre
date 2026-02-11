@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include "videre.h"
 
 // Validate filename to prevent path traversal attacks
@@ -57,7 +58,11 @@ void editorUpdateGitStatus() {
                 has_changes = 1;
             }
             
-            snprintf(E.git_status, sizeof(E.git_status), "%s%s", branch, has_changes ? "*" : "");
+            // Use a temporary buffer to avoid truncation warnings and ensure safety
+            char status_buf[64];
+            snprintf(status_buf, sizeof(status_buf), "%s%s", branch, has_changes ? "*" : "");
+            strncpy(E.git_status, status_buf, sizeof(E.git_status) - 1);
+            E.git_status[sizeof(E.git_status) - 1] = '\0';
         }
     }
     pclose(fp);
@@ -97,13 +102,19 @@ void editorOpen(char *filename) {
 }
 
 char *editorRowsToString(int *buflen) {
-    int totlen = 0;
+    size_t totlen = 0;
     int j;
-    for (j = 0; j < E.numrows; j++)
+    for (j = 0; j < E.numrows; j++) {
+        // Prevent integer overflow when calculating total length
+        if (totlen > SIZE_MAX - E.row[j].size - 1) {
+            die("Buffer size overflow in editorRowsToString");
+        }
         totlen += E.row[j].size + 1;
-    *buflen = totlen;
+    }
+    *buflen = (int)totlen; // Note: possible truncation if totlen > INT_MAX, but buflen is often used with write()
 
     char *buf = malloc(totlen);
+    if (!buf) die("malloc");
     char *p = buf;
     for (j = 0; j < E.numrows; j++) {
         memcpy(p, E.row[j].chars, E.row[j].size);

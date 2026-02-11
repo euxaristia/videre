@@ -32,3 +32,6 @@ videre
 # Build artifacts
 run_tests
 security_tests
+fuzz_core
+fuzz/input/large_random.txt
+.aider*

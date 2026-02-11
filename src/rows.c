@@ -75,8 +75,14 @@ void editorDelRow(int at) {
 
 void editorRowInsertChar(erow *row, int at, int c) {
     if (at < 0 || at > row->size) at = row->size;
-    row->chars = realloc(row->chars, row->size + 2);
-    if (!row->chars) die("realloc");
+    
+    // Prevent integer overflow
+    if (row->size >= 1000000) return; 
+
+    char *new_chars = realloc(row->chars, row->size + 2);
+    if (!new_chars) die("realloc");
+    row->chars = new_chars;
+
     if (row->size - at + 1 > 0 && row->chars != NULL) {
         memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
     }
@@ -87,8 +93,13 @@ void editorRowInsertChar(erow *row, int at, int c) {
 }
 
 void editorRowAppendString(erow *row, char *s, size_t len) {
-    row->chars = realloc(row->chars, row->size + len + 1);
-    if (!row->chars) die("realloc");
+    // Prevent integer overflow
+    if (len > 1000000 || (size_t)row->size + len > 1000000) return;
+
+    char *new_chars = realloc(row->chars, row->size + len + 1);
+    if (!new_chars) die("realloc");
+    row->chars = new_chars;
+
     if (len > 0 && row->chars != NULL) {
         memcpy(&row->chars[row->size], s, len);
     }

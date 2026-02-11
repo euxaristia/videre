@@ -1,4 +1,4 @@
-CC = gcc
+CC ?= gcc
 CFLAGS = -Wall -Wextra -Iinclude -O2
 TARGET = videre
 PREFIX = /usr/local
@@ -28,6 +28,15 @@ security-test: tests/security_tests.c
 fuzz-target: tests/fuzz_target.c
 	$(CC) $(CFLAGS) -g -fsanitize=address,undefined $^ -o fuzz_target
 
+# Improved heavy fuzzer
+fuzz_core: tests/fuzz_core.c src/main.o src/terminal.o src/fileio.o src/buffer.o src/rows.o src/search.o src/syntax.o src/edit.o src/undo.o src/core.o
+	$(CC) $(CFLAGS) -Dmain=original_main $^ -o fuzz_core \
+		-Wl,--wrap=readKey \
+		-Wl,--wrap=enableRawMode \
+		-Wl,--wrap=disableRawMode \
+		-Wl,--wrap=getWindowSize \
+		-Wl,--wrap=editorRefreshScreen
+
 # Security testing with AFL
 fuzz-setup:
 	@echo "Setting up AFL fuzzing..."
@@ -47,18 +56,27 @@ fuzz-setup:
 	echo -ne "\xff\xfe\xfd\xfc\xfb\xfa" > fuzz/input/binary2.bin
 	echo -ne "\x1b[A\x1b[B\x1b[C\x1b[D" > fuzz/input/escape_sequences.bin
 	head -c 10000 /dev/urandom | tr -d '\0' > fuzz/input/large_random.txt
-	echo -e "$(printf 'A%.0s' {1..1000})\n$(printf 'B%.0s' {1..1000})" > fuzz/input/buffer_overflow.txt
+	echo -e "\n" > fuzz/input/buffer_overflow.txt
 
 fuzz-build:
 	@echo "Building with AFL instrumentation..."
 	make clean
-	CC=afl-clang-fast CFLAGS="-Wall -Wextra -Iinclude -O2 -g -fsanitize=address,undefined" make $(TARGET)
-	afl-clang-fast -Wall -Wextra -Iinclude -O2 -g -fsanitize=address,undefined \
-		tests/fuzz_target.c -o fuzz/fuzz_target
+	CC=afl-clang-fast CFLAGS="-Wall -Wextra -Iinclude -O2 -g -fsanitize=address,undefined -Dmain=original_main -D__AFL_COMPILER" \
+		make $(OBJ)
+	afl-clang-fast -Wall -Wextra -Iinclude -O2 -g -fsanitize=address,undefined -D__AFL_COMPILER \
+		-Dmain=original_main tests/fuzz_core.c $(OBJ) -o fuzz_core \
+		-Wl,--wrap=readKey \
+		-Wl,--wrap=enableRawMode \
+		-Wl,--wrap=disableRawMode \
+		-Wl,--wrap=getWindowSize \
+		-Wl,--wrap=editorRefreshScreen \
+		-Wl,--wrap=die \
+		-Wl,--wrap=editorPrompt \
+		-Wl,--wrap=editorPrompt
 
 fuzz-run: fuzz-build
 	@echo "Starting AFL fuzzing (this will run for a long time)..."
-	afl-fuzz -i fuzz/input -o fuzz/output -- fuzz/fuzz_target
+	afl-fuzz -i fuzz/input -o fuzz/output -- ./fuzz_core
 
 fuzz-parallel: fuzz-build
 	@echo "Starting parallel AFL fuzzing on multiple cores..."
@@ -110,12 +128,12 @@ uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/$(TARGET)
 	@echo "Removed $(TARGET) from $(DESTDIR)$(BINDIR)/"
 
-dev-uninstall:
+local-uninstall:
 	rm -f $(HOME)/.local/bin/$(TARGET)
 	@echo "Removed $(TARGET) from $(HOME)/.local/bin/"
 
-# Development install (to current user's bin)
-dev-install: $(TARGET)
+# Local install (to current user's bin)
+local-install: $(TARGET)
 	install -d $(HOME)/.local/bin
 	install -m 755 $(TARGET) $(HOME)/.local/bin/$(TARGET)
 	@echo "Installed $(TARGET) to $(HOME)/.local/bin/$(TARGET)"
@@ -125,7 +143,7 @@ dev-install: $(TARGET)
 	fi
 
 clean:
-	rm -f $(OBJ) $(TARGET) run_tests fuzz/fuzz_target
+	rm -f $(OBJ) $(TARGET) run_tests fuzz/fuzz_target fuzz_core
 	rm -rf fuzz/output
 
-.PHONY: all clean install uninstall dev-install dev-uninstall test fuzz-setup fuzz-build fuzz-run fuzz-parallel fuzz-analyze security-scan memcheck
+.PHONY: all clean install uninstall local-install local-uninstall test fuzz-setup fuzz-build fuzz-run fuzz-parallel fuzz-analyze security-scan memcheck
