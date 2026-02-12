@@ -262,8 +262,13 @@ void editorDrawRows(struct abuf *ab) {
             while (j < bytes_avail) {
                 uint32_t cp = 0;
                 int clen = editorDecodeUtf8(&chars[j], bytes_avail - j, &cp);
-                int char_width = editorCodepointWidth(cp);
-                if (char_width < 0) char_width = 1;
+                int char_width;
+                if (cp == '\t') {
+                    char_width = (8 - (rendered_cols % 8));
+                } else {
+                    char_width = editorCodepointWidth(cp);
+                    if (char_width < 0) char_width = 1;
+                }
 
                 if (rendered_cols + char_width > text_cols) break;
 
@@ -381,9 +386,31 @@ void editorDrawStatusBar(struct abuf *ab) {
         pos_indicator = pct_buf;
     }
     
+    // Calculate virtual column (rx) for the ruler
+    int rx = 0;
+    if (E.cy < E.numrows) {
+        erow *row = &E.row[E.cy];
+        for (int j = 0; j < E.cx && j < row->size; ) {
+            uint32_t cp;
+            int clen = editorDecodeUtf8(&row->chars[j], row->size - j, &cp);
+            if (cp == '\t') {
+                rx += (8 - (rx % 8));
+                j++;
+            } else {
+                int cw = editorCodepointWidth(cp);
+                rx += (cw >= 0 ? cw : 1);
+                j += clen;
+            }
+        }
+    }
+
     // Neovim-style ruler spacing: padded location field before Top/Bot/All/%.
-    char loc[32];
-    snprintf(loc, sizeof(loc), "%d,%d-1", E.cy + 1, E.cx + 1);
+    char loc[64];
+    if (E.numrows == 0) {
+        snprintf(loc, sizeof(loc), "0,0-1");
+    } else {
+        snprintf(loc, sizeof(loc), "%d,%d-%d", E.cy + 1, E.cx + 1, rx + 1);
+    }
     int rlen = snprintf(rstatus, sizeof(rstatus), " %-14s %s", loc, pos_indicator);
 
     // Truncate left side if it's too long (neovim-style spacing)
