@@ -630,11 +630,21 @@ func updateSyntax(r *row) {
 		lineCmtFirst = lineCmtB[0]
 	}
 	for i := 0; i < n; {
-		if lineCmtLen > 0 && r.s[i] == lineCmtFirst && i+lineCmtLen <= n && bytes.Equal(r.s[i:i+lineCmtLen], lineCmtB) {
-			for j := i; j < n; j++ {
-				r.hl[j] = hlComment
+		if lineCmtLen > 0 && r.s[i] == lineCmtFirst {
+			isLineComment := false
+			if lineCmtLen == 1 {
+				isLineComment = true
+			} else if lineCmtLen == 2 {
+				isLineComment = i+1 < n && r.s[i+1] == lineCmtB[1]
+			} else if i+lineCmtLen <= n {
+				isLineComment = bytes.Equal(r.s[i:i+lineCmtLen], lineCmtB)
 			}
-			break
+			if isLineComment {
+				for j := i; j < n; j++ {
+					r.hl[j] = hlComment
+				}
+				break
+			}
 		}
 		if r.s[i] == '"' || r.s[i] == '\'' {
 			q := r.s[i]
