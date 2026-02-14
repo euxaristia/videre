@@ -2216,7 +2216,7 @@ func prompt(p string, cb func(string, int)) string {
 				return string(buf)
 			}
 		default:
-			if c >= 32 && c < 127 {
+			if c >= 32 && c <= 255 && c != 127 {
 				buf = append(buf, byte(c))
 			}
 		}
@@ -2279,7 +2279,7 @@ func processKeypress() bool {
 		case arrowLeft, arrowRight, arrowUp, arrowDown:
 			moveCursor(c)
 		default:
-			if c >= 32 && c < 127 {
+			if c >= 32 && c <= 255 && c != 127 {
 				insertChar(byte(c))
 			}
 		}
@@ -2462,7 +2462,7 @@ func processKeypress() bool {
 		indentSelection(false)
 	case 'f', 'F', 't', 'T':
 		n := readKey()
-		if n >= 32 && n < 127 {
+		if n >= 32 && n <= 255 && n != 127 {
 			dir := 1
 			if c == 'F' || c == 'T' {
 				dir = -1
