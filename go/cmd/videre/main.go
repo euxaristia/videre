@@ -517,6 +517,15 @@ func utf8NextBoundary(s []byte, idx int) int {
 	return idx + n
 }
 
+func isDigitByte(c byte) bool { return c >= '0' && c <= '9' }
+
+func isAlphaByte(c byte) bool {
+	l := c | 0x20
+	return l >= 'a' && l <= 'z'
+}
+
+func isWordByte(c byte) bool { return isAlphaByte(c) || isDigitByte(c) || c == '_' }
+
 func updateSyntax(r *row) {
 	if cap(r.hl) < len(r.s) {
 		r.hl = make([]uint8, len(r.s))
@@ -556,9 +565,9 @@ func updateSyntax(r *row) {
 			}
 			continue
 		}
-		if unicode.IsDigit(rune(r.s[i])) {
+		if isDigitByte(r.s[i]) {
 			j := i
-			for j < len(r.s) && (unicode.IsDigit(rune(r.s[j])) || r.s[j] == '.') {
+			for j < len(r.s) && (isDigitByte(r.s[j]) || r.s[j] == '.') {
 				j++
 			}
 			for k := i; k < j; k++ {
@@ -567,9 +576,9 @@ func updateSyntax(r *row) {
 			i = j
 			continue
 		}
-		if unicode.IsLetter(rune(r.s[i])) || r.s[i] == '_' {
+		if isAlphaByte(r.s[i]) || r.s[i] == '_' {
 			j := i
-			for j < len(r.s) && (unicode.IsLetter(rune(r.s[j])) || unicode.IsDigit(rune(r.s[j])) || r.s[j] == '_') {
+			for j < len(r.s) && isWordByte(r.s[j]) {
 				j++
 			}
 			kw := string(r.s[i:j])
@@ -927,9 +936,7 @@ func getClipboard() []byte {
 	return nil
 }
 
-func isWordChar(c byte) bool {
-	return unicode.IsLetter(rune(c)) || unicode.IsDigit(rune(c)) || c == '_'
-}
+func isWordChar(c byte) bool { return isWordByte(c) }
 
 func moveWordForward(big bool) {
 	if len(E.rows) == 0 {
