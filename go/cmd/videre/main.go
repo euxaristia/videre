@@ -134,6 +134,8 @@ type editor struct {
 
 var E editor
 var resizePending int32
+var findLastMatch = -1
+var findDirection = 1
 
 var syntaxes = []syntax{
 	{filetype: "c", exts: []string{".c", ".h"}, kws: kwMap([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
@@ -1478,23 +1480,50 @@ func paste() {
 }
 
 func findCallback(query string, key int) {
+	if key == '\r' || key == 0x1b {
+		findLastMatch = -1
+		findDirection = 1
+		if key == 0x1b {
+			setSearchPattern("")
+			updateAllSyntax()
+		}
+		return
+	}
+	if key == arrowRight || key == arrowDown {
+		findDirection = 1
+	} else if key == arrowLeft || key == arrowUp {
+		findDirection = -1
+	} else {
+		findLastMatch = -1
+		findDirection = 1
+	}
 	if query == "" {
 		return
 	}
-	setSearchPattern(query)
-	updateAllSyntax()
+	if findLastMatch == -1 {
+		findDirection = 1
+	}
+	qb := []byte(query)
+	current := findLastMatch
 	for i := 0; i < len(E.rows); i++ {
-		rowIdx := (E.cy + i) % len(E.rows)
-		p := bytes.Index(E.rows[rowIdx].s, E.searchBytes)
+		current += findDirection
+		if current == -1 {
+			current = len(E.rows) - 1
+		} else if current == len(E.rows) {
+			current = 0
+		}
+		p := bytes.Index(E.rows[current].s, qb)
 		if p >= 0 {
-			E.cy = rowIdx
+			findLastMatch = current
+			E.cy = current
 			E.cx = p
 			E.preferred = E.cx
 			E.rowoff = len(E.rows)
-			return
+			break
 		}
 	}
-	_ = key
+	setSearchPattern(query)
+	updateAllSyntax()
 }
 
 func find() {
