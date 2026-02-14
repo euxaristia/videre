@@ -307,6 +307,14 @@ func readByteTimeout(fd int, maxPolls int) (byte, bool, error) {
 	return 0, false, nil
 }
 
+func inputReady(fd int) bool {
+	var rfds syscall.FdSet
+	rfds.Bits[fd/64] |= 1 << (uint(fd) % 64)
+	tv := syscall.Timeval{Sec: 0, Usec: 0}
+	n, err := syscall.Select(fd+1, &rfds, nil, nil, &tv)
+	return err == nil && n > 0
+}
+
 func parseSGRMouse(seq []byte) (mb, mx, my int, ok bool) {
 	// Expected: "<b;x;yM" or "<b;x;ym"
 	if len(seq) < 6 || seq[0] != '<' {
@@ -359,6 +367,9 @@ func readKey() int {
 	}
 	if first != 0x1b {
 		return int(first)
+	}
+	if !inputReady(fd) {
+		return 0x1b
 	}
 
 	// Keep plain ESC responsive (mode exit) while still allowing escape-sequence parsing.
