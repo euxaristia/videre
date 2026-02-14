@@ -2394,6 +2394,7 @@ func processKeypress() bool {
 	case 'i':
 		E.mode = modeInsert
 		E.selSX, E.selSY = -1, -1
+		setStatus("-- INSERT --")
 	case 'v':
 		if E.mode == modeVisual {
 			E.mode = modeNormal
