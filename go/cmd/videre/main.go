@@ -559,6 +559,19 @@ func utf8NextBoundary(s []byte, idx int) int {
 	return idx + n
 }
 
+func utf8SnapBoundary(s []byte, idx int) int {
+	if idx <= 0 {
+		return 0
+	}
+	if idx >= len(s) {
+		return len(s)
+	}
+	for idx > 0 && (s[idx]&0xC0) == 0x80 {
+		idx--
+	}
+	return idx
+}
+
 func isDigitByte(c byte) bool { return c >= '0' && c <= '9' }
 
 func isAlphaByte(c byte) bool {
@@ -1804,7 +1817,7 @@ func drawRows(b *bytes.Buffer) {
 			}
 			rowData := &E.rows[fr]
 			line := rowData.s
-			start := E.coloff
+			start := utf8SnapBoundary(line, E.coloff)
 			if start > len(line) {
 				start = len(line)
 			}
@@ -2297,7 +2310,7 @@ func handleMouse() bool {
 		if textX > 1 {
 			target = textX - 1
 		}
-		start := E.coloff
+		start := utf8SnapBoundary(E.rows[E.cy].s, E.coloff)
 		if start > len(E.rows[E.cy].s) {
 			start = len(E.rows[E.cy].s)
 		}
@@ -2370,7 +2383,7 @@ func refreshScreen() {
 	curCol := 1 + g + 1
 	if E.cy >= 0 && E.cy < len(E.rows) {
 		line := E.rows[E.cy].s
-		start := E.coloff
+		start := utf8SnapBoundary(line, E.coloff)
 		if start > len(line) {
 			start = len(line)
 		}
