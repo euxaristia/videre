@@ -2458,6 +2458,7 @@ func processKeypress() bool {
 					E.cy = min(max(0, E.marksY[i]), len(E.rows)-1)
 					E.cx = min(E.marksX[i], len(E.rows[E.cy].s))
 				}
+				E.preferred = E.cx
 			}
 		}
 	case '%':
