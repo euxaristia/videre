@@ -1788,6 +1788,7 @@ func drawRows(b *bytes.Buffer) {
 			sx, ex = ex, sx
 		}
 	}
+	var lineNumBuf []byte
 	for y := 0; y < E.screenRows; y++ {
 		fr := y + E.rowoff
 		if fr >= len(E.rows) {
@@ -1808,11 +1809,11 @@ func drawRows(b *bytes.Buffer) {
 		} else {
 			if g > 0 {
 				b.WriteString("\x1b[2m")
-				n := strconv.Itoa(fr + 1)
-				for i := 0; i < g-len(n); i++ {
+				lineNumBuf = strconv.AppendInt(lineNumBuf[:0], int64(fr+1), 10)
+				for i := 0; i < g-len(lineNumBuf); i++ {
 					b.WriteByte(' ')
 				}
-				b.WriteString(n)
+				b.Write(lineNumBuf)
 				b.WriteString(" \x1b[m")
 			}
 			rowData := &E.rows[fr]
