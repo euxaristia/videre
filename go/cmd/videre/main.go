@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -743,12 +744,25 @@ func openFile(name string) {
 	}
 	defer f.Close()
 	E.rows = nil
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		insertRow(len(E.rows), []byte(s.Text()))
-	}
-	if err := s.Err(); err != nil {
-		setStatus("Read error: %v", err)
+	r := bufio.NewReader(f)
+	for {
+		line, rerr := r.ReadBytes('\n')
+		if len(line) > 0 {
+			if line[len(line)-1] == '\n' {
+				line = line[:len(line)-1]
+				if len(line) > 0 && line[len(line)-1] == '\r' {
+					line = line[:len(line)-1]
+				}
+			}
+			insertRow(len(E.rows), line)
+		}
+		if errors.Is(rerr, io.EOF) {
+			break
+		}
+		if rerr != nil {
+			setStatus("Read error: %v", rerr)
+			break
+		}
 	}
 	E.filename = name
 	E.dirty = false
