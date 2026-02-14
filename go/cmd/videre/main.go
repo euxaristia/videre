@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -850,7 +851,9 @@ func updateGitStatus() {
 	if E.filename == "" {
 		return
 	}
-	out, err := exec.Command("git", "status", "--porcelain", "-b").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "git", "status", "--porcelain", "-b").Output()
 	if err != nil {
 		return
 	}
@@ -2096,6 +2099,24 @@ func byteIndexFromDisplayCol(s []byte, target int) int {
 	return i
 }
 
+func displayWidthBytes(s []byte) int {
+	col := 0
+	for i := 0; i < len(s); {
+		if s[i] == '\t' {
+			col += 8 - (col % 8)
+			i++
+			continue
+		}
+		_, n := utf8.DecodeRune(s[i:])
+		if n <= 0 {
+			n = 1
+		}
+		col++
+		i += n
+	}
+	return col
+}
+
 func executeMenuAction(idx int) {
 	switch idx {
 	case 0: // Cut
@@ -2303,7 +2324,22 @@ func refreshScreen() {
 	if curRow < 1 {
 		curRow = 1
 	}
-	curCol := (E.cx - E.coloff) + 1 + g + 1
+	curCol := 1 + g + 1
+	if E.cy >= 0 && E.cy < len(E.rows) {
+		line := E.rows[E.cy].s
+		start := E.coloff
+		if start > len(line) {
+			start = len(line)
+		}
+		end := E.cx
+		if end > len(line) {
+			end = len(line)
+		}
+		if end < start {
+			end = start
+		}
+		curCol += displayWidthBytes(line[start:end])
+	}
 	if curCol < 1 {
 		curCol = 1
 	}
