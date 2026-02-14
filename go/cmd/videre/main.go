@@ -2693,7 +2693,7 @@ func processKeypress() bool {
 			E.marksX[i] = E.cx
 			E.marksY[i] = E.cy
 		}
-	case '\'':
+	case '\'', '`':
 		m := readKey()
 		if m >= 'a' && m <= 'z' {
 			i := m - 'a'
