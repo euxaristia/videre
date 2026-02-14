@@ -589,10 +589,11 @@ func bytesToStringNoAlloc(b []byte) string {
 }
 
 func updateSyntax(r *row) {
+	n := len(r.s)
 	if cap(r.hl) < len(r.s) {
-		r.hl = make([]uint8, len(r.s))
+		r.hl = make([]uint8, n)
 	} else {
-		r.hl = r.hl[:len(r.s)]
+		r.hl = r.hl[:n]
 		for i := range r.hl {
 			r.hl[i] = hlNormal
 		}
@@ -602,9 +603,14 @@ func updateSyntax(r *row) {
 	}
 	lineCmt := E.syntax.lineCmt
 	lineCmtB := []byte(lineCmt)
-	for i := 0; i < len(r.s); {
-		if len(lineCmtB) > 0 && i+len(lineCmtB) <= len(r.s) && bytes.Equal(r.s[i:i+len(lineCmtB)], lineCmtB) {
-			for j := i; j < len(r.s); j++ {
+	lineCmtLen := len(lineCmtB)
+	lineCmtFirst := byte(0)
+	if lineCmtLen > 0 {
+		lineCmtFirst = lineCmtB[0]
+	}
+	for i := 0; i < n; {
+		if lineCmtLen > 0 && r.s[i] == lineCmtFirst && i+lineCmtLen <= n && bytes.Equal(r.s[i:i+lineCmtLen], lineCmtB) {
+			for j := i; j < n; j++ {
 				r.hl[j] = hlComment
 			}
 			break
@@ -613,9 +619,9 @@ func updateSyntax(r *row) {
 			q := r.s[i]
 			r.hl[i] = hlString
 			i++
-			for i < len(r.s) {
+			for i < n {
 				r.hl[i] = hlString
-				if r.s[i] == '\\' && i+1 < len(r.s) {
+				if r.s[i] == '\\' && i+1 < n {
 					i += 2
 					continue
 				}
@@ -629,7 +635,7 @@ func updateSyntax(r *row) {
 		}
 		if isDigitByte(r.s[i]) {
 			j := i
-			for j < len(r.s) && (isDigitByte(r.s[j]) || r.s[j] == '.') {
+			for j < n && (isDigitByte(r.s[j]) || r.s[j] == '.') {
 				j++
 			}
 			for k := i; k < j; k++ {
@@ -640,7 +646,7 @@ func updateSyntax(r *row) {
 		}
 		if isAlphaByte(r.s[i]) || r.s[i] == '_' {
 			j := i
-			for j < len(r.s) && isWordByte(r.s[j]) {
+			for j < n && isWordByte(r.s[j]) {
 				j++
 			}
 			kw := bytesToStringNoAlloc(r.s[i:j])
