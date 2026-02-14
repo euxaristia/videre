@@ -1610,7 +1610,13 @@ func drawRows(b *bytes.Buffer) {
 			}
 		} else {
 			if g > 0 {
-				fmt.Fprintf(b, "\x1b[2m%*d \x1b[m", g, fr+1)
+				b.WriteString("\x1b[2m")
+				n := strconv.Itoa(fr + 1)
+				for i := 0; i < g-len(n); i++ {
+					b.WriteByte(' ')
+				}
+				b.WriteString(n)
+				b.WriteString(" \x1b[m")
 			}
 			line := E.rows[fr].s
 			start := E.coloff
