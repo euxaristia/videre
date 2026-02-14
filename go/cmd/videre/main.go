@@ -880,7 +880,7 @@ func moveCursor(key int) {
 		E.cy = len(E.rows) - 1
 	}
 	limit := len(E.rows[E.cy].s)
-	if E.mode != modeInsert && limit > 0 && E.cx == limit {
+	if E.mode != modeInsert && limit > 0 {
 		limit = utf8PrevBoundary(E.rows[E.cy].s, limit)
 	}
 	if key == arrowUp || key == arrowDown {
