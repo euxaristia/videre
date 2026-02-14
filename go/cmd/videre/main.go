@@ -300,7 +300,7 @@ func readKey() int {
 			return 0x1b
 		}
 		// Bracketed paste start: ESC [ 200 ~
-		if string(seq) == "200~" {
+		if len(seq) == 4 && seq[0] == '2' && seq[1] == '0' && seq[2] == '0' && seq[3] == '~' {
 			var paste bytes.Buffer
 			for {
 				ch, rerr := readByte(fd)
@@ -327,7 +327,7 @@ func readKey() int {
 								break
 							}
 						}
-						if string(endSeq) == "201~" {
+						if len(endSeq) == 4 && endSeq[0] == '2' && endSeq[1] == '0' && endSeq[2] == '1' && endSeq[3] == '~' {
 							E.pasteBuffer = paste.Bytes()
 							return pasteEvent
 						}
@@ -445,7 +445,14 @@ func utf8NextBoundary(s []byte, idx int) int {
 }
 
 func updateSyntax(r *row) {
-	r.hl = make([]uint8, len(r.s))
+	if cap(r.hl) < len(r.s) {
+		r.hl = make([]uint8, len(r.s))
+	} else {
+		r.hl = r.hl[:len(r.s)]
+		for i := range r.hl {
+			r.hl[i] = hlNormal
+		}
+	}
 	if E.syntax == nil {
 		return
 	}
@@ -1575,8 +1582,33 @@ func drawRows(b *bytes.Buffer) {
 			}
 			curColor := -1
 			curSelected := false
+			hasSelection := E.mode == modeVisual || E.mode == modeVisualLine
+			sy, ey, sx, ex := 0, 0, 0, 0
+			if hasSelection {
+				sy, ey, sx, ex = E.selSY, E.cy, E.selSX, E.cx
+				if sy > ey || (sy == ey && sx > ex) {
+					sy, ey = ey, sy
+					sx, ex = ex, sx
+				}
+			}
 			for i := 0; i < len(line); i++ {
-				sel := isSelected(fr, i+start)
+				sel := false
+				if hasSelection {
+					x := i + start
+					if E.mode == modeVisualLine {
+						sel = fr >= sy && fr <= ey
+					} else if fr >= sy && fr <= ey {
+						if sy == ey {
+							sel = x >= sx && x <= ex
+						} else if fr == sy {
+							sel = x >= sx
+						} else if fr == ey {
+							sel = x <= ex
+						} else {
+							sel = true
+						}
+					}
+				}
 				if sel != curSelected {
 					if sel {
 						b.WriteString("\x1b[48;5;242m")
