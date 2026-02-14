@@ -1802,19 +1802,22 @@ func drawRows(b *bytes.Buffer) {
 				b.WriteString(n)
 				b.WriteString(" \x1b[m")
 			}
-			line := E.rows[fr].s
+			rowData := &E.rows[fr]
+			line := rowData.s
 			start := E.coloff
 			if start > len(line) {
 				start = len(line)
 			}
-			line = line[start:]
-			if len(line) > textCols {
-				line = line[:textCols]
+			hl := rowData.hl[start:]
+			visible := line[start:]
+			if len(visible) > textCols {
+				visible = visible[:textCols]
+				hl = hl[:textCols]
 			}
 			curColorSeq := ""
 			curSelected := false
 			curReverse := 0
-			for i := 0; i < len(line); i++ {
+			for i := 0; i < len(visible); i++ {
 				sel := false
 				if hasSelection {
 					x := i + start
@@ -1840,7 +1843,7 @@ func drawRows(b *bytes.Buffer) {
 					}
 					curSelected = sel
 				}
-				h := E.rows[fr].hl[i+start]
+				h := hl[i]
 				reverse := 0
 				if h == hlMatch {
 					reverse = 1
@@ -1880,7 +1883,7 @@ func drawRows(b *bytes.Buffer) {
 						curColorSeq = seq
 					}
 				}
-				b.WriteByte(line[i])
+				b.WriteByte(visible[i])
 			}
 			b.WriteString("\x1b[27m\x1b[39m\x1b[49m")
 		}
