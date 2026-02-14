@@ -2116,6 +2116,14 @@ func byteIndexFromDisplayCol(s []byte, target int) int {
 			i++
 			continue
 		}
+		if s[i] < utf8.RuneSelf {
+			if col+1 > target {
+				break
+			}
+			col++
+			i++
+			continue
+		}
 		_, n := utf8.DecodeRune(s[i:])
 		if n <= 0 {
 			n = 1
@@ -2134,6 +2142,11 @@ func displayWidthBytes(s []byte) int {
 	for i := 0; i < len(s); {
 		if s[i] == '\t' {
 			col += 8 - (col % 8)
+			i++
+			continue
+		}
+		if s[i] < utf8.RuneSelf {
+			col++
 			i++
 			continue
 		}
