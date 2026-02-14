@@ -2389,11 +2389,17 @@ func processKeypress() bool {
 		moveCursor(arrowRight)
 	case arrowLeft, arrowRight, arrowUp, arrowDown:
 		moveCursor(c)
-	case homeKey, '0':
+	case homeKey:
+		E.cx = 0
+	case '0':
 		moveLineStart()
 	case '^':
 		moveFirstNonWhitespace()
-	case endKey, '$':
+	case endKey:
+		if E.cy >= 0 && E.cy < len(E.rows) {
+			E.cx = len(E.rows[E.cy].s)
+		}
+	case '$':
 		moveLineEnd()
 	case pageUp, pageDown:
 		if len(E.rows) > 0 {
