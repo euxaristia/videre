@@ -137,6 +137,7 @@ var E editor
 var resizePending int32
 var findLastMatch = -1
 var findDirection = 1
+var screenBuf bytes.Buffer
 
 var syntaxes = []syntax{
 	{filetype: "c", exts: []string{".c", ".h"}, kws: kwMap([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
@@ -2276,12 +2277,12 @@ func handleMouse() bool {
 
 func refreshScreen() {
 	scroll()
-	var b bytes.Buffer
-	b.WriteString("\x1b[?25l\x1b[H")
-	drawRows(&b)
-	drawStatusBar(&b)
-	drawMessageBar(&b)
-	drawContextMenu(&b)
+	screenBuf.Reset()
+	screenBuf.WriteString("\x1b[?25l\x1b[H")
+	drawRows(&screenBuf)
+	drawStatusBar(&screenBuf)
+	drawMessageBar(&screenBuf)
+	drawContextMenu(&screenBuf)
 	g := gutterWidth()
 	curRow := (E.cy - E.rowoff) + 1
 	if curRow < 1 {
@@ -2291,9 +2292,9 @@ func refreshScreen() {
 	if curCol < 1 {
 		curCol = 1
 	}
-	fmt.Fprintf(&b, "\x1b[%d;%dH", curRow, curCol)
-	b.WriteString("\x1b[?25h")
-	_, _ = os.Stdout.Write(b.Bytes())
+	fmt.Fprintf(&screenBuf, "\x1b[%d;%dH", curRow, curCol)
+	screenBuf.WriteString("\x1b[?25h")
+	_, _ = os.Stdout.Write(screenBuf.Bytes())
 }
 
 func gutterWidth() int {
