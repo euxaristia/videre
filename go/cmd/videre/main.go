@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 	"unicode"
@@ -131,6 +132,7 @@ type editor struct {
 }
 
 var E editor
+var resizePending int32
 
 var syntaxes = []syntax{
 	{filetype: "c", exts: []string{".c", ".h"}, kws: kwMap([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
@@ -212,6 +214,9 @@ func disableRawMode() {
 func readByte(fd int) (byte, error) {
 	var b [1]byte
 	for {
+		if atomic.SwapInt32(&resizePending, 0) != 0 {
+			return 0, syscall.EINTR
+		}
 		n, err := syscall.Read(fd, b[:])
 		if err != nil {
 			if errors.Is(err, syscall.EINTR) {
@@ -224,6 +229,9 @@ func readByte(fd int) (byte, error) {
 		}
 		if n == 0 {
 			// Raw mode timeout; try again.
+			if atomic.SwapInt32(&resizePending, 0) != 0 {
+				return 0, syscall.EINTR
+			}
 			continue
 		}
 		return b[0], nil
@@ -234,6 +242,9 @@ func readByteTimeout(fd int, maxPolls int) (byte, bool, error) {
 	var b [1]byte
 	polls := 0
 	for polls < maxPolls {
+		if atomic.SwapInt32(&resizePending, 0) != 0 {
+			return 0, false, syscall.EINTR
+		}
 		n, err := syscall.Read(fd, b[:])
 		if err != nil {
 			if errors.Is(err, syscall.EINTR) {
@@ -245,6 +256,9 @@ func readByteTimeout(fd int, maxPolls int) (byte, bool, error) {
 			return 0, false, err
 		}
 		if n == 0 {
+			if atomic.SwapInt32(&resizePending, 0) != 0 {
+				return 0, false, syscall.EINTR
+			}
 			polls++
 			continue
 		}
@@ -2440,6 +2454,7 @@ func main() {
 	go func() {
 		for range sig {
 			updateWindowSize()
+			atomic.StoreInt32(&resizePending, 1)
 		}
 	}()
 
