@@ -1667,23 +1667,12 @@ func drawRows(b *bytes.Buffer) {
 	if textCols < 1 {
 		textCols = 1
 	}
-	welcome := []string{
-		"VIDERE v0.1.0",
-		"",
-		"videre is open source and freely distributable",
-		"https://github.com/euxaristia/videre",
-		"",
-		"type  :q<Enter>               to exit         ",
-		"type  :wq<Enter>              save and exit   ",
-		"",
-		"Maintainer: euxaristia",
-	}
 	for y := 0; y < E.screenRows; y++ {
 		fr := y + E.rowoff
 		if fr >= len(E.rows) {
-			if len(E.rows) == 0 && y >= E.screenRows/3 && y < E.screenRows/3+len(welcome) {
+			if len(E.rows) == 0 && y >= E.screenRows/3 && y < E.screenRows/3+len(welcomeLines) {
 				b.WriteString("\x1b[2m~\x1b[m")
-				msg := welcome[y-E.screenRows/3]
+				msg := welcomeLines[y-E.screenRows/3]
 				if len(msg) > textCols {
 					msg = msg[:textCols]
 				}
@@ -1851,6 +1840,18 @@ var menuItems = []string{
 	"----------- ",
 	" Undo      ",
 	" Redo      ",
+}
+
+var welcomeLines = []string{
+	"VIDERE v0.1.0",
+	"",
+	"videre is open source and freely distributable",
+	"https://github.com/euxaristia/videre",
+	"",
+	"type  :q<Enter>               to exit         ",
+	"type  :wq<Enter>              save and exit   ",
+	"",
+	"Maintainer: euxaristia",
 }
 
 func drawContextMenu(b *bytes.Buffer) {
