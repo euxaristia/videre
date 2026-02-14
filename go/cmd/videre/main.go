@@ -2594,8 +2594,6 @@ func processKeypress() bool {
 		E.mode = modeNormal
 		E.selSX, E.selSY = -1, -1
 		setStatus("")
-	case '*':
-		selectWord()
 	}
 	E.quitWarnRemaining = 1
 	return true
