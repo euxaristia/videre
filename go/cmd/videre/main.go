@@ -2012,14 +2012,18 @@ var menuItems = []string{
 	" Redo      ",
 }
 
-func contextMenuInnerWidth() int {
+var contextMenuW int
+var contextMenuHLine string
+
+func initContextMenuMetrics() {
 	w := 1
 	for _, item := range menuItems {
 		if len(item) > w {
 			w = len(item)
 		}
 	}
-	return w
+	contextMenuW = w
+	contextMenuHLine = strings.Repeat("─", w)
 }
 
 var welcomeLines = []string{
@@ -2040,7 +2044,7 @@ func drawContextMenu(b *bytes.Buffer) {
 	}
 	x := E.menuX
 	y := E.menuY
-	innerW := contextMenuInnerWidth()
+	innerW := contextMenuW
 	menuW := innerW + 2
 	menuH := len(menuItems) + 2
 	if x+menuW > E.screenCols {
@@ -2055,7 +2059,7 @@ func drawContextMenu(b *bytes.Buffer) {
 	if y < 1 {
 		y = 1
 	}
-	hline := strings.Repeat("─", innerW)
+	hline := contextMenuHLine
 	fmt.Fprintf(b, "\x1b[%d;%dH", y, x)
 	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌" + hline + "┐")
 	for i, item := range menuItems {
@@ -2226,7 +2230,7 @@ func handleMouse() bool {
 
 	if E.menuOpen {
 		prevSelected := E.menuSelected
-		menuW := contextMenuInnerWidth() + 2
+		menuW := contextMenuW + 2
 		menuH := len(menuItems) + 2
 		mx, my := E.menuX, E.menuY
 		if mx+menuW > E.screenCols {
@@ -2748,6 +2752,7 @@ func processKeypress() bool {
 
 func initEditor() {
 	E = editor{mode: modeNormal, selSX: -1, selSY: -1, quitWarnRemaining: 1, menuSelected: 0}
+	initContextMenuMetrics()
 	updateWindowSize()
 }
 
