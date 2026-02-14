@@ -104,6 +104,7 @@ type editor struct {
 	mode              int
 	selSX, selSY      int
 	searchPattern     string
+	searchBytes       []byte
 	lastSearchChar    byte
 	lastSearchDir     int
 	lastSearchTill    bool
@@ -162,6 +163,15 @@ func die(err error) {
 func setStatus(format string, args ...any) {
 	E.statusmsg = fmt.Sprintf(format, args...)
 	E.statusTime = time.Now()
+}
+
+func setSearchPattern(p string) {
+	E.searchPattern = p
+	if p == "" {
+		E.searchBytes = nil
+		return
+	}
+	E.searchBytes = []byte(p)
 }
 
 func getWindowSize() (int, int) {
@@ -571,8 +581,8 @@ func updateSyntax(r *row) {
 		}
 		i++
 	}
-	if E.searchPattern != "" {
-		q := []byte(E.searchPattern)
+	if len(E.searchBytes) > 0 {
+		q := E.searchBytes
 		for off := 0; ; {
 			m := bytes.Index(r.s[off:], q)
 			if m < 0 {
@@ -1471,11 +1481,11 @@ func findCallback(query string, key int) {
 	if query == "" {
 		return
 	}
-	E.searchPattern = query
+	setSearchPattern(query)
 	updateAllSyntax()
 	for i := 0; i < len(E.rows); i++ {
 		rowIdx := (E.cy + i) % len(E.rows)
-		p := bytes.Index(E.rows[rowIdx].s, []byte(query))
+		p := bytes.Index(E.rows[rowIdx].s, E.searchBytes)
 		if p >= 0 {
 			E.cy = rowIdx
 			E.cx = p
@@ -1496,7 +1506,7 @@ func find() {
 }
 
 func findNext(dir int) {
-	if E.searchPattern == "" || len(E.rows) == 0 {
+	if len(E.searchBytes) == 0 || len(E.rows) == 0 {
 		return
 	}
 	cur := E.cy
@@ -1510,13 +1520,13 @@ func findNext(dir int) {
 		}
 		line := E.rows[cur].s
 		if dir > 0 {
-			if m := bytes.Index(line, []byte(E.searchPattern)); m >= 0 {
+			if m := bytes.Index(line, E.searchBytes); m >= 0 {
 				E.cy, E.cx, E.preferred = cur, m, m
 				updateAllSyntax()
 				return
 			}
 		} else {
-			m := bytes.LastIndex(line, []byte(E.searchPattern))
+			m := bytes.LastIndex(line, E.searchBytes)
 			if m >= 0 {
 				E.cy, E.cx, E.preferred = cur, m, m
 				updateAllSyntax()
