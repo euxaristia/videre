@@ -581,6 +581,13 @@ func isAlphaByte(c byte) bool {
 
 func isWordByte(c byte) bool { return isAlphaByte(c) || isDigitByte(c) || c == '_' }
 
+func bytesToStringNoAlloc(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b), len(b))
+}
+
 func updateSyntax(r *row) {
 	if cap(r.hl) < len(r.s) {
 		r.hl = make([]uint8, len(r.s))
@@ -596,7 +603,7 @@ func updateSyntax(r *row) {
 	lineCmt := E.syntax.lineCmt
 	lineCmtB := []byte(lineCmt)
 	for i := 0; i < len(r.s); {
-		if len(lineCmtB) > 0 && bytes.HasPrefix(r.s[i:], lineCmtB) {
+		if len(lineCmtB) > 0 && i+len(lineCmtB) <= len(r.s) && bytes.Equal(r.s[i:i+len(lineCmtB)], lineCmtB) {
 			for j := i; j < len(r.s); j++ {
 				r.hl[j] = hlComment
 			}
@@ -636,7 +643,7 @@ func updateSyntax(r *row) {
 			for j < len(r.s) && isWordByte(r.s[j]) {
 				j++
 			}
-			kw := string(r.s[i:j])
+			kw := bytesToStringNoAlloc(r.s[i:j])
 			if t, ok := E.syntax.kws[kw]; ok {
 				for k := i; k < j; k++ {
 					r.hl[k] = t
