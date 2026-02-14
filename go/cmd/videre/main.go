@@ -253,6 +253,47 @@ func readByteTimeout(fd int, maxPolls int) (byte, bool, error) {
 	return 0, false, nil
 }
 
+func parseSGRMouse(seq []byte) (mb, mx, my int, ok bool) {
+	// Expected: "<b;x;yM" or "<b;x;ym"
+	if len(seq) < 6 || seq[0] != '<' {
+		return 0, 0, 0, false
+	}
+	end := len(seq) - 1
+	if seq[end] != 'M' && seq[end] != 'm' {
+		return 0, 0, 0, false
+	}
+	part := 0
+	val := 0
+	haveDigit := false
+	for i := 1; i < end; i++ {
+		c := seq[i]
+		if c >= '0' && c <= '9' {
+			haveDigit = true
+			val = val*10 + int(c-'0')
+			continue
+		}
+		if c != ';' || !haveDigit {
+			return 0, 0, 0, false
+		}
+		switch part {
+		case 0:
+			mb = val
+		case 1:
+			mx = val
+		default:
+			return 0, 0, 0, false
+		}
+		part++
+		val = 0
+		haveDigit = false
+	}
+	if part != 2 || !haveDigit {
+		return 0, 0, 0, false
+	}
+	my = val
+	return mb, mx, my, true
+}
+
 func readKey() int {
 	fd := int(os.Stdin.Fd())
 	first, err := readByte(fd)
@@ -347,8 +388,8 @@ func readKey() int {
 		}
 		// SGR mouse event: ESC [ <b;x;yM / m
 		if len(seq) >= 2 && seq[0] == '<' && (seq[len(seq)-1] == 'm' || seq[len(seq)-1] == 'M') {
-			var mb, mx, my int
-			if _, err := fmt.Sscanf(string(seq[1:len(seq)-1]), "%d;%d;%d", &mb, &mx, &my); err == nil {
+			mb, mx, my, ok := parseSGRMouse(seq)
+			if ok {
 				E.mouseB = mb
 				E.mouseX = mx
 				E.mouseY = my
