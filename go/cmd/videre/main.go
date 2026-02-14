@@ -824,13 +824,14 @@ func saveFile() {
 		setStatus("Invalid filename for saving")
 		return
 	}
-	if err := os.WriteFile(E.filename, rowsToString(), 0o644); err != nil {
-		setStatus("Can't save: %v", err)
+	data := rowsToString()
+	if err := os.WriteFile(E.filename, data, 0o644); err != nil {
+		setStatus("Can't save! I/O error: %v", err)
 		return
 	}
 	E.dirty = false
 	updateGitStatus()
-	setStatus("\"%s\" %dL written", E.filename, len(E.rows))
+	setStatus("\"%s\" %dL, %dC written", E.filename, len(E.rows), len(data))
 }
 
 func updateGitStatus() {
