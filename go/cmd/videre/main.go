@@ -852,7 +852,7 @@ func updateGitStatus() {
 	if E.filename == "" {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "git", "status", "--porcelain", "-b").Output()
 	if err != nil {
