@@ -1372,6 +1372,7 @@ func selectAll() {
 	E.selSY, E.selSX = 0, 0
 	if len(E.rows) == 0 {
 		E.cy, E.cx = 0, 0
+		E.preferred = 0
 		return
 	}
 	E.cy = len(E.rows) - 1
