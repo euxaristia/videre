@@ -2450,7 +2450,6 @@ func processKeypress() bool {
 		return false
 	}
 	if c == resizeEvent {
-		updateWindowSize()
 		return true
 	}
 	if E.menuOpen && c != mouseEvent {
