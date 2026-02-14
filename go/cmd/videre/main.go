@@ -115,6 +115,10 @@ type editor struct {
 	menuX             int
 	menuY             int
 	menuSelected      int
+	isDragging        bool
+	lastClickX        int
+	lastClickY        int
+	lastClickTime     time.Time
 	marksX            [26]int
 	marksY            [26]int
 	markSet           [26]bool
@@ -262,7 +266,8 @@ func readKey() int {
 		return int(first)
 	}
 
-	b, ok, err := readByteTimeout(fd, 3)
+	// Keep plain ESC responsive (mode exit) while still allowing escape-sequence parsing.
+	b, ok, err := readByteTimeout(fd, 1)
 	if err != nil {
 		if errors.Is(err, syscall.EINTR) {
 			return resizeEvent
@@ -276,7 +281,7 @@ func readKey() int {
 	if b == '[' {
 		seq := make([]byte, 0, 32)
 		for i := 0; i < 31; i++ {
-			nb, has, rerr := readByteTimeout(fd, 2)
+			nb, has, rerr := readByteTimeout(fd, 1)
 			if rerr != nil {
 				if errors.Is(rerr, syscall.EINTR) {
 					return resizeEvent
@@ -306,14 +311,14 @@ func readKey() int {
 					die(rerr)
 				}
 				if ch == 0x1b {
-					nb, has, rerr := readByteTimeout(fd, 2)
+					nb, has, rerr := readByteTimeout(fd, 1)
 					if rerr != nil {
 						die(rerr)
 					}
 					if has && nb == '[' {
 						endSeq := make([]byte, 0, 8)
 						for i := 0; i < 5; i++ {
-							b2, has2, _ := readByteTimeout(fd, 2)
+							b2, has2, _ := readByteTimeout(fd, 1)
 							if !has2 {
 								break
 							}
@@ -385,7 +390,7 @@ func readKey() int {
 		return 0x1b
 	}
 	if b == 'O' {
-		nb, has, rerr := readByteTimeout(fd, 2)
+		nb, has, rerr := readByteTimeout(fd, 1)
 		if rerr != nil {
 			die(rerr)
 		}
@@ -445,8 +450,9 @@ func updateSyntax(r *row) {
 		return
 	}
 	lineCmt := E.syntax.lineCmt
+	lineCmtB := []byte(lineCmt)
 	for i := 0; i < len(r.s); {
-		if lineCmt != "" && strings.HasPrefix(string(r.s[i:]), lineCmt) {
+		if len(lineCmtB) > 0 && bytes.HasPrefix(r.s[i:], lineCmtB) {
 			for j := i; j < len(r.s); j++ {
 				r.hl[j] = hlComment
 			}
@@ -1568,11 +1574,16 @@ func drawRows(b *bytes.Buffer) {
 				line = line[:textCols]
 			}
 			curColor := -1
+			curSelected := false
 			for i := 0; i < len(line); i++ {
-				if isSelected(fr, i+start) {
-					b.WriteString("\x1b[48;5;242m")
-				} else {
-					b.WriteString("\x1b[49m")
+				sel := isSelected(fr, i+start)
+				if sel != curSelected {
+					if sel {
+						b.WriteString("\x1b[48;5;242m")
+					} else {
+						b.WriteString("\x1b[49m")
+					}
+					curSelected = sel
 				}
 				h := E.rows[fr].hl[i+start]
 				col := syntaxColor(h)
@@ -1638,9 +1649,9 @@ func drawStatusBar(b *bytes.Buffer) {
 		left = left[:max(0, E.screenCols-len(right))]
 	}
 	b.WriteString(left)
-	for len(left) < E.screenCols-len(right) {
+	pad := E.screenCols - len(right) - len(left)
+	for i := 0; i < pad; i++ {
 		b.WriteByte(' ')
-		left += " "
 	}
 	b.WriteString(right)
 	b.WriteString("\x1b[m\r\n")
@@ -1831,6 +1842,7 @@ func handleMouse() bool {
 	y := E.mouseY
 
 	if E.menuOpen {
+		prevSelected := E.menuSelected
 		menuW := 13
 		menuH := len(menuItems) + 2
 		mx, my := E.menuX, E.menuY
@@ -1867,7 +1879,7 @@ func handleMouse() bool {
 			return true
 		}
 		if b&0x80 != 0 || b == mouseRelease || b == (mouseLeft|mouseDrag) {
-			return true
+			return E.menuSelected != prevSelected
 		}
 		E.menuOpen = false
 		return true
@@ -1906,6 +1918,7 @@ func handleMouse() bool {
 	}
 
 	if b&0x80 != 0 || b == mouseRelease {
+		E.isDragging = false
 		return false
 	}
 
@@ -1941,17 +1954,38 @@ func handleMouse() bool {
 	E.preferred = E.cx
 
 	if b == (mouseLeft | mouseDrag) {
+		if !E.isDragging {
+			return false
+		}
 		if E.mode == modeNormal {
 			E.mode = modeVisual
-			E.selSX = E.cx
-			E.selSY = E.cy
 		}
 		return true
 	}
 
 	if b == mouseLeft {
-		E.selSX = E.cx
-		E.selSY = E.cy
+		now := time.Now()
+		doubleClick := x == E.lastClickX && y == E.lastClickY &&
+			!E.lastClickTime.IsZero() && now.Sub(E.lastClickTime) < 500*time.Millisecond
+
+		if doubleClick {
+			selectWord()
+			E.isDragging = false
+			if E.mode != modeVisual && E.mode != modeVisualLine {
+				E.mode = modeVisual
+			}
+		} else {
+			E.isDragging = true
+			E.selSX = E.cx
+			E.selSY = E.cy
+			if E.mode == modeVisual || E.mode == modeVisualLine {
+				E.mode = modeNormal
+				E.selSX, E.selSY = -1, -1
+			}
+		}
+		E.lastClickX = x
+		E.lastClickY = y
+		E.lastClickTime = now
 		return true
 	}
 	return false
