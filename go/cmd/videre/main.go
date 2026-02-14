@@ -1844,12 +1844,13 @@ func drawRows(b *bytes.Buffer) {
 			curColorSeq := ""
 			curSelected := false
 			curReverse := 0
+			rowInSelection := hasSelection && fr >= sy && fr <= ey
 			for i := 0; i < len(visible); i++ {
 				sel := false
-				if hasSelection {
+				if rowInSelection {
 					x := i + start
 					if lineSelection {
-						sel = fr >= sy && fr <= ey
+						sel = true
 					} else if fr >= sy && fr <= ey {
 						if sy == ey {
 							sel = x >= sx && x <= ex
