@@ -2405,14 +2405,13 @@ func processKeypress() bool {
 	case '$':
 		moveLineEnd()
 	case pageUp, pageDown:
-		if len(E.rows) > 0 {
-			if c == pageUp {
-				E.cy = E.rowoff
-			} else {
-				E.cy = min(len(E.rows)-1, E.rowoff+E.screenRows-1)
-			}
+		if c == pageUp {
+			E.cy = E.rowoff
 		} else {
-			E.cy = 0
+			E.cy = E.rowoff + E.screenRows - 1
+			if E.cy > len(E.rows) {
+				E.cy = len(E.rows)
+			}
 		}
 		for i := 0; i < E.screenRows; i++ {
 			if c == pageUp {
