@@ -2268,8 +2268,8 @@ func processKeypress() bool {
 			insertNewline()
 		case 0x1b:
 			E.mode = modeNormal
-			if E.cx > 0 && E.cy >= 0 && E.cy < len(E.rows) {
-				E.cx = utf8PrevBoundary(E.rows[E.cy].s, E.cx)
+			if E.cx > 0 {
+				E.cx--
 			}
 			setStatus("")
 		case backspace, 127, 8:
