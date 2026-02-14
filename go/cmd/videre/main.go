@@ -1506,7 +1506,7 @@ func findCallback(query string, key int) {
 	if findLastMatch == -1 {
 		findDirection = 1
 	}
-	qb := []byte(query)
+	setSearchPattern(query)
 	current := findLastMatch
 	for i := 0; i < len(E.rows); i++ {
 		current += findDirection
@@ -1515,7 +1515,7 @@ func findCallback(query string, key int) {
 		} else if current == len(E.rows) {
 			current = 0
 		}
-		p := bytes.Index(E.rows[current].s, qb)
+		p := bytes.Index(E.rows[current].s, E.searchBytes)
 		if p >= 0 {
 			findLastMatch = current
 			E.cy = current
@@ -1525,7 +1525,6 @@ func findCallback(query string, key int) {
 			break
 		}
 	}
-	setSearchPattern(query)
 	updateAllSyntax()
 }
 
