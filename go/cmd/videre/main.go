@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -29,6 +31,8 @@ const (
 	endKey
 	pageUp
 	pageDown
+	mouseEvent
+	pasteEvent
 	resizeEvent
 )
 
@@ -49,6 +53,15 @@ const (
 	hlNumber
 	hlMatch
 	hlVisual
+)
+
+const (
+	mouseLeft      = 0
+	mouseRight     = 2
+	mouseRelease   = 3
+	mouseWheelUp   = 64
+	mouseWheelDown = 65
+	mouseDrag      = 32
 )
 
 type row struct {
@@ -94,6 +107,14 @@ type editor struct {
 	lastSearchDir     int
 	lastSearchTill    bool
 	quitWarnRemaining int
+	mouseX            int
+	mouseY            int
+	mouseB            int
+	pasteBuffer       []byte
+	menuOpen          bool
+	menuX             int
+	menuY             int
+	menuSelected      int
 	marksX            [26]int
 	marksY            [26]int
 	markSet           [26]bool
@@ -184,71 +205,194 @@ func disableRawMode() {
 	E.raw = false
 }
 
-func readKey() int {
-	fd := int(os.Stdin.Fd())
-	b := make([]byte, 1)
+func readByte(fd int) (byte, error) {
+	var b [1]byte
 	for {
-		n, err := syscall.Read(fd, b)
+		n, err := syscall.Read(fd, b[:])
 		if err != nil {
 			if errors.Is(err, syscall.EINTR) {
-				return resizeEvent
+				return 0, syscall.EINTR
 			}
 			if errors.Is(err, syscall.EAGAIN) {
 				continue
 			}
-			die(err)
+			return 0, err
 		}
 		if n == 0 {
+			// Raw mode timeout; try again.
 			continue
 		}
-		if n == 1 {
-			break
+		return b[0], nil
+	}
+}
+
+func readByteTimeout(fd int, maxPolls int) (byte, bool, error) {
+	var b [1]byte
+	polls := 0
+	for polls < maxPolls {
+		n, err := syscall.Read(fd, b[:])
+		if err != nil {
+			if errors.Is(err, syscall.EINTR) {
+				return 0, false, syscall.EINTR
+			}
+			if errors.Is(err, syscall.EAGAIN) {
+				continue
+			}
+			return 0, false, err
 		}
+		if n == 0 {
+			polls++
+			continue
+		}
+		return b[0], true, nil
 	}
-	if b[0] != 0x1b {
-		return int(b[0])
+	return 0, false, nil
+}
+
+func readKey() int {
+	fd := int(os.Stdin.Fd())
+	first, err := readByte(fd)
+	if err != nil {
+		if errors.Is(err, syscall.EINTR) {
+			return resizeEvent
+		}
+		die(err)
 	}
-	seq := make([]byte, 8)
-	n, _ := syscall.Read(fd, seq)
-	if n == 0 {
+	if first != 0x1b {
+		return int(first)
+	}
+
+	b, ok, err := readByteTimeout(fd, 3)
+	if err != nil {
+		if errors.Is(err, syscall.EINTR) {
+			return resizeEvent
+		}
+		die(err)
+	}
+	if !ok {
 		return 0x1b
 	}
-	seq = seq[:n]
-	if len(seq) >= 2 && seq[0] == '[' {
-		if seq[1] >= '0' && seq[1] <= '9' {
-			if len(seq) >= 3 && seq[2] == '~' {
-				switch seq[1] {
-				case '1', '7':
-					return homeKey
-				case '3':
-					return delKey
-				case '4', '8':
-					return endKey
-				case '5':
-					return pageUp
-				case '6':
-					return pageDown
+
+	if b == '[' {
+		seq := make([]byte, 0, 32)
+		for i := 0; i < 31; i++ {
+			nb, has, rerr := readByteTimeout(fd, 2)
+			if rerr != nil {
+				if errors.Is(rerr, syscall.EINTR) {
+					return resizeEvent
 				}
+				die(rerr)
 			}
-		} else {
-			switch seq[1] {
-			case 'A':
-				return arrowUp
-			case 'B':
-				return arrowDown
-			case 'C':
-				return arrowRight
-			case 'D':
-				return arrowLeft
-			case 'H':
-				return homeKey
-			case 'F':
-				return endKey
+			if !has {
+				break
+			}
+			seq = append(seq, nb)
+			if nb == '~' || nb == 'm' || nb == 'M' || (nb >= 'A' && nb <= 'Z') || (nb >= 'a' && nb <= 'z') {
+				break
 			}
 		}
+		if len(seq) == 0 {
+			return 0x1b
+		}
+		// Bracketed paste start: ESC [ 200 ~
+		if string(seq) == "200~" {
+			var paste bytes.Buffer
+			for {
+				ch, rerr := readByte(fd)
+				if rerr != nil {
+					if errors.Is(rerr, syscall.EINTR) {
+						return resizeEvent
+					}
+					die(rerr)
+				}
+				if ch == 0x1b {
+					nb, has, rerr := readByteTimeout(fd, 2)
+					if rerr != nil {
+						die(rerr)
+					}
+					if has && nb == '[' {
+						endSeq := make([]byte, 0, 8)
+						for i := 0; i < 5; i++ {
+							b2, has2, _ := readByteTimeout(fd, 2)
+							if !has2 {
+								break
+							}
+							endSeq = append(endSeq, b2)
+							if b2 == '~' {
+								break
+							}
+						}
+						if string(endSeq) == "201~" {
+							E.pasteBuffer = paste.Bytes()
+							return pasteEvent
+						}
+						paste.WriteByte(0x1b)
+						paste.WriteByte('[')
+						paste.Write(endSeq)
+						continue
+					}
+					paste.WriteByte(0x1b)
+					if has {
+						paste.WriteByte(nb)
+					}
+					continue
+				}
+				paste.WriteByte(ch)
+			}
+		}
+		// SGR mouse event: ESC [ <b;x;yM / m
+		if len(seq) >= 2 && seq[0] == '<' && (seq[len(seq)-1] == 'm' || seq[len(seq)-1] == 'M') {
+			var mb, mx, my int
+			if _, err := fmt.Sscanf(string(seq[1:len(seq)-1]), "%d;%d;%d", &mb, &mx, &my); err == nil {
+				E.mouseB = mb
+				E.mouseX = mx
+				E.mouseY = my
+				if seq[len(seq)-1] == 'm' {
+					E.mouseB |= 0x80
+				}
+				return mouseEvent
+			}
+		}
+		// CSI numeric events like 1~,3~,...
+		if len(seq) >= 2 && seq[len(seq)-1] == '~' && seq[0] >= '0' && seq[0] <= '9' {
+			switch seq[0] {
+			case '1', '7':
+				return homeKey
+			case '3':
+				return delKey
+			case '4', '8':
+				return endKey
+			case '5':
+				return pageUp
+			case '6':
+				return pageDown
+			}
+		}
+		switch seq[len(seq)-1] {
+		case 'A':
+			return arrowUp
+		case 'B':
+			return arrowDown
+		case 'C':
+			return arrowRight
+		case 'D':
+			return arrowLeft
+		case 'H':
+			return homeKey
+		case 'F':
+			return endKey
+		}
+		return 0x1b
 	}
-	if len(seq) >= 2 && seq[0] == 'O' {
-		switch seq[1] {
+	if b == 'O' {
+		nb, has, rerr := readByteTimeout(fd, 2)
+		if rerr != nil {
+			die(rerr)
+		}
+		if !has {
+			return 0x1b
+		}
+		switch nb {
 		case 'H':
 			return homeKey
 		case 'F':
@@ -665,6 +809,36 @@ func moveCursor(key int) {
 		}
 		E.preferred = E.cx
 	}
+}
+
+func setClipboard(text []byte) {
+	if len(text) == 0 {
+		return
+	}
+	// OSC52 for terminals that support native clipboard.
+	encoded := base64.StdEncoding.EncodeToString(text)
+	fmt.Printf("\x1b]52;c;%s\x07", encoded)
+	_ = os.Stdout.Sync()
+
+	// External fallbacks.
+	if cmd := exec.Command("wl-copy"); cmd != nil {
+		cmd.Stdin = bytes.NewReader(text)
+		_ = cmd.Run()
+	}
+	if cmd := exec.Command("xclip", "-selection", "clipboard"); cmd != nil {
+		cmd.Stdin = bytes.NewReader(text)
+		_ = cmd.Run()
+	}
+}
+
+func getClipboard() []byte {
+	if out, err := exec.Command("wl-paste", "-n").Output(); err == nil && len(out) > 0 {
+		return out
+	}
+	if out, err := exec.Command("xclip", "-selection", "clipboard", "-o").Output(); err == nil && len(out) > 0 {
+		return out
+	}
+	return nil
 }
 
 func isWordChar(c byte) bool {
@@ -1145,6 +1319,7 @@ func yank(sx, sy, ex, ey int, isLine bool) {
 		}
 	}
 	E.registers['"'] = reg{s: b.Bytes(), isLine: isLine}
+	setClipboard(E.registers['"'].s)
 }
 
 func deleteRange(sx, sy, ex, ey int) {
@@ -1189,6 +1364,9 @@ func deleteRange(sx, sy, ex, ey int) {
 }
 
 func paste() {
+	if clip := getClipboard(); len(clip) > 0 {
+		E.registers['"'] = reg{s: append([]byte(nil), clip...), isLine: bytes.Contains(clip, []byte{'\n'})}
+	}
 	r := E.registers['"']
 	if len(r.s) == 0 {
 		return
@@ -1488,7 +1666,91 @@ func drawMessageBar(b *bytes.Buffer) {
 	}
 }
 
+var menuItems = []string{
+	" Cut       ",
+	" Copy      ",
+	" Paste     ",
+	" Select All ",
+	"----------- ",
+	" Undo      ",
+	" Redo      ",
+}
+
+func drawContextMenu(b *bytes.Buffer) {
+	if !E.menuOpen {
+		return
+	}
+	x := E.menuX
+	y := E.menuY
+	menuW := 13
+	menuH := len(menuItems) + 2
+	if x+menuW > E.screenCols {
+		x = E.screenCols - menuW
+	}
+	if y+menuH > E.screenRows {
+		y = E.screenRows - menuH
+	}
+	if x < 1 {
+		x = 1
+	}
+	if y < 1 {
+		y = 1
+	}
+	fmt.Fprintf(b, "\x1b[%d;%dH", y, x)
+	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌───────────┐")
+	for i, item := range menuItems {
+		fmt.Fprintf(b, "\x1b[%d;%dH", y+i+1, x)
+		if i == E.menuSelected {
+			b.WriteString("\x1b[48;5;24m\x1b[38;5;255m│")
+			if i == 4 {
+				b.WriteString("───────────")
+			} else {
+				b.WriteString(item)
+			}
+			b.WriteString("│")
+		} else {
+			b.WriteString("\x1b[48;5;235m\x1b[38;5;239m│\x1b[38;5;252m")
+			if i == 4 {
+				b.WriteString("\x1b[38;5;239m───────────")
+			} else {
+				b.WriteString(item)
+			}
+			b.WriteString("\x1b[38;5;239m│")
+		}
+	}
+	fmt.Fprintf(b, "\x1b[%d;%dH", y+len(menuItems)+1, x)
+	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m")
+}
+
 func scroll() {
+	if E.rowoff < 0 {
+		E.rowoff = 0
+	}
+	if E.coloff < 0 {
+		E.coloff = 0
+	}
+	if len(E.rows) == 0 {
+		E.cx = 0
+		E.cy = 0
+		E.preferred = 0
+		return
+	}
+	if E.cy < 0 {
+		E.cy = 0
+	}
+	if E.cy >= len(E.rows) {
+		E.cy = len(E.rows) - 1
+	}
+	if E.cx < 0 {
+		E.cx = 0
+	}
+	if E.cx > len(E.rows[E.cy].s) {
+		E.cx = len(E.rows[E.cy].s)
+	}
+	if E.rowoff >= len(E.rows) {
+		E.rowoff = len(E.rows) - 1
+	}
+
 	g := gutterWidth()
 	textCols := E.screenCols - g - 1
 	if textCols < 1 {
@@ -1508,6 +1770,193 @@ func scroll() {
 	}
 }
 
+func byteIndexFromDisplayCol(s []byte, target int) int {
+	if target <= 0 {
+		return 0
+	}
+	i := 0
+	col := 0
+	for i < len(s) {
+		if s[i] == '\t' {
+			step := 8 - (col % 8)
+			if col+step > target {
+				break
+			}
+			col += step
+			i++
+			continue
+		}
+		_, n := utf8.DecodeRune(s[i:])
+		if n <= 0 {
+			n = 1
+		}
+		if col+1 > target {
+			break
+		}
+		col++
+		i += n
+	}
+	return i
+}
+
+func executeMenuAction(idx int) {
+	switch idx {
+	case 0: // Cut
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			deleteRange(E.selSX, E.selSY, E.cx, E.cy)
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		}
+	case 1: // Copy
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		}
+	case 2: // Paste
+		paste()
+	case 3: // Select All
+		selectAll()
+	case 5: // Undo
+		doUndo()
+	case 6: // Redo
+		doRedo()
+	}
+}
+
+func handleMouse() bool {
+	b := E.mouseB
+	x := E.mouseX
+	y := E.mouseY
+
+	if E.menuOpen {
+		menuW := 13
+		menuH := len(menuItems) + 2
+		mx, my := E.menuX, E.menuY
+		if mx+menuW > E.screenCols {
+			mx = E.screenCols - menuW
+		}
+		if my+menuH > E.screenRows {
+			my = E.screenRows - menuH
+		}
+		if mx < 1 {
+			mx = 1
+		}
+		if my < 1 {
+			my = 1
+		}
+		if x >= mx && x < mx+menuW && y >= my && y < my+menuH {
+			E.menuSelected = y - my - 1
+			if E.menuSelected < 0 || E.menuSelected >= len(menuItems) {
+				E.menuSelected = -1
+			}
+		} else {
+			E.menuSelected = -1
+		}
+		if b == mouseLeft {
+			if E.menuSelected >= 0 {
+				executeMenuAction(E.menuSelected)
+			}
+			E.menuOpen = false
+			return true
+		}
+		if b == mouseRight {
+			E.menuX, E.menuY = x, y
+			E.menuSelected = -1
+			return true
+		}
+		if b&0x80 != 0 || b == mouseRelease || b == (mouseLeft|mouseDrag) {
+			return true
+		}
+		E.menuOpen = false
+		return true
+	}
+
+	if b&0x40 != 0 {
+		if (b&0x3) == 0 || b == mouseWheelUp {
+			for i := 0; i < 3; i++ {
+				if E.rowoff > 0 {
+					E.rowoff--
+					if E.cy > 0 {
+						E.cy--
+					}
+				}
+			}
+		} else if (b&0x3) == 1 || b == mouseWheelDown {
+			for i := 0; i < 3; i++ {
+				if E.rowoff+E.screenRows < len(E.rows) {
+					E.rowoff++
+					if E.cy < len(E.rows)-1 {
+						E.cy++
+					}
+				}
+			}
+		}
+		E.preferred = E.cx
+		return true
+	}
+
+	if b == mouseRight {
+		E.menuOpen = true
+		E.menuX = x
+		E.menuY = y
+		E.menuSelected = -1
+		return true
+	}
+
+	if b&0x80 != 0 || b == mouseRelease {
+		return false
+	}
+
+	if len(E.rows) == 0 {
+		return false
+	}
+
+	fr := y - 1 + E.rowoff
+	if fr < 0 || fr >= len(E.rows) {
+		return false
+	}
+	E.cy = fr
+
+	g := gutterWidth()
+	gcols := 0
+	if g > 0 {
+		gcols = g + 1
+	}
+	textX := x - gcols
+	target := 0
+	if textX > 1 {
+		target = textX - 1
+	}
+	start := E.coloff
+	if start > len(E.rows[E.cy].s) {
+		start = len(E.rows[E.cy].s)
+	}
+	rel := byteIndexFromDisplayCol(E.rows[E.cy].s[start:], target)
+	E.cx = start + rel
+	if E.mode != modeInsert && len(E.rows[E.cy].s) > 0 && E.cx >= len(E.rows[E.cy].s) {
+		E.cx = len(E.rows[E.cy].s) - 1
+	}
+	E.preferred = E.cx
+
+	if b == (mouseLeft | mouseDrag) {
+		if E.mode == modeNormal {
+			E.mode = modeVisual
+			E.selSX = E.cx
+			E.selSY = E.cy
+		}
+		return true
+	}
+
+	if b == mouseLeft {
+		E.selSX = E.cx
+		E.selSY = E.cy
+		return true
+	}
+	return false
+}
+
 func refreshScreen() {
 	scroll()
 	var b bytes.Buffer
@@ -1515,8 +1964,17 @@ func refreshScreen() {
 	drawRows(&b)
 	drawStatusBar(&b)
 	drawMessageBar(&b)
+	drawContextMenu(&b)
 	g := gutterWidth()
-	fmt.Fprintf(&b, "\x1b[%d;%dH", (E.cy-E.rowoff)+1, (E.cx-E.coloff)+1+g+1)
+	curRow := (E.cy - E.rowoff) + 1
+	if curRow < 1 {
+		curRow = 1
+	}
+	curCol := (E.cx - E.coloff) + 1 + g + 1
+	if curCol < 1 {
+		curCol = 1
+	}
+	fmt.Fprintf(&b, "\x1b[%d;%dH", curRow, curCol)
 	b.WriteString("\x1b[?25h")
 	_, _ = os.Stdout.Write(b.Bytes())
 }
@@ -1579,13 +2037,40 @@ func processKeypress() bool {
 		updateWindowSize()
 		return true
 	}
+	if E.menuOpen && c != mouseEvent {
+		E.menuOpen = false
+		if c == 0x1b {
+			return true
+		}
+	}
+	if c == mouseEvent {
+		handleMouse()
+		return true
+	}
+	if c == pasteEvent {
+		if len(E.pasteBuffer) > 0 {
+			for i := 0; i < len(E.pasteBuffer); i++ {
+				ch := E.pasteBuffer[i]
+				if ch == '\r' || ch == '\n' {
+					insertNewline()
+					if ch == '\r' && i+1 < len(E.pasteBuffer) && E.pasteBuffer[i+1] == '\n' {
+						i++
+					}
+				} else {
+					insertChar(ch)
+				}
+			}
+			E.pasteBuffer = nil
+		}
+		return true
+	}
 	if E.mode == modeInsert {
 		switch c {
 		case '\r':
 			insertNewline()
 		case 0x1b:
 			E.mode = modeNormal
-			if E.cx > 0 {
+			if E.cx > 0 && E.cy >= 0 && E.cy < len(E.rows) {
 				E.cx = utf8PrevBoundary(E.rows[E.cy].s, E.cx)
 			}
 			setStatus("")
@@ -1713,10 +2198,14 @@ func processKeypress() bool {
 	case endKey, '$':
 		moveLineEnd()
 	case pageUp, pageDown:
-		if c == pageUp {
-			E.cy = E.rowoff
+		if len(E.rows) > 0 {
+			if c == pageUp {
+				E.cy = E.rowoff
+			} else {
+				E.cy = min(len(E.rows)-1, E.rowoff+E.screenRows-1)
+			}
 		} else {
-			E.cy = min(len(E.rows)-1, E.rowoff+E.screenRows-1)
+			E.cy = 0
 		}
 		for i := 0; i < E.screenRows; i++ {
 			if c == pageUp {
@@ -1756,8 +2245,10 @@ func processKeypress() bool {
 		if m >= 'a' && m <= 'z' {
 			i := m - 'a'
 			if E.markSet[i] {
-				E.cy = min(max(0, E.marksY[i]), len(E.rows)-1)
-				if E.cy >= 0 && E.cy < len(E.rows) {
+				if len(E.rows) == 0 {
+					E.cy, E.cx = 0, 0
+				} else {
+					E.cy = min(max(0, E.marksY[i]), len(E.rows)-1)
 					E.cx = min(E.marksX[i], len(E.rows[E.cy].s))
 				}
 			}
@@ -1800,11 +2291,20 @@ func processKeypress() bool {
 }
 
 func initEditor() {
-	E = editor{mode: modeNormal, selSX: -1, selSY: -1, quitWarnRemaining: 1}
+	E = editor{mode: modeNormal, selSX: -1, selSY: -1, quitWarnRemaining: 1, menuSelected: -1}
 	updateWindowSize()
 }
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			disableRawMode()
+			fmt.Fprintf(os.Stderr, "videre-go panic: %v\n", r)
+			_, _ = os.Stderr.Write(debug.Stack())
+			os.Exit(2)
+		}
+	}()
+
 	initEditor()
 	if _, err := ioctlGetTermios(int(os.Stdin.Fd()), syscall.TCGETS); err != nil {
 		fmt.Fprintln(os.Stderr, "videre-go requires a TTY on stdin")
