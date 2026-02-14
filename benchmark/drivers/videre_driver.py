@@ -17,10 +17,10 @@ class VidereDriver(EditorDriver):
     def __init__(self, videre_path: Optional[str] = None):
         super().__init__("videre")
         if videre_path is None:
-            # Default to built videre binary
+            # Default to built videre binary in project root
             videre_path = os.path.join(
                 os.path.dirname(__file__),
-                "../../.build/release/videre",
+                "../../videre",
             )
         self.videre_path = os.path.abspath(videre_path)
 

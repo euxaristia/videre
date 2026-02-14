@@ -1,17 +1,17 @@
 # Licensing & Derivative Work Analysis for Videre
 
 **Date:** February 8, 2026
-**Project:** Videre (Swift-based Text Editor)
+**Project:** Videre (C-based Text Editor)
 
 ## Executive Summary
-**Videre is likely NOT a "derivative work" of classic vi or Neovim in the copyright sense.** It is a clean-room reimplementation of the **visual and behavioral specification** (the "look and feel" and keybindings) of vi/vim, written in a completely different programming language (Swift vs. C/Lua).
+**Videre is likely NOT a "derivative work" of classic vi or Neovim in the copyright sense.** It was originally a clean-room reimplementation in Swift, and has since been ported to C. The port follows the same visual and behavioral specification (the "look and feel" and keybindings) of vi/vim, without using the original source code.
 
 ## Detailed Analysis
 
 ### 1. Codebase Origin (Copyright)
 *   **Vi/Vim/Neovim:** These projects are primarily written in C (and Lua for Neovim).
-*   **Videre:** This project is written entirely in Swift.
-*   **Evidence:** A codebase investigation confirms that `videre` uses idiomatic Swift data structures (e.g., `GapBuffer` implementation) and architectural patterns (Struct-based state, Swift Standard Library) that do not exist in the original C codebases.
+*   **Videre:** This project is written in C (originally ported from a pure Swift implementation).
+*   **Evidence:** A codebase investigation confirms that `videre` uses data structures and architectural patterns (e.g., specific `GapBuffer` implementation) ported from its previous Swift version. The code structure does not mirror the internal organization of the original C-based vi/vim editors.
 *   **Conclusion:** There is no evidence of "copy-pasting" source code. Copyright protects the *expression* (the specific code), not the *idea* (a modal text editor). Since the expression is entirely new, it is not a derivative of the source code.
 
 ### 2. "Look and Feel" & Functionality (Patents/Trade Dress)

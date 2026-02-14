@@ -4,7 +4,7 @@ Videre is built on the core UNIX principles of **transparency**, **predictabilit
 
 ## 1. Transparency & Predictability
 Unlike modern "IDE-lite" editors like Neovim, Videre avoids "arcane" behavior. There are no hidden background processes, no magic auto-commands, and no complex plugin ecosystems that trigger unexpected UI shifts.
-- **No Magic:** If a line is highlighted, you can trace it directly to a few lines of Swift code.
+- **No Magic:** If a line is highlighted, you can trace it directly to a few lines of C code.
 - **Predictable UI:** The interface never flickers or moves due to asynchronous tasks.
 - **User Control:** Videre only does what you explicitly ask it to do.
 
@@ -14,4 +14,4 @@ Videre respects your environment. It is designed to "go with the flow" of your e
 - **Small Footprint:** By keeping the implementation lean, Videre remains understandable to the user, fulfilling the UNIX goal of a tool that is small enough to be fully mastered.
 
 ## 3. Systems-First Design
-Written in pure Swift with a focus on efficient data structures (like the Gap Buffer), Videre provides a high-performance editing experience without the baggage of decades-old C legacy or heavy modern abstractions.
+Written in pure C with a focus on efficient data structures (like the Gap Buffer), Videre provides a high-performance editing experience without heavy modern abstractions.

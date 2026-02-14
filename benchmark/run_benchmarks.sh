@@ -8,7 +8,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 echo "Building videre in release mode..."
 cd "$PROJECT_ROOT"
-swift build -c release > /dev/null 2>&1
+make clean && make
 
 echo "Running benchmark suite..."
 cd "$SCRIPT_DIR"

@@ -147,7 +147,7 @@ The benchmark system uses Python's `pty` module to automate both editors:
 ### System
 - Python 3.7+
 - Linux or macOS (PTY-based)
-- Swift 5.9+ (to build videre)
+- C compiler (gcc or clang) and make
 
 ### Dependencies
 - Neovim (optional, for comparison)
