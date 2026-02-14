@@ -1527,10 +1527,10 @@ func findCallback(query string, key int) {
 }
 
 func find() {
-	savedX, savedY, savedCol, savedRow := E.cx, E.cy, E.coloff, E.rowoff
+	savedX, savedY, savedPref, savedCol, savedRow := E.cx, E.cy, E.preferred, E.coloff, E.rowoff
 	q := prompt("/%s", findCallback)
 	if q == "" {
-		E.cx, E.cy, E.coloff, E.rowoff = savedX, savedY, savedCol, savedRow
+		E.cx, E.cy, E.preferred, E.coloff, E.rowoff = savedX, savedY, savedPref, savedCol, savedRow
 	}
 }
 
@@ -1539,6 +1539,13 @@ func findNext(dir int) {
 		return
 	}
 	cur := E.cy
+	curCol := E.cx
+	if dir > 0 {
+		curCol++
+	} else {
+		curCol--
+	}
+	qLen := len(E.searchBytes)
 	for i := 0; i < len(E.rows); i++ {
 		cur += dir
 		if cur < 0 {
@@ -1549,17 +1556,36 @@ func findNext(dir int) {
 		}
 		line := E.rows[cur].s
 		if dir > 0 {
-			if m := bytes.Index(line, E.searchBytes); m >= 0 {
-				E.cy, E.cx, E.preferred = cur, m, m
-				updateAllSyntax()
-				return
+			if cur == E.cy {
+				if curCol < len(line) {
+					if m := bytes.Index(line[curCol:], E.searchBytes); m >= 0 {
+						m += curCol
+						E.cy, E.cx, E.preferred = cur, m, m
+						updateAllSyntax()
+						return
+					}
+				}
+			} else {
+				if m := bytes.Index(line, E.searchBytes); m >= 0 {
+					E.cy, E.cx, E.preferred = cur, m, m
+					updateAllSyntax()
+					return
+				}
 			}
 		} else {
-			m := bytes.LastIndex(line, E.searchBytes)
-			if m >= 0 {
-				E.cy, E.cx, E.preferred = cur, m, m
-				updateAllSyntax()
-				return
+			start := len(line) - 1
+			if cur == E.cy {
+				start = curCol
+			}
+			if start >= len(line) {
+				start = len(line) - 1
+			}
+			for x := start; x >= 0; x-- {
+				if x+qLen <= len(line) && bytes.Equal(line[x:x+qLen], E.searchBytes) {
+					E.cy, E.cx, E.preferred = cur, x, x
+					updateAllSyntax()
+					return
+				}
 			}
 		}
 	}
