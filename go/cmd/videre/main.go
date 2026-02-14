@@ -1295,15 +1295,11 @@ func findChar(c byte, direction int, till bool) bool {
 	return false
 }
 
-func repeatCharSearch(reverse bool) {
-	if E.lastSearchChar == 0 || E.lastSearchDir == 0 {
+func repeatCharSearch() {
+	if E.lastSearchChar == 0 {
 		return
 	}
-	dir := E.lastSearchDir
-	if reverse {
-		dir *= -1
-	}
-	_ = findChar(E.lastSearchChar, dir, E.lastSearchTill)
+	_ = findChar(E.lastSearchChar, 1, false)
 }
 
 func selectAll() {
@@ -2480,7 +2476,7 @@ func processKeypress() bool {
 			}
 		}
 	case ';':
-		repeatCharSearch(false)
+		repeatCharSearch()
 	case ',':
 		if E.lastSearchChar != 0 {
 			_ = findChar(E.lastSearchChar, -1, false)
