@@ -1,0 +1,1464 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+	"unicode"
+	"unicode/utf8"
+	"unsafe"
+)
+
+const (
+	backspace = 1000 + iota
+	arrowLeft
+	arrowRight
+	arrowUp
+	arrowDown
+	delKey
+	homeKey
+	endKey
+	pageUp
+	pageDown
+	resizeEvent
+)
+
+const (
+	modeNormal = iota
+	modeInsert
+	modeCommand
+	modeVisual
+	modeVisualLine
+)
+
+const (
+	hlNormal uint8 = iota
+	hlComment
+	hlKeyword1
+	hlKeyword2
+	hlString
+	hlNumber
+	hlMatch
+	hlVisual
+)
+
+type row struct {
+	idx  int
+	s    []byte
+	hl   []uint8
+	open bool
+}
+
+type reg struct {
+	s      []byte
+	isLine bool
+}
+
+type undoState struct {
+	rows []row
+	cx   int
+	cy   int
+}
+
+type syntax struct {
+	filetype string
+	exts     []string
+	kws      map[string]uint8
+	lineCmt  string
+}
+
+type editor struct {
+	cx, cy, preferred int
+	rowoff, coloff    int
+	screenRows        int
+	screenCols        int
+	rows              []row
+	dirty             bool
+	filename          string
+	gitStatus         string
+	statusmsg         string
+	statusTime        time.Time
+	mode              int
+	selSX, selSY      int
+	searchPattern     string
+	lastSearchChar    byte
+	marksX            [26]int
+	marksY            [26]int
+	markSet           [26]bool
+	registers         [256]reg
+	undo              []undoState
+	redo              []undoState
+	syntax            *syntax
+	termOrig          syscall.Termios
+	raw               bool
+}
+
+var E editor
+
+var syntaxes = []syntax{
+	{filetype: "c", exts: []string{".c", ".h"}, kws: kwMap([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
+	{filetype: "go", exts: []string{".go"}, kws: kwMap([]string{"package", "import", "func", "type", "struct", "interface", "if", "else", "for", "range", "return", "map|", "string|", "int|", "bool|", "error|"}), lineCmt: "//"},
+	{filetype: "rust", exts: []string{".rs"}, kws: kwMap([]string{"fn", "let", "mut", "if", "else", "match", "impl", "struct", "enum", "use", "pub", "String|", "Vec|"}), lineCmt: "//"},
+	{filetype: "python", exts: []string{".py"}, kws: kwMap([]string{"def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "None", "True", "False"}), lineCmt: "#"},
+}
+
+func kwMap(src []string) map[string]uint8 {
+	m := make(map[string]uint8, len(src))
+	for _, kw := range src {
+		if strings.HasSuffix(kw, "|") {
+			m[strings.TrimSuffix(kw, "|")] = hlKeyword2
+		} else {
+			m[kw] = hlKeyword1
+		}
+	}
+	return m
+}
+
+func die(err error) {
+	disableRawMode()
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
+}
+
+func setStatus(format string, args ...any) {
+	E.statusmsg = fmt.Sprintf(format, args...)
+	E.statusTime = time.Now()
+}
+
+func getWindowSize() (int, int) {
+	ws, err := ioctlGetWinsize(int(os.Stdout.Fd()), syscall.TIOCGWINSZ)
+	if err == nil && ws.Col > 0 && ws.Row > 0 {
+		return int(ws.Row), int(ws.Col)
+	}
+	return 24, 80
+}
+
+func updateWindowSize() {
+	r, c := getWindowSize()
+	E.screenRows = r - 2
+	if E.screenRows < 1 {
+		E.screenRows = 1
+	}
+	E.screenCols = c
+}
+
+func enableRawMode() {
+	fd := int(os.Stdin.Fd())
+	t, err := ioctlGetTermios(fd, syscall.TCGETS)
+	if err != nil {
+		return
+	}
+	E.termOrig = *t
+	raw := *t
+	raw.Iflag &^= syscall.BRKINT | syscall.ICRNL | syscall.INPCK | syscall.ISTRIP | syscall.IXON
+	raw.Oflag &^= syscall.OPOST
+	raw.Cflag |= syscall.CS8
+	raw.Lflag &^= syscall.ECHO | syscall.ICANON | syscall.IEXTEN | syscall.ISIG
+	raw.Cc[syscall.VMIN] = 0
+	raw.Cc[syscall.VTIME] = 1
+	if err := ioctlSetTermios(fd, syscall.TCSETS, &raw); err != nil {
+		return
+	}
+	E.raw = true
+	fmt.Print("\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[2J\x1b[H")
+}
+
+func disableRawMode() {
+	if !E.raw {
+		return
+	}
+	_ = ioctlSetTermios(int(os.Stdin.Fd()), syscall.TCSETS, &E.termOrig)
+	fmt.Print("\x1b[?2004l\x1b[?1006l\x1b[?1003l\x1b[?1049l\x1b[?25h")
+	E.raw = false
+}
+
+func readKey() int {
+	fd := int(os.Stdin.Fd())
+	b := make([]byte, 1)
+	for {
+		n, err := syscall.Read(fd, b)
+		if err != nil {
+			if errors.Is(err, syscall.EINTR) {
+				return resizeEvent
+			}
+			if errors.Is(err, syscall.EAGAIN) {
+				continue
+			}
+			die(err)
+		}
+		if n == 0 {
+			continue
+		}
+		if n == 1 {
+			break
+		}
+	}
+	if b[0] != 0x1b {
+		return int(b[0])
+	}
+	seq := make([]byte, 8)
+	n, _ := syscall.Read(fd, seq)
+	if n == 0 {
+		return 0x1b
+	}
+	seq = seq[:n]
+	if len(seq) >= 2 && seq[0] == '[' {
+		if seq[1] >= '0' && seq[1] <= '9' {
+			if len(seq) >= 3 && seq[2] == '~' {
+				switch seq[1] {
+				case '1', '7':
+					return homeKey
+				case '3':
+					return delKey
+				case '4', '8':
+					return endKey
+				case '5':
+					return pageUp
+				case '6':
+					return pageDown
+				}
+			}
+		} else {
+			switch seq[1] {
+			case 'A':
+				return arrowUp
+			case 'B':
+				return arrowDown
+			case 'C':
+				return arrowRight
+			case 'D':
+				return arrowLeft
+			case 'H':
+				return homeKey
+			case 'F':
+				return endKey
+			}
+		}
+	}
+	if len(seq) >= 2 && seq[0] == 'O' {
+		switch seq[1] {
+		case 'H':
+			return homeKey
+		case 'F':
+			return endKey
+		}
+	}
+	return 0x1b
+}
+
+func utf8PrevBoundary(s []byte, idx int) int {
+	if idx <= 0 {
+		return 0
+	}
+	if idx > len(s) {
+		idx = len(s)
+	}
+	idx--
+	for idx > 0 && (s[idx]&0xC0) == 0x80 {
+		idx--
+	}
+	return idx
+}
+
+func utf8NextBoundary(s []byte, idx int) int {
+	if idx < 0 {
+		return 0
+	}
+	if idx >= len(s) {
+		return len(s)
+	}
+	for idx < len(s) && (s[idx]&0xC0) == 0x80 {
+		idx++
+	}
+	if idx >= len(s) {
+		return len(s)
+	}
+	_, n := utf8.DecodeRune(s[idx:])
+	if n <= 0 {
+		return idx + 1
+	}
+	if idx+n > len(s) {
+		return len(s)
+	}
+	return idx + n
+}
+
+func updateSyntax(r *row) {
+	r.hl = make([]uint8, len(r.s))
+	if E.syntax == nil {
+		return
+	}
+	lineCmt := E.syntax.lineCmt
+	for i := 0; i < len(r.s); {
+		if lineCmt != "" && strings.HasPrefix(string(r.s[i:]), lineCmt) {
+			for j := i; j < len(r.s); j++ {
+				r.hl[j] = hlComment
+			}
+			break
+		}
+		if r.s[i] == '"' || r.s[i] == '\'' {
+			q := r.s[i]
+			r.hl[i] = hlString
+			i++
+			for i < len(r.s) {
+				r.hl[i] = hlString
+				if r.s[i] == '\\' && i+1 < len(r.s) {
+					i += 2
+					continue
+				}
+				if r.s[i] == q {
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+		if unicode.IsDigit(rune(r.s[i])) {
+			j := i
+			for j < len(r.s) && (unicode.IsDigit(rune(r.s[j])) || r.s[j] == '.') {
+				j++
+			}
+			for k := i; k < j; k++ {
+				r.hl[k] = hlNumber
+			}
+			i = j
+			continue
+		}
+		if unicode.IsLetter(rune(r.s[i])) || r.s[i] == '_' {
+			j := i
+			for j < len(r.s) && (unicode.IsLetter(rune(r.s[j])) || unicode.IsDigit(rune(r.s[j])) || r.s[j] == '_') {
+				j++
+			}
+			kw := string(r.s[i:j])
+			if t, ok := E.syntax.kws[kw]; ok {
+				for k := i; k < j; k++ {
+					r.hl[k] = t
+				}
+			}
+			i = j
+			continue
+		}
+		i++
+	}
+	if E.searchPattern != "" {
+		q := []byte(E.searchPattern)
+		for off := 0; ; {
+			m := bytes.Index(r.s[off:], q)
+			if m < 0 {
+				break
+			}
+			m += off
+			for i := m; i < m+len(q) && i < len(r.hl); i++ {
+				r.hl[i] = hlMatch
+			}
+			off = m + 1
+		}
+	}
+}
+
+func updateAllSyntax() {
+	for i := range E.rows {
+		updateSyntax(&E.rows[i])
+	}
+}
+
+func selectSyntax() {
+	E.syntax = nil
+	if E.filename == "" {
+		updateAllSyntax()
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(E.filename))
+	for i := range syntaxes {
+		for _, e := range syntaxes[i].exts {
+			if e == ext {
+				E.syntax = &syntaxes[i]
+				updateAllSyntax()
+				return
+			}
+		}
+	}
+	updateAllSyntax()
+}
+
+func insertRow(at int, s []byte) {
+	if at < 0 || at > len(E.rows) {
+		return
+	}
+	r := row{idx: at, s: append([]byte(nil), s...)}
+	E.rows = append(E.rows, row{})
+	copy(E.rows[at+1:], E.rows[at:])
+	E.rows[at] = r
+	for i := at; i < len(E.rows); i++ {
+		E.rows[i].idx = i
+	}
+	updateSyntax(&E.rows[at])
+	E.dirty = true
+}
+
+func delRow(at int) {
+	if at < 0 || at >= len(E.rows) {
+		return
+	}
+	E.rows = append(E.rows[:at], E.rows[at+1:]...)
+	for i := at; i < len(E.rows); i++ {
+		E.rows[i].idx = i
+	}
+	E.dirty = true
+}
+
+func rowInsertChar(r *row, at int, c byte) {
+	if at < 0 || at > len(r.s) {
+		at = len(r.s)
+	}
+	r.s = append(r.s, 0)
+	copy(r.s[at+1:], r.s[at:])
+	r.s[at] = c
+	updateSyntax(r)
+	E.dirty = true
+}
+
+func rowDelChar(r *row, at int) {
+	if at < 0 || at >= len(r.s) {
+		return
+	}
+	copy(r.s[at:], r.s[at+1:])
+	r.s = r.s[:len(r.s)-1]
+	updateSyntax(r)
+	E.dirty = true
+}
+
+func rowAppendString(r *row, s []byte) {
+	r.s = append(r.s, s...)
+	updateSyntax(r)
+	E.dirty = true
+}
+
+func cloneRows(src []row) []row {
+	out := make([]row, len(src))
+	for i := range src {
+		out[i].idx = src[i].idx
+		out[i].s = append([]byte(nil), src[i].s...)
+		out[i].hl = append([]uint8(nil), src[i].hl...)
+		out[i].open = src[i].open
+	}
+	return out
+}
+
+func saveUndo() {
+	s := undoState{rows: cloneRows(E.rows), cx: E.cx, cy: E.cy}
+	E.undo = append(E.undo, s)
+	E.redo = nil
+}
+
+func applyState(s undoState) {
+	E.rows = cloneRows(s.rows)
+	E.cx = s.cx
+	E.cy = s.cy
+	E.dirty = true
+}
+
+func doUndo() {
+	if len(E.undo) == 0 {
+		return
+	}
+	E.redo = append(E.redo, undoState{rows: cloneRows(E.rows), cx: E.cx, cy: E.cy})
+	last := E.undo[len(E.undo)-1]
+	E.undo = E.undo[:len(E.undo)-1]
+	applyState(last)
+}
+
+func doRedo() {
+	if len(E.redo) == 0 {
+		return
+	}
+	E.undo = append(E.undo, undoState{rows: cloneRows(E.rows), cx: E.cx, cy: E.cy})
+	last := E.redo[len(E.redo)-1]
+	E.redo = E.redo[:len(E.redo)-1]
+	applyState(last)
+}
+
+func openFile(name string) {
+	f, err := os.Open(name)
+	if err != nil {
+		setStatus("Can't open file: %v", err)
+		return
+	}
+	defer f.Close()
+	E.rows = nil
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		insertRow(len(E.rows), []byte(s.Text()))
+	}
+	if err := s.Err(); err != nil {
+		setStatus("Read error: %v", err)
+	}
+	E.filename = name
+	E.dirty = false
+	selectSyntax()
+	updateGitStatus()
+}
+
+func rowsToString() []byte {
+	var b bytes.Buffer
+	for i := range E.rows {
+		b.Write(E.rows[i].s)
+		b.WriteByte('\n')
+	}
+	return b.Bytes()
+}
+
+func saveFile() {
+	if E.filename == "" {
+		name := prompt("Save as: %s", nil)
+		if name == "" {
+			setStatus("Save aborted")
+			return
+		}
+		E.filename = name
+		selectSyntax()
+	}
+	if err := os.WriteFile(E.filename, rowsToString(), 0o644); err != nil {
+		setStatus("Can't save: %v", err)
+		return
+	}
+	E.dirty = false
+	updateGitStatus()
+	setStatus("\"%s\" %dL written", E.filename, len(E.rows))
+}
+
+func updateGitStatus() {
+	E.gitStatus = ""
+	if E.filename == "" {
+		return
+	}
+	out, err := exec.Command("git", "status", "--porcelain", "-b").Output()
+	if err != nil {
+		return
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) == 0 || !strings.HasPrefix(lines[0], "## ") {
+		return
+	}
+	branch := strings.TrimPrefix(lines[0], "## ")
+	if i := strings.Index(branch, "..."); i >= 0 {
+		branch = branch[:i]
+	}
+	if len(lines) > 1 {
+		branch += "*"
+	}
+	if len(branch) > 32 {
+		branch = branch[:32]
+	}
+	E.gitStatus = branch
+}
+
+func insertChar(c byte) {
+	saveUndo()
+	if E.cy == len(E.rows) {
+		insertRow(len(E.rows), nil)
+	}
+	rowInsertChar(&E.rows[E.cy], E.cx, c)
+	E.cx = utf8NextBoundary(E.rows[E.cy].s, E.cx)
+	E.preferred = E.cx
+}
+
+func insertNewline() {
+	saveUndo()
+	if E.cx == 0 {
+		insertRow(E.cy, nil)
+	} else {
+		r := &E.rows[E.cy]
+		insertRow(E.cy+1, r.s[E.cx:])
+		r.s = append([]byte(nil), r.s[:E.cx]...)
+		updateSyntax(r)
+	}
+	E.cy++
+	E.cx = 0
+	E.preferred = 0
+}
+
+func delChar() {
+	if E.cy == len(E.rows) || (E.cx == 0 && E.cy == 0) {
+		return
+	}
+	saveUndo()
+	if E.cx > 0 {
+		r := &E.rows[E.cy]
+		prev := utf8PrevBoundary(r.s, E.cx)
+		rowDelChar(r, prev)
+		E.cx = prev
+	} else {
+		E.cx = len(E.rows[E.cy-1].s)
+		rowAppendString(&E.rows[E.cy-1], E.rows[E.cy].s)
+		delRow(E.cy)
+		E.cy--
+	}
+	E.preferred = E.cx
+}
+
+func moveCursor(key int) {
+	var r *row
+	if E.cy >= 0 && E.cy < len(E.rows) {
+		r = &E.rows[E.cy]
+	}
+	switch key {
+	case arrowLeft:
+		if E.cx > 0 && r != nil {
+			E.cx = utf8PrevBoundary(r.s, E.cx)
+		} else if E.cy > 0 {
+			E.cy--
+			E.cx = len(E.rows[E.cy].s)
+		}
+	case arrowRight:
+		if r != nil && E.cx < len(r.s) {
+			E.cx = utf8NextBoundary(r.s, E.cx)
+		} else if r != nil && E.mode == modeInsert && E.cy < len(E.rows)-1 {
+			E.cy++
+			E.cx = 0
+		}
+	case arrowUp:
+		if E.cy > 0 {
+			E.cy--
+		}
+	case arrowDown:
+		if E.cy < len(E.rows)-1 {
+			E.cy++
+		}
+	}
+	if E.cy < 0 {
+		E.cy = 0
+	}
+	if len(E.rows) == 0 {
+		E.cx = 0
+		return
+	}
+	if E.cy >= len(E.rows) {
+		E.cy = len(E.rows) - 1
+	}
+	limit := len(E.rows[E.cy].s)
+	if E.mode != modeInsert && limit > 0 && E.cx == limit {
+		limit = utf8PrevBoundary(E.rows[E.cy].s, limit)
+	}
+	if key == arrowUp || key == arrowDown {
+		if E.preferred > limit {
+			E.cx = limit
+		} else {
+			E.cx = E.preferred
+		}
+	} else {
+		if E.cx > limit {
+			E.cx = limit
+		}
+		E.preferred = E.cx
+	}
+}
+
+func isWordChar(c byte) bool {
+	return unicode.IsLetter(rune(c)) || unicode.IsDigit(rune(c)) || c == '_'
+}
+
+func moveWordForward(big bool) {
+	if len(E.rows) == 0 {
+		return
+	}
+	r, c := E.cy, E.cx
+	for r < len(E.rows) {
+		line := E.rows[r].s
+		if c < len(line) {
+			if big {
+				for c < len(line) && line[c] != ' ' && line[c] != '\t' {
+					c++
+				}
+			} else {
+				if isWordChar(line[c]) {
+					for c < len(line) && isWordChar(line[c]) {
+						c++
+					}
+				} else {
+					for c < len(line) && !isWordChar(line[c]) && line[c] != ' ' && line[c] != '\t' {
+						c++
+					}
+				}
+			}
+		}
+		for c < len(line) && (line[c] == ' ' || line[c] == '\t') {
+			c++
+		}
+		if c < len(line) {
+			E.cy, E.cx, E.preferred = r, c, c
+			return
+		}
+		r++
+		c = 0
+	}
+	E.cy = len(E.rows) - 1
+	E.cx = len(E.rows[E.cy].s)
+	E.preferred = E.cx
+}
+
+func moveWordBackward(big bool) {
+	if len(E.rows) == 0 {
+		return
+	}
+	r, c := E.cy, E.cx-1
+	for r >= 0 {
+		line := E.rows[r].s
+		for c >= 0 && (line[c] == ' ' || line[c] == '\t') {
+			c--
+		}
+		if c >= 0 {
+			if big {
+				for c >= 0 && line[c] != ' ' && line[c] != '\t' {
+					c--
+				}
+			} else {
+				if isWordChar(line[c]) {
+					for c >= 0 && isWordChar(line[c]) {
+						c--
+					}
+				} else {
+					for c >= 0 && !isWordChar(line[c]) && line[c] != ' ' && line[c] != '\t' {
+						c--
+					}
+				}
+			}
+			E.cy, E.cx, E.preferred = r, c+1, c+1
+			return
+		}
+		r--
+		if r >= 0 {
+			c = len(E.rows[r].s) - 1
+		}
+	}
+	E.cy, E.cx, E.preferred = 0, 0, 0
+}
+
+func moveLineStart() { E.cx, E.preferred = 0, 0 }
+func moveLineEnd() {
+	if E.cy >= 0 && E.cy < len(E.rows) {
+		E.cx = len(E.rows[E.cy].s)
+		E.preferred = E.cx
+	}
+}
+func moveFileStart() { E.cy, E.cx, E.preferred = 0, 0, 0 }
+func moveFileEnd() {
+	if len(E.rows) == 0 {
+		return
+	}
+	E.cy = len(E.rows) - 1
+	E.cx = len(E.rows[E.cy].s)
+	E.preferred = E.cx
+}
+
+func yank(sx, sy, ex, ey int, isLine bool) {
+	if sy > ey || (sy == ey && sx > ex) {
+		sx, ex = ex, sx
+		sy, ey = ey, sy
+	}
+	var b bytes.Buffer
+	if isLine {
+		for i := sy; i <= ey && i < len(E.rows); i++ {
+			b.Write(E.rows[i].s)
+			b.WriteByte('\n')
+		}
+	} else if sy == ey && sy < len(E.rows) {
+		r := E.rows[sy].s
+		if sx < 0 {
+			sx = 0
+		}
+		if ex >= len(r) {
+			ex = len(r) - 1
+		}
+		if sx <= ex {
+			b.Write(r[sx : ex+1])
+		}
+	} else {
+		for i := sy; i <= ey && i < len(E.rows); i++ {
+			r := E.rows[i].s
+			if i == sy {
+				if sx < len(r) {
+					b.Write(r[sx:])
+				}
+				b.WriteByte('\n')
+			} else if i == ey {
+				if ex >= len(r) {
+					ex = len(r) - 1
+				}
+				if ex >= 0 {
+					b.Write(r[:ex+1])
+				}
+			} else {
+				b.Write(r)
+				b.WriteByte('\n')
+			}
+		}
+	}
+	E.registers['"'] = reg{s: b.Bytes(), isLine: isLine}
+}
+
+func deleteRange(sx, sy, ex, ey int) {
+	if sy > ey || (sy == ey && sx > ex) {
+		sx, ex = ex, sx
+		sy, ey = ey, sy
+	}
+	saveUndo()
+	if sy == ey {
+		r := &E.rows[sy]
+		if sx < 0 {
+			sx = 0
+		}
+		if ex >= len(r.s) {
+			ex = len(r.s) - 1
+		}
+		if sx <= ex {
+			r.s = append(r.s[:sx], r.s[ex+1:]...)
+			updateSyntax(r)
+		}
+	} else {
+		first := append([]byte(nil), E.rows[sy].s[:sx]...)
+		if ey < len(E.rows) {
+			last := E.rows[ey].s
+			if ex+1 < len(last) {
+				first = append(first, last[ex+1:]...)
+			}
+		}
+		E.rows[sy].s = first
+		updateSyntax(&E.rows[sy])
+		for i := 0; i < ey-sy; i++ {
+			delRow(sy + 1)
+		}
+	}
+	E.cy, E.cx = sy, sx
+	if E.cy >= len(E.rows) {
+		E.cy = len(E.rows) - 1
+	}
+	if E.cy < 0 {
+		E.cy = 0
+	}
+}
+
+func paste() {
+	r := E.registers['"']
+	if len(r.s) == 0 {
+		return
+	}
+	saveUndo()
+	if r.isLine {
+		lines := strings.Split(string(r.s), "\n")
+		at := E.cy + 1
+		for _, ln := range lines {
+			if ln == "" {
+				continue
+			}
+			insertRow(at, []byte(ln))
+			at++
+		}
+		return
+	}
+	for _, c := range r.s {
+		if c == '\n' {
+			insertNewline()
+		} else {
+			insertChar(c)
+		}
+	}
+}
+
+func findCallback(query string, key int) {
+	if query == "" {
+		return
+	}
+	E.searchPattern = query
+	updateAllSyntax()
+	for i := 0; i < len(E.rows); i++ {
+		rowIdx := (E.cy + i) % len(E.rows)
+		p := bytes.Index(E.rows[rowIdx].s, []byte(query))
+		if p >= 0 {
+			E.cy = rowIdx
+			E.cx = p
+			E.preferred = E.cx
+			E.rowoff = len(E.rows)
+			return
+		}
+	}
+	_ = key
+}
+
+func find() {
+	savedX, savedY, savedCol, savedRow := E.cx, E.cy, E.coloff, E.rowoff
+	q := prompt("/%s", findCallback)
+	if q == "" {
+		E.cx, E.cy, E.coloff, E.rowoff = savedX, savedY, savedCol, savedRow
+	}
+}
+
+func findNext(dir int) {
+	if E.searchPattern == "" || len(E.rows) == 0 {
+		return
+	}
+	cur := E.cy
+	for i := 0; i < len(E.rows); i++ {
+		cur += dir
+		if cur < 0 {
+			cur = len(E.rows) - 1
+		}
+		if cur >= len(E.rows) {
+			cur = 0
+		}
+		line := E.rows[cur].s
+		if dir > 0 {
+			if m := bytes.Index(line, []byte(E.searchPattern)); m >= 0 {
+				E.cy, E.cx, E.preferred = cur, m, m
+				updateAllSyntax()
+				return
+			}
+		} else {
+			m := bytes.LastIndex(line, []byte(E.searchPattern))
+			if m >= 0 {
+				E.cy, E.cx, E.preferred = cur, m, m
+				updateAllSyntax()
+				return
+			}
+		}
+	}
+}
+
+func selectWord() {
+	if E.cy >= len(E.rows) || len(E.rows[E.cy].s) == 0 {
+		return
+	}
+	r := E.rows[E.cy].s
+	sx, ex := E.cx, E.cx
+	for sx > 0 && isWordChar(r[sx-1]) {
+		sx--
+	}
+	for ex < len(r)-1 && isWordChar(r[ex+1]) {
+		ex++
+	}
+	E.mode = modeVisual
+	E.selSY = E.cy
+	E.selSX = sx
+	E.cx = ex
+}
+
+func isSelected(filerow, x int) bool {
+	if E.mode != modeVisual && E.mode != modeVisualLine {
+		return false
+	}
+	sy, ey, sx, ex := E.selSY, E.cy, E.selSX, E.cx
+	if sy > ey || (sy == ey && sx > ex) {
+		sy, ey = ey, sy
+		sx, ex = ex, sx
+	}
+	if E.mode == modeVisualLine {
+		return filerow >= sy && filerow <= ey
+	}
+	if filerow < sy || filerow > ey {
+		return false
+	}
+	if sy == ey {
+		return x >= sx && x <= ex
+	}
+	if filerow == sy {
+		return x >= sx
+	}
+	if filerow == ey {
+		return x <= ex
+	}
+	return true
+}
+
+func syntaxColor(h uint8) int {
+	switch h {
+	case hlComment:
+		return 32
+	case hlKeyword1:
+		return 33
+	case hlKeyword2:
+		return 36
+	case hlString:
+		return 35
+	case hlNumber:
+		return 31
+	case hlMatch:
+		return 34
+	default:
+		return 37
+	}
+}
+
+func drawRows(b *bytes.Buffer) {
+	g := gutterWidth()
+	gcols := 0
+	if g > 0 {
+		gcols = g + 1
+	}
+	textCols := E.screenCols - gcols
+	if textCols < 1 {
+		textCols = 1
+	}
+	for y := 0; y < E.screenRows; y++ {
+		fr := y + E.rowoff
+		if fr >= len(E.rows) {
+			b.WriteString("\x1b[2m~\x1b[m")
+		} else {
+			if g > 0 {
+				fmt.Fprintf(b, "\x1b[2m%*d \x1b[m", g, fr+1)
+			}
+			line := E.rows[fr].s
+			start := E.coloff
+			if start > len(line) {
+				start = len(line)
+			}
+			line = line[start:]
+			if len(line) > textCols {
+				line = line[:textCols]
+			}
+			curColor := -1
+			for i := 0; i < len(line); i++ {
+				if isSelected(fr, i+start) {
+					b.WriteString("\x1b[48;5;242m")
+				} else {
+					b.WriteString("\x1b[49m")
+				}
+				h := E.rows[fr].hl[i+start]
+				col := syntaxColor(h)
+				if col != curColor {
+					fmt.Fprintf(b, "\x1b[%dm", col)
+					curColor = col
+				}
+				b.WriteByte(line[i])
+			}
+			b.WriteString("\x1b[39m\x1b[49m")
+		}
+		b.WriteString("\x1b[K\r\n")
+	}
+}
+
+func drawStatusBar(b *bytes.Buffer) {
+	b.WriteString("\x1b[48;5;250m\x1b[38;5;240m")
+	left := " [No Name]"
+	if E.filename != "" {
+		left = " " + E.filename
+	}
+	if E.dirty {
+		left += " [+]"
+	}
+	if E.gitStatus != "" {
+		left += " [" + E.gitStatus + "]"
+	}
+	pos := "All"
+	if len(E.rows) > 0 {
+		if E.rowoff == 0 {
+			pos = "Top"
+		} else if E.rowoff+E.screenRows >= len(E.rows) {
+			pos = "Bot"
+		} else {
+			pos = strconv.Itoa((E.rowoff*100)/max(1, len(E.rows)-E.screenRows)) + "%"
+		}
+	}
+	right := fmt.Sprintf(" %d,%d %s", E.cy+1, E.cx+1, pos)
+	if len(left) > E.screenCols-len(right) {
+		left = left[:max(0, E.screenCols-len(right))]
+	}
+	b.WriteString(left)
+	for len(left) < E.screenCols-len(right) {
+		b.WriteByte(' ')
+		left += " "
+	}
+	b.WriteString(right)
+	b.WriteString("\x1b[m\r\n")
+}
+
+func drawMessageBar(b *bytes.Buffer) {
+	b.WriteString("\x1b[K")
+	if E.statusmsg != "" && time.Since(E.statusTime) < 5*time.Second {
+		msg := E.statusmsg
+		if len(msg) > E.screenCols {
+			msg = msg[:E.screenCols]
+		}
+		b.WriteString(msg)
+		return
+	}
+	switch E.mode {
+	case modeInsert:
+		b.WriteString("-- INSERT --")
+	case modeVisual:
+		b.WriteString("-- VISUAL --")
+	case modeVisualLine:
+		b.WriteString("-- VISUAL LINE --")
+	}
+}
+
+func scroll() {
+	g := gutterWidth()
+	textCols := E.screenCols - g - 1
+	if textCols < 1 {
+		textCols = 1
+	}
+	if E.cy < E.rowoff {
+		E.rowoff = E.cy
+	}
+	if E.cy >= E.rowoff+E.screenRows {
+		E.rowoff = E.cy - E.screenRows + 1
+	}
+	if E.cx < E.coloff {
+		E.coloff = E.cx
+	}
+	if E.cx >= E.coloff+textCols {
+		E.coloff = E.cx - textCols + 1
+	}
+}
+
+func refreshScreen() {
+	scroll()
+	var b bytes.Buffer
+	b.WriteString("\x1b[?25l\x1b[H")
+	drawRows(&b)
+	drawStatusBar(&b)
+	drawMessageBar(&b)
+	g := gutterWidth()
+	fmt.Fprintf(&b, "\x1b[%d;%dH", (E.cy-E.rowoff)+1, (E.cx-E.coloff)+1+g+1)
+	b.WriteString("\x1b[?25h")
+	_, _ = os.Stdout.Write(b.Bytes())
+}
+
+func gutterWidth() int {
+	if E.filename == "" && len(E.rows) == 0 {
+		return 0
+	}
+	n := max(1, len(E.rows))
+	w := 1
+	for n >= 10 {
+		n /= 10
+		w++
+	}
+	return w
+}
+
+func prompt(p string, cb func(string, int)) string {
+	buf := make([]byte, 0, 128)
+	for {
+		setStatus(p, string(buf))
+		refreshScreen()
+		c := readKey()
+		switch c {
+		case delKey, backspace, 127, 8:
+			if len(buf) > 0 {
+				buf = buf[:len(buf)-1]
+			}
+		case 0x1b:
+			setStatus("")
+			if cb != nil {
+				cb(string(buf), c)
+			}
+			return ""
+		case '\r':
+			if len(buf) > 0 {
+				setStatus("")
+				if cb != nil {
+					cb(string(buf), c)
+				}
+				return string(buf)
+			}
+		default:
+			if c >= 32 && c < 127 {
+				buf = append(buf, byte(c))
+			}
+		}
+		if cb != nil {
+			cb(string(buf), c)
+		}
+	}
+}
+
+func processKeypress() bool {
+	c := readKey()
+	if c == -1 {
+		return false
+	}
+	if c == resizeEvent {
+		updateWindowSize()
+		return true
+	}
+	if E.mode == modeInsert {
+		switch c {
+		case '\r':
+			insertNewline()
+		case 0x1b:
+			E.mode = modeNormal
+			if E.cx > 0 {
+				E.cx = utf8PrevBoundary(E.rows[E.cy].s, E.cx)
+			}
+			setStatus("")
+		case backspace, 127, 8:
+			delChar()
+		case delKey:
+			moveCursor(arrowRight)
+			delChar()
+		case arrowLeft, arrowRight, arrowUp, arrowDown:
+			moveCursor(c)
+		default:
+			if c >= 32 && c < 127 {
+				insertChar(byte(c))
+			}
+		}
+		return true
+	}
+
+	switch c {
+	case 'i':
+		E.mode = modeInsert
+		E.selSX, E.selSY = -1, -1
+	case 'v':
+		if E.mode == modeVisual {
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		} else {
+			E.mode = modeVisual
+			E.selSX, E.selSY = E.cx, E.cy
+		}
+	case 'V':
+		if E.mode == modeVisualLine {
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		} else {
+			E.mode = modeVisualLine
+			E.selSX, E.selSY = 0, E.cy
+		}
+	case 'u':
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			// Keep parity scope tight: only undo for now.
+			doUndo()
+		} else {
+			doUndo()
+		}
+	case 18:
+		doRedo()
+	case 'y':
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		}
+	case 'd', 'x':
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			deleteRange(E.selSX, E.selSY, E.cx, E.cy)
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		} else if c == 'x' {
+			moveCursor(arrowRight)
+			delChar()
+		}
+	case 'p':
+		paste()
+	case 3:
+		if E.dirty {
+			setStatus("WARNING!!! Unsaved changes. Press Ctrl-C again to quit.")
+			E.dirty = false
+			return true
+		}
+		disableRawMode()
+		os.Exit(0)
+	case ':':
+		cmd := prompt(":%s", nil)
+		switch cmd {
+		case "q":
+			if E.dirty {
+				setStatus("No write since last change (add ! to override)")
+			} else {
+				disableRawMode()
+				os.Exit(0)
+			}
+		case "q!":
+			disableRawMode()
+			os.Exit(0)
+		case "w":
+			saveFile()
+		case "wq":
+			saveFile()
+			disableRawMode()
+			os.Exit(0)
+		default:
+			if cmd != "" {
+				setStatus("Not an editor command: %s", cmd)
+			}
+		}
+	case '/':
+		find()
+	case 'n':
+		findNext(1)
+	case 'N':
+		findNext(-1)
+	case 'h':
+		moveCursor(arrowLeft)
+	case 'j':
+		moveCursor(arrowDown)
+	case 'k':
+		moveCursor(arrowUp)
+	case 'l':
+		moveCursor(arrowRight)
+	case arrowLeft, arrowRight, arrowUp, arrowDown:
+		moveCursor(c)
+	case homeKey, '0':
+		moveLineStart()
+	case endKey, '$':
+		moveLineEnd()
+	case pageUp, pageDown:
+		if c == pageUp {
+			E.cy = E.rowoff
+		} else {
+			E.cy = min(len(E.rows)-1, E.rowoff+E.screenRows-1)
+		}
+		for i := 0; i < E.screenRows; i++ {
+			if c == pageUp {
+				moveCursor(arrowUp)
+			} else {
+				moveCursor(arrowDown)
+			}
+		}
+	case 'w':
+		moveWordForward(false)
+	case 'W':
+		moveWordForward(true)
+	case 'b':
+		moveWordBackward(false)
+	case 'B':
+		moveWordBackward(true)
+	case 'g':
+		if readKey() == 'g' {
+			moveFileStart()
+		}
+	case 'G':
+		moveFileEnd()
+	case 'm':
+		m := readKey()
+		if m >= 'a' && m <= 'z' {
+			i := m - 'a'
+			E.markSet[i] = true
+			E.marksX[i] = E.cx
+			E.marksY[i] = E.cy
+		}
+	case '\'':
+		m := readKey()
+		if m >= 'a' && m <= 'z' {
+			i := m - 'a'
+			if E.markSet[i] {
+				E.cy = min(max(0, E.marksY[i]), len(E.rows)-1)
+				if E.cy >= 0 && E.cy < len(E.rows) {
+					E.cx = min(E.marksX[i], len(E.rows[E.cy].s))
+				}
+			}
+		}
+	case '%':
+		// kept for compatibility placeholder
+	case 0x1b:
+		E.mode = modeNormal
+		E.selSX, E.selSY = -1, -1
+		setStatus("")
+	case '*':
+		selectWord()
+	}
+	return true
+}
+
+func initEditor() {
+	E = editor{mode: modeNormal, selSX: -1, selSY: -1}
+	updateWindowSize()
+}
+
+func main() {
+	initEditor()
+	if _, err := ioctlGetTermios(int(os.Stdin.Fd()), syscall.TCGETS); err != nil {
+		fmt.Fprintln(os.Stderr, "videre-go requires a TTY on stdin")
+		os.Exit(1)
+	}
+	if _, err := ioctlGetWinsize(int(os.Stdout.Fd()), syscall.TIOCGWINSZ); err != nil {
+		fmt.Fprintln(os.Stderr, "videre-go requires a TTY on stdout")
+		os.Exit(1)
+	}
+	enableRawMode()
+	defer disableRawMode()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGWINCH)
+	go func() {
+		for range sig {
+			updateWindowSize()
+		}
+	}()
+
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--" {
+		args = args[1:]
+	}
+	if len(args) >= 1 {
+		openFile(args[0])
+	}
+
+	for {
+		refreshScreen()
+		if !processKeypress() {
+			break
+		}
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+type winsize struct {
+	Row    uint16
+	Col    uint16
+	Xpixel uint16
+	Ypixel uint16
+}
+
+func ioctlGetWinsize(fd int, req uintptr) (*winsize, error) {
+	ws := &winsize{}
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(ws)))
+	if errno != 0 {
+		return nil, errno
+	}
+	return ws, nil
+}
+
+func ioctlGetTermios(fd int, req uintptr) (*syscall.Termios, error) {
+	t := &syscall.Termios{}
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(t)))
+	if errno != 0 {
+		return nil, errno
+	}
+	return t, nil
+}
+
+func ioctlSetTermios(fd int, req uintptr, t *syscall.Termios) error {
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(t)))
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}

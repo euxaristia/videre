@@ -147,3 +147,9 @@ clean:
 	rm -rf fuzz/output
 
 .PHONY: all clean install uninstall local-install local-uninstall test fuzz-setup fuzz-build fuzz-run fuzz-parallel fuzz-analyze security-scan memcheck
+
+# Go rewrite build
+go-build:
+	cd go && GOCACHE=/tmp/videre-go-cache go build ./cmd/videre
+
+.PHONY: go-build
