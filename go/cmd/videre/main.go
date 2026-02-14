@@ -2084,7 +2084,7 @@ func handleMouse() bool {
 			E.menuSelected = -1
 			return true
 		}
-		if b&0x80 != 0 || b == mouseRelease || b == (mouseLeft|mouseDrag) {
+		if b&0x80 != 0 || b&mouseDrag != 0 || b == mouseRelease {
 			return E.menuSelected != prevSelected
 		}
 		E.menuOpen = false
