@@ -170,6 +170,17 @@ func setStatus(format string, args ...any) {
 	E.statusTime = time.Now()
 }
 
+func ioErrText(err error) string {
+	if err == nil {
+		return ""
+	}
+	var pe *os.PathError
+	if errors.As(err, &pe) && pe.Err != nil {
+		return pe.Err.Error()
+	}
+	return err.Error()
+}
+
 func validateFilename(name string) bool {
 	if name == "" {
 		return false
@@ -809,7 +820,7 @@ func openFile(name string) {
 	}
 	f, err := os.Open(name)
 	if err != nil {
-		setStatus("Can't open file: %v", err)
+		setStatus("Can't open file: %s", ioErrText(err))
 		return
 	}
 	defer f.Close()
@@ -830,7 +841,7 @@ func openFile(name string) {
 			break
 		}
 		if rerr != nil {
-			setStatus("Read error: %v", rerr)
+			setStatus("Read error: %s", ioErrText(rerr))
 			break
 		}
 	}
@@ -865,7 +876,7 @@ func saveFile() {
 	}
 	data := rowsToString()
 	if err := os.WriteFile(E.filename, data, 0o644); err != nil {
-		setStatus("Can't save! I/O error: %v", err)
+		setStatus("Can't save! I/O error: %s", ioErrText(err))
 		return
 	}
 	E.dirty = false
