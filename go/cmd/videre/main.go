@@ -978,6 +978,38 @@ func moveCursor(key int) {
 	}
 }
 
+func moveLeftNoWrap() {
+	if E.cy < 0 || E.cy >= len(E.rows) {
+		E.cx = 0
+		E.preferred = 0
+		return
+	}
+	if E.cx > 0 {
+		E.cx = utf8PrevBoundary(E.rows[E.cy].s, E.cx)
+	}
+	E.preferred = E.cx
+}
+
+func moveRightNoWrap() {
+	if E.cy < 0 || E.cy >= len(E.rows) {
+		E.cx = 0
+		E.preferred = 0
+		return
+	}
+	line := E.rows[E.cy].s
+	limit := len(line)
+	if E.mode != modeInsert && limit > 0 {
+		limit = utf8PrevBoundary(line, limit)
+	}
+	if E.cx < limit {
+		E.cx = utf8NextBoundary(line, E.cx)
+		if E.cx > limit {
+			E.cx = limit
+		}
+	}
+	E.preferred = E.cx
+}
+
 func setClipboard(text []byte) {
 	if len(text) == 0 {
 		return
@@ -2555,13 +2587,13 @@ func processKeypress() bool {
 	case 'N':
 		findNext(-1)
 	case 'h':
-		moveCursor(arrowLeft)
+		moveLeftNoWrap()
 	case 'j':
 		moveCursor(arrowDown)
 	case 'k':
 		moveCursor(arrowUp)
 	case 'l':
-		moveCursor(arrowRight)
+		moveRightNoWrap()
 	case arrowLeft, arrowRight, arrowUp, arrowDown:
 		moveCursor(c)
 	case homeKey:
