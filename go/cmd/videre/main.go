@@ -41,7 +41,6 @@ const (
 const (
 	modeNormal = iota
 	modeInsert
-	modeCommand
 	modeVisual
 	modeVisualLine
 )
@@ -2177,7 +2176,12 @@ func handleMouse() bool {
 		return true
 	}
 
-	if b&0x80 != 0 || b == mouseRelease {
+	if b&0x80 != 0 || (b&0x3) == mouseRelease {
+		E.isDragging = false
+		return false
+	}
+	if b != mouseLeft && b != (mouseLeft|mouseDrag) {
+		// Ignore pure motion/unknown button states and ensure dragging doesn't stick.
 		E.isDragging = false
 		return false
 	}
