@@ -1551,22 +1551,22 @@ func isSelected(filerow, x int) bool {
 	return true
 }
 
-func syntaxColor(h uint8) int {
+func syntaxColorSeq(h uint8) string {
 	switch h {
 	case hlComment:
-		return 32
+		return "\x1b[32m"
 	case hlKeyword1:
-		return 33
+		return "\x1b[33m"
 	case hlKeyword2:
-		return 36
+		return "\x1b[36m"
 	case hlString:
-		return 35
+		return "\x1b[35m"
 	case hlNumber:
-		return 31
+		return "\x1b[31m"
 	case hlMatch:
-		return 34
+		return "\x1b[34m"
 	default:
-		return 37
+		return "\x1b[37m"
 	}
 }
 
@@ -1621,7 +1621,7 @@ func drawRows(b *bytes.Buffer) {
 			if len(line) > textCols {
 				line = line[:textCols]
 			}
-			curColor := -1
+			curColorSeq := ""
 			curSelected := false
 			hasSelection := E.mode == modeVisual || E.mode == modeVisualLine
 			sy, ey, sx, ex := 0, 0, 0, 0
@@ -1659,10 +1659,10 @@ func drawRows(b *bytes.Buffer) {
 					curSelected = sel
 				}
 				h := E.rows[fr].hl[i+start]
-				col := syntaxColor(h)
-				if col != curColor {
-					fmt.Fprintf(b, "\x1b[%dm", col)
-					curColor = col
+				seq := syntaxColorSeq(h)
+				if seq != curColorSeq {
+					b.WriteString(seq)
+					curColorSeq = seq
 				}
 				b.WriteByte(line[i])
 			}
