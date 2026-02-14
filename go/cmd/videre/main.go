@@ -1986,30 +1986,37 @@ func drawStatusBar(b *bytes.Buffer) {
 			i += n
 		}
 	}
-	loc := "0,0-1"
+	var loc [48]byte
+	locB := loc[:0]
 	if len(E.rows) > 0 {
-		var locBuf []byte
-		locBuf = strconv.AppendInt(locBuf, int64(E.cy+1), 10)
-		locBuf = append(locBuf, ',')
-		locBuf = strconv.AppendInt(locBuf, int64(E.cx+1), 10)
-		locBuf = append(locBuf, '-')
-		locBuf = strconv.AppendInt(locBuf, int64(rx+1), 10)
-		loc = string(locBuf)
+		locB = strconv.AppendInt(locB, int64(E.cy+1), 10)
+		locB = append(locB, ',')
+		locB = strconv.AppendInt(locB, int64(E.cx+1), 10)
+		locB = append(locB, '-')
+		locB = strconv.AppendInt(locB, int64(rx+1), 10)
+	} else {
+		locB = append(locB, "0,0-1"...)
 	}
-	right := " " + loc
-	if len(loc) < 14 {
-		right += strings.Repeat(" ", 14-len(loc))
+	locField := len(locB)
+	if locField < 14 {
+		locField = 14
 	}
-	right += " " + pos
-	if len(left) > E.screenCols-len(right) {
-		left = left[:max(0, E.screenCols-len(right))]
+	rightLen := 1 + locField + 1 + len(pos)
+	if len(left) > E.screenCols-rightLen {
+		left = left[:max(0, E.screenCols-rightLen)]
 	}
 	b.WriteString(left)
-	pad := E.screenCols - len(right) - len(left)
+	pad := E.screenCols - rightLen - len(left)
 	for i := 0; i < pad; i++ {
 		b.WriteByte(' ')
 	}
-	b.WriteString(right)
+	b.WriteByte(' ')
+	b.Write(locB)
+	for i := len(locB); i < 14; i++ {
+		b.WriteByte(' ')
+	}
+	b.WriteByte(' ')
+	b.WriteString(pos)
 	b.WriteString("\x1b[m\r\n")
 }
 
