@@ -320,7 +320,8 @@ func readKey() int {
 	}
 
 	if b == '[' {
-		seq := make([]byte, 0, 32)
+		var seq [32]byte
+		seqLen := 0
 		for i := 0; i < 31; i++ {
 			nb, has, rerr := readByteTimeout(fd, 1)
 			if rerr != nil {
@@ -332,16 +333,18 @@ func readKey() int {
 			if !has {
 				break
 			}
-			seq = append(seq, nb)
+			seq[seqLen] = nb
+			seqLen++
 			if nb == '~' || nb == 'm' || nb == 'M' || (nb >= 'A' && nb <= 'Z') || (nb >= 'a' && nb <= 'z') {
 				break
 			}
 		}
-		if len(seq) == 0 {
+		if seqLen == 0 {
 			return 0x1b
 		}
+		seqb := seq[:seqLen]
 		// Bracketed paste start: ESC [ 200 ~
-		if len(seq) == 4 && seq[0] == '2' && seq[1] == '0' && seq[2] == '0' && seq[3] == '~' {
+		if len(seqb) == 4 && seqb[0] == '2' && seqb[1] == '0' && seqb[2] == '0' && seqb[3] == '~' {
 			var paste bytes.Buffer
 			for {
 				ch, rerr := readByte(fd)
@@ -357,24 +360,27 @@ func readKey() int {
 						die(rerr)
 					}
 					if has && nb == '[' {
-						endSeq := make([]byte, 0, 8)
+						var endSeq [8]byte
+						endLen := 0
 						for i := 0; i < 5; i++ {
 							b2, has2, _ := readByteTimeout(fd, 1)
 							if !has2 {
 								break
 							}
-							endSeq = append(endSeq, b2)
+							endSeq[endLen] = b2
+							endLen++
 							if b2 == '~' {
 								break
 							}
 						}
-						if len(endSeq) == 4 && endSeq[0] == '2' && endSeq[1] == '0' && endSeq[2] == '1' && endSeq[3] == '~' {
+						endb := endSeq[:endLen]
+						if len(endb) == 4 && endb[0] == '2' && endb[1] == '0' && endb[2] == '1' && endb[3] == '~' {
 							E.pasteBuffer = paste.Bytes()
 							return pasteEvent
 						}
 						paste.WriteByte(0x1b)
 						paste.WriteByte('[')
-						paste.Write(endSeq)
+						paste.Write(endb)
 						continue
 					}
 					paste.WriteByte(0x1b)
@@ -387,21 +393,21 @@ func readKey() int {
 			}
 		}
 		// SGR mouse event: ESC [ <b;x;yM / m
-		if len(seq) >= 2 && seq[0] == '<' && (seq[len(seq)-1] == 'm' || seq[len(seq)-1] == 'M') {
-			mb, mx, my, ok := parseSGRMouse(seq)
+		if len(seqb) >= 2 && seqb[0] == '<' && (seqb[len(seqb)-1] == 'm' || seqb[len(seqb)-1] == 'M') {
+			mb, mx, my, ok := parseSGRMouse(seqb)
 			if ok {
 				E.mouseB = mb
 				E.mouseX = mx
 				E.mouseY = my
-				if seq[len(seq)-1] == 'm' {
+				if seqb[len(seqb)-1] == 'm' {
 					E.mouseB |= 0x80
 				}
 				return mouseEvent
 			}
 		}
 		// CSI numeric events like 1~,3~,...
-		if len(seq) >= 2 && seq[len(seq)-1] == '~' && seq[0] >= '0' && seq[0] <= '9' {
-			switch seq[0] {
+		if len(seqb) >= 2 && seqb[len(seqb)-1] == '~' && seqb[0] >= '0' && seqb[0] <= '9' {
+			switch seqb[0] {
 			case '1', '7':
 				return homeKey
 			case '3':
@@ -414,7 +420,7 @@ func readKey() int {
 				return pageDown
 			}
 		}
-		switch seq[len(seq)-1] {
+		switch seqb[len(seqb)-1] {
 		case 'A':
 			return arrowUp
 		case 'B':
@@ -2157,8 +2163,7 @@ func processKeypress() bool {
 		}
 	}
 	if c == mouseEvent {
-		handleMouse()
-		return true
+		return handleMouse()
 	}
 	if c == pasteEvent {
 		if len(E.pasteBuffer) > 0 {
@@ -2446,10 +2451,10 @@ func main() {
 		openFile(args[0])
 	}
 
+	refreshScreen()
 	for {
-		refreshScreen()
-		if !processKeypress() {
-			break
+		if processKeypress() {
+			refreshScreen()
 		}
 	}
 }
