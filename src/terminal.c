@@ -7,9 +7,22 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <signal.h>
 
 EditorConfig E;
 static int raw_mode_enabled = 0;
+volatile sig_atomic_t window_resized = 0;
+
+void handleSigwinch(int sig) {
+    (void)sig;
+    window_resized = 1;
+}
+
+void updateWindowSize() {
+    getWindowSize(&E.screenrows, &E.screencols);
+    if (E.screenrows < 3) E.screenrows = 1;
+    else E.screenrows -= 2; // Reserve space for status bar and message bar
+}
 
 void die(const char *s) {
     // Force terminal cleanup before exit
@@ -53,6 +66,12 @@ void enableRawMode() {
 
     if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) == -1) die("tcsetattr");
 
+    struct sigaction sa;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_handler = handleSigwinch;
+    sa.sa_flags = 0; // Do NOT use SA_RESTART so read() is interrupted
+    if (sigaction(SIGWINCH, &sa, NULL) == -1) die("sigaction");
+
     // Enter alternate screen, enable mouse, enable bracketed paste, clear screen
     write(STDOUT_FILENO, "\x1b[?1049h", 8);
     write(STDOUT_FILENO, "\x1b[?1003h\x1b[?1006h", 16);
@@ -65,6 +84,14 @@ int readKey() {
     int nread;
     char c;
     while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        if (nread == -1 && errno == EINTR) {
+            if (window_resized) {
+                window_resized = 0;
+                updateWindowSize();
+                return RESIZE_EVENT;
+            }
+            continue;
+        }
         if (nread == -1 && errno != EAGAIN) die("read");
     }
 

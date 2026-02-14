@@ -7,6 +7,8 @@ int getWindowSize(int *rows, int *cols) {
     return 0;
 }
 
+void updateWindowSize() {}
+
 int readKey() { return 0; }
 void enableRawMode() {}
 void disableRawMode() {}

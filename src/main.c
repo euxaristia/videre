@@ -774,6 +774,8 @@ int editorProcessKeypress() {
     static int quit_times = 1;
     int c = readKey();
     
+    if (c == RESIZE_EVENT) return 1;
+
     if (E.menu_open && c != MOUSE_EVENT) {
         E.menu_open = 0;
         if (c == '\x1b') return 1;

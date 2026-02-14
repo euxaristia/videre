@@ -22,7 +22,8 @@ enum editorKey {
     FIND_CHAR,
     FIND_CHAR_BACK,
     TILL_CHAR,
-    TILL_CHAR_BACK
+    TILL_CHAR_BACK,
+    RESIZE_EVENT
 };
 
 enum editorMode {

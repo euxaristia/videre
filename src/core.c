@@ -75,9 +75,7 @@ void initEditor() {
     E.menu_x = E.menu_y = 0;
     E.menu_selected = 0;
 
-    getWindowSize(&E.screenrows, &E.screencols);
-    if (E.screenrows < 3) E.screenrows = 1;
-    else E.screenrows -= 2; 
+    updateWindowSize();
 }
 
 int editorGetGutterWidth(void) {
