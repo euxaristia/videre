@@ -2063,6 +2063,8 @@ var menuItems = []string{
 var contextMenuW int
 var contextMenuHLine string
 var contextMenuLabels []string
+var contextMenuTopBorder string
+var contextMenuBottomBorder string
 
 func initContextMenuMetrics() {
 	w := 1
@@ -2073,6 +2075,8 @@ func initContextMenuMetrics() {
 	}
 	contextMenuW = w
 	contextMenuHLine = strings.Repeat("─", w)
+	contextMenuTopBorder = "\x1b[48;5;235m\x1b[38;5;239m┌" + contextMenuHLine + "┐"
+	contextMenuBottomBorder = "\x1b[48;5;235m\x1b[38;5;239m└" + contextMenuHLine + "┘\x1b[m"
 	contextMenuLabels = make([]string, len(menuItems))
 	for i, item := range menuItems {
 		label := item
@@ -2120,9 +2124,8 @@ func drawContextMenu(b *bytes.Buffer) {
 	if y < 1 {
 		y = 1
 	}
-	hline := contextMenuHLine
 	writeCursorPos(b, y, x)
-	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌" + hline + "┐")
+	b.WriteString(contextMenuTopBorder)
 	for i := range menuItems {
 		writeCursorPos(b, y+i+1, x)
 		label := contextMenuLabels[i]
@@ -2140,7 +2143,7 @@ func drawContextMenu(b *bytes.Buffer) {
 		}
 	}
 	writeCursorPos(b, y+len(menuItems)+1, x)
-	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m└" + hline + "┘\x1b[m")
+	b.WriteString(contextMenuBottomBorder)
 }
 
 func scroll() {
