@@ -61,7 +61,6 @@ const (
 const (
 	mouseLeft      = 0
 	mouseRight     = 2
-	mouseRelease   = 3
 	mouseWheelUp   = 64
 	mouseWheelDown = 65
 	mouseDrag      = 32
@@ -2303,7 +2302,7 @@ func handleMouse() bool {
 			E.menuSelected = -1
 			return true
 		}
-		if b&0x80 != 0 || b&mouseDrag != 0 || b == mouseRelease {
+		if b&0x80 != 0 || b&mouseDrag != 0 {
 			return E.menuSelected != prevSelected
 		}
 		E.menuOpen = false
@@ -2342,7 +2341,7 @@ func handleMouse() bool {
 		return true
 	}
 
-	if b&0x80 != 0 || (b&0x3) == mouseRelease {
+	if b&0x80 != 0 {
 		E.isDragging = false
 		return false
 	}
