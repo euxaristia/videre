@@ -866,6 +866,9 @@ func moveCursor(key int) {
 		} else if E.cy > 0 {
 			E.cy--
 			E.cx = len(E.rows[E.cy].s)
+			if E.mode != modeInsert && E.cx > 0 {
+				E.cx = utf8PrevBoundary(E.rows[E.cy].s, E.cx)
+			}
 		}
 	case arrowRight:
 		if r != nil && E.cx < len(r.s) {
@@ -2129,39 +2132,43 @@ func handleMouse() bool {
 	}
 	prevCX, prevCY := E.cx, E.cy
 
-	if len(E.rows) == 0 {
-		return false
+	applyMousePosition := func() bool {
+		if len(E.rows) == 0 {
+			return false
+		}
+		fr := y - 1 + E.rowoff
+		if fr < 0 || fr >= len(E.rows) {
+			return false
+		}
+		E.cy = fr
+		g := gutterWidth()
+		gcols := 0
+		if g > 0 {
+			gcols = g + 1
+		}
+		textX := x - gcols
+		target := 0
+		if textX > 1 {
+			target = textX - 1
+		}
+		start := E.coloff
+		if start > len(E.rows[E.cy].s) {
+			start = len(E.rows[E.cy].s)
+		}
+		rel := byteIndexFromDisplayCol(E.rows[E.cy].s[start:], target)
+		E.cx = start + rel
+		if E.mode != modeInsert && len(E.rows[E.cy].s) > 0 && E.cx >= len(E.rows[E.cy].s) {
+			E.cx = len(E.rows[E.cy].s) - 1
+		}
+		E.preferred = E.cx
+		return true
 	}
-
-	fr := y - 1 + E.rowoff
-	if fr < 0 || fr >= len(E.rows) {
-		return false
-	}
-	E.cy = fr
-
-	g := gutterWidth()
-	gcols := 0
-	if g > 0 {
-		gcols = g + 1
-	}
-	textX := x - gcols
-	target := 0
-	if textX > 1 {
-		target = textX - 1
-	}
-	start := E.coloff
-	if start > len(E.rows[E.cy].s) {
-		start = len(E.rows[E.cy].s)
-	}
-	rel := byteIndexFromDisplayCol(E.rows[E.cy].s[start:], target)
-	E.cx = start + rel
-	if E.mode != modeInsert && len(E.rows[E.cy].s) > 0 && E.cx >= len(E.rows[E.cy].s) {
-		E.cx = len(E.rows[E.cy].s) - 1
-	}
-	E.preferred = E.cx
 
 	if b == (mouseLeft | mouseDrag) {
 		if !E.isDragging {
+			return false
+		}
+		if !applyMousePosition() {
 			return false
 		}
 		if E.mode == modeNormal {
@@ -2171,6 +2178,9 @@ func handleMouse() bool {
 	}
 
 	if b == mouseLeft {
+		if !applyMousePosition() {
+			return false
+		}
 		now := time.Now()
 		doubleClick := x == E.lastClickX && y == E.lastClickY &&
 			!E.lastClickTime.IsZero() && now.Sub(E.lastClickTime) < 500*time.Millisecond
