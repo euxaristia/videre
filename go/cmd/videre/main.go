@@ -1989,9 +1989,19 @@ func drawStatusBar(b *bytes.Buffer) {
 	}
 	loc := "0,0-1"
 	if len(E.rows) > 0 {
-		loc = fmt.Sprintf("%d,%d-%d", E.cy+1, E.cx+1, rx+1)
+		var locBuf []byte
+		locBuf = strconv.AppendInt(locBuf, int64(E.cy+1), 10)
+		locBuf = append(locBuf, ',')
+		locBuf = strconv.AppendInt(locBuf, int64(E.cx+1), 10)
+		locBuf = append(locBuf, '-')
+		locBuf = strconv.AppendInt(locBuf, int64(rx+1), 10)
+		loc = string(locBuf)
 	}
-	right := fmt.Sprintf(" %-14s %s", loc, pos)
+	right := " " + loc
+	if len(loc) < 14 {
+		right += strings.Repeat(" ", 14-len(loc))
+	}
+	right += " " + pos
 	if len(left) > E.screenCols-len(right) {
 		left = left[:max(0, E.screenCols-len(right))]
 	}
