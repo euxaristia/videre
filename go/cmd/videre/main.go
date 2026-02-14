@@ -2558,6 +2558,8 @@ func processKeypress() bool {
 					E.cx = min(E.marksX[i], len(E.rows[E.cy].s))
 				}
 				E.preferred = E.cx
+			} else {
+				setStatus("E20: Mark not set")
 			}
 		}
 	case '%':
