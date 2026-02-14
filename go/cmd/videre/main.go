@@ -1744,25 +1744,15 @@ func isSelected(filerow, x int) bool {
 	return true
 }
 
-func syntaxColorSeq(h uint8) string {
-	switch h {
-	case hlComment:
-		return "\x1b[32m"
-	case hlKeyword1:
-		return "\x1b[33m"
-	case hlKeyword2:
-		return "\x1b[36m"
-	case hlString:
-		return "\x1b[35m"
-	case hlNumber:
-		return "\x1b[31m"
-	case hlMatch:
-		return "\x1b[34m"
-	case hlMatchCursor:
-		return "\x1b[33m"
-	default:
-		return "\x1b[37m"
-	}
+var syntaxColorLUT = [...]string{
+	hlNormal:      "\x1b[37m",
+	hlComment:     "\x1b[32m",
+	hlKeyword1:    "\x1b[33m",
+	hlKeyword2:    "\x1b[36m",
+	hlString:      "\x1b[35m",
+	hlNumber:      "\x1b[31m",
+	hlMatch:       "\x1b[34m",
+	hlMatchCursor: "\x1b[33m",
 }
 
 func drawRows(b *bytes.Buffer) {
@@ -1881,7 +1871,10 @@ func drawRows(b *bytes.Buffer) {
 						}
 						curSelected = sel
 					}
-					seq := syntaxColorSeq(h)
+					seq := syntaxColorLUT[hlNormal]
+					if int(h) < len(syntaxColorLUT) {
+						seq = syntaxColorLUT[h]
+					}
 					if seq != curColorSeq {
 						b.WriteString(seq)
 						curColorSeq = seq
