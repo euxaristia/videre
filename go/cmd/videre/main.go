@@ -2731,7 +2731,7 @@ func processKeypress() bool {
 }
 
 func initEditor() {
-	E = editor{mode: modeNormal, selSX: -1, selSY: -1, quitWarnRemaining: 1, menuSelected: -1}
+	E = editor{mode: modeNormal, selSX: -1, selSY: -1, quitWarnRemaining: 1, menuSelected: 0}
 	updateWindowSize()
 }
 
