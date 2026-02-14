@@ -1712,6 +1712,7 @@ func drawRows(b *bytes.Buffer) {
 			}
 			curColorSeq := ""
 			curSelected := false
+			curReverse := 0
 			hasSelection := E.mode == modeVisual || E.mode == modeVisualLine
 			sy, ey, sx, ex := 0, 0, 0, 0
 			if hasSelection {
@@ -1748,14 +1749,45 @@ func drawRows(b *bytes.Buffer) {
 					curSelected = sel
 				}
 				h := E.rows[fr].hl[i+start]
-				seq := syntaxColorSeq(h)
-				if seq != curColorSeq {
-					b.WriteString(seq)
-					curColorSeq = seq
+				reverse := 0
+				if h == hlMatch {
+					reverse = 1
+				} else if h == hlMatchCursor {
+					reverse = 2
+				}
+				prevReverse := curReverse
+				if reverse != curReverse {
+					curReverse = reverse
+					if curReverse == 1 {
+						b.WriteString("\x1b[7m\x1b[48;5;94m")
+					} else if curReverse == 2 {
+						b.WriteString("\x1b[7m\x1b[48;5;220m")
+					} else {
+						b.WriteString("\x1b[27m")
+					}
+				}
+				if curReverse == 0 {
+					if prevReverse != 0 {
+						// Force background re-sync after leaving reverse-video mode.
+						curSelected = !sel
+					}
+					if sel != curSelected {
+						if sel {
+							b.WriteString("\x1b[48;5;242m")
+						} else {
+							b.WriteString("\x1b[49m")
+						}
+						curSelected = sel
+					}
+					seq := syntaxColorSeq(h)
+					if seq != curColorSeq {
+						b.WriteString(seq)
+						curColorSeq = seq
+					}
 				}
 				b.WriteByte(line[i])
 			}
-			b.WriteString("\x1b[39m\x1b[49m")
+			b.WriteString("\x1b[27m\x1b[39m\x1b[49m")
 		}
 		b.WriteString("\x1b[K\r\n")
 	}
