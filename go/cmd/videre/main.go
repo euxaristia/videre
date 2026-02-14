@@ -2482,7 +2482,9 @@ func processKeypress() bool {
 	case ';':
 		repeatCharSearch(false)
 	case ',':
-		repeatCharSearch(true)
+		if E.lastSearchChar != 0 {
+			_ = findChar(E.lastSearchChar, -1, false)
+		}
 	case 0x1b:
 		E.mode = modeNormal
 		E.selSX, E.selSY = -1, -1
