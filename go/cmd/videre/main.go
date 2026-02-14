@@ -1937,6 +1937,11 @@ func drawStatusBar(b *bytes.Buffer) {
 				i++
 				continue
 			}
+			if row[i] < utf8.RuneSelf {
+				rx++
+				i++
+				continue
+			}
 			_, n := utf8.DecodeRune(row[i:])
 			if n <= 0 {
 				n = 1
