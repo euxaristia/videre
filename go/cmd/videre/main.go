@@ -2046,6 +2046,7 @@ var menuItems = []string{
 
 var contextMenuW int
 var contextMenuHLine string
+var contextMenuLabels []string
 
 func initContextMenuMetrics() {
 	w := 1
@@ -2056,6 +2057,18 @@ func initContextMenuMetrics() {
 	}
 	contextMenuW = w
 	contextMenuHLine = strings.Repeat("─", w)
+	contextMenuLabels = make([]string, len(menuItems))
+	for i, item := range menuItems {
+		label := item
+		if i == 4 {
+			label = contextMenuHLine
+		} else if len(label) < w {
+			label += strings.Repeat(" ", w-len(label))
+		} else if len(label) > w {
+			label = label[:w]
+		}
+		contextMenuLabels[i] = label
+	}
 }
 
 var welcomeLines = []string{
@@ -2094,16 +2107,9 @@ func drawContextMenu(b *bytes.Buffer) {
 	hline := contextMenuHLine
 	writeCursorPos(b, y, x)
 	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌" + hline + "┐")
-	for i, item := range menuItems {
+	for i := range menuItems {
 		writeCursorPos(b, y+i+1, x)
-		label := item
-		if i == 4 {
-			label = hline
-		} else if len(label) < innerW {
-			label += strings.Repeat(" ", innerW-len(label))
-		} else if len(label) > innerW {
-			label = label[:innerW]
-		}
+		label := contextMenuLabels[i]
 		if i == E.menuSelected {
 			b.WriteString("\x1b[48;5;24m\x1b[38;5;255m│")
 			b.WriteString(label)
