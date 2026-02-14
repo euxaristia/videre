@@ -1775,6 +1775,16 @@ func drawRows(b *bytes.Buffer) {
 	if textCols < 1 {
 		textCols = 1
 	}
+	hasSelection := E.mode == modeVisual || E.mode == modeVisualLine
+	lineSelection := E.mode == modeVisualLine
+	sy, ey, sx, ex := 0, 0, 0, 0
+	if hasSelection {
+		sy, ey, sx, ex = E.selSY, E.cy, E.selSX, E.cx
+		if sy > ey || (sy == ey && sx > ex) {
+			sy, ey = ey, sy
+			sx, ex = ex, sx
+		}
+	}
 	for y := 0; y < E.screenRows; y++ {
 		fr := y + E.rowoff
 		if fr >= len(E.rows) {
@@ -1814,20 +1824,11 @@ func drawRows(b *bytes.Buffer) {
 			curColorSeq := ""
 			curSelected := false
 			curReverse := 0
-			hasSelection := E.mode == modeVisual || E.mode == modeVisualLine
-			sy, ey, sx, ex := 0, 0, 0, 0
-			if hasSelection {
-				sy, ey, sx, ex = E.selSY, E.cy, E.selSX, E.cx
-				if sy > ey || (sy == ey && sx > ex) {
-					sy, ey = ey, sy
-					sx, ex = ex, sx
-				}
-			}
 			for i := 0; i < len(line); i++ {
 				sel := false
 				if hasSelection {
 					x := i + start
-					if E.mode == modeVisualLine {
+					if lineSelection {
 						sel = fr >= sy && fr <= ey
 					} else if fr >= sy && fr <= ey {
 						if sy == ey {
