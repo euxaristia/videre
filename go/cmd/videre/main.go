@@ -735,7 +735,6 @@ func cloneRows(src []row) []row {
 	for i := range src {
 		out[i].idx = src[i].idx
 		out[i].s = append([]byte(nil), src[i].s...)
-		out[i].hl = append([]uint8(nil), src[i].hl...)
 		out[i].open = src[i].open
 	}
 	return out
@@ -752,6 +751,7 @@ func applyState(s undoState) {
 	E.cx = s.cx
 	E.cy = s.cy
 	E.dirty = true
+	updateAllSyntax()
 }
 
 func doUndo() {
