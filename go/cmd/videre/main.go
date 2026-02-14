@@ -2085,6 +2085,7 @@ func handleMouse() bool {
 		E.isDragging = false
 		return false
 	}
+	prevCX, prevCY := E.cx, E.cy
 
 	if len(E.rows) == 0 {
 		return false
@@ -2152,7 +2153,7 @@ func handleMouse() bool {
 		E.lastClickTime = now
 		return true
 	}
-	return false
+	return E.cx != prevCX || E.cy != prevCY
 }
 
 func refreshScreen() {
