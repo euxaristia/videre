@@ -2269,7 +2269,7 @@ func prompt(p string, cb func(string, int)) string {
 				return string(buf)
 			}
 		default:
-			if c >= 32 && c <= 255 && c != 127 {
+			if c >= 32 && c < 128 {
 				buf = append(buf, byte(c))
 			}
 		}
