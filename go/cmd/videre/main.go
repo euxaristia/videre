@@ -1946,6 +1946,16 @@ var menuItems = []string{
 	" Redo      ",
 }
 
+func contextMenuInnerWidth() int {
+	w := 1
+	for _, item := range menuItems {
+		if len(item) > w {
+			w = len(item)
+		}
+	}
+	return w
+}
+
 var welcomeLines = []string{
 	"VIDERE v0.1.0",
 	"",
@@ -1964,7 +1974,8 @@ func drawContextMenu(b *bytes.Buffer) {
 	}
 	x := E.menuX
 	y := E.menuY
-	menuW := 13
+	innerW := contextMenuInnerWidth()
+	menuW := innerW + 2
 	menuH := len(menuItems) + 2
 	if x+menuW > E.screenCols {
 		x = E.screenCols - menuW
@@ -1978,30 +1989,34 @@ func drawContextMenu(b *bytes.Buffer) {
 	if y < 1 {
 		y = 1
 	}
+	hline := strings.Repeat("─", innerW)
 	fmt.Fprintf(b, "\x1b[%d;%dH", y, x)
-	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌───────────┐")
+	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌" + hline + "┐")
 	for i, item := range menuItems {
 		fmt.Fprintf(b, "\x1b[%d;%dH", y+i+1, x)
+		label := item
+		if i == 4 {
+			label = hline
+		} else if len(label) < innerW {
+			label += strings.Repeat(" ", innerW-len(label))
+		} else if len(label) > innerW {
+			label = label[:innerW]
+		}
 		if i == E.menuSelected {
 			b.WriteString("\x1b[48;5;24m\x1b[38;5;255m│")
-			if i == 4 {
-				b.WriteString("───────────")
-			} else {
-				b.WriteString(item)
-			}
+			b.WriteString(label)
 			b.WriteString("│")
 		} else {
 			b.WriteString("\x1b[48;5;235m\x1b[38;5;239m│\x1b[38;5;252m")
 			if i == 4 {
-				b.WriteString("\x1b[38;5;239m───────────")
-			} else {
-				b.WriteString(item)
+				b.WriteString("\x1b[38;5;239m")
 			}
+			b.WriteString(label)
 			b.WriteString("\x1b[38;5;239m│")
 		}
 	}
 	fmt.Fprintf(b, "\x1b[%d;%dH", y+len(menuItems)+1, x)
-	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m└───────────┘\x1b[m")
+	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m└" + hline + "┘\x1b[m")
 }
 
 func scroll() {
@@ -2114,7 +2129,7 @@ func handleMouse() bool {
 
 	if E.menuOpen {
 		prevSelected := E.menuSelected
-		menuW := 13
+		menuW := contextMenuInnerWidth() + 2
 		menuH := len(menuItems) + 2
 		mx, my := E.menuX, E.menuY
 		if mx+menuW > E.screenCols {
