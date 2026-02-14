@@ -169,6 +169,33 @@ func setStatus(format string, args ...any) {
 	E.statusTime = time.Now()
 }
 
+func validateFilename(name string) bool {
+	if name == "" {
+		return false
+	}
+	if strings.Contains(name, "..") {
+		return false
+	}
+	if filepath.IsAbs(name) && len(name) > 4096 {
+		return false
+	}
+	const dangerous = "<>\"|&;$`'()[]{}*?~"
+	for i := 0; i < len(name); i++ {
+		if strings.ContainsRune(dangerous, rune(name[i])) {
+			return false
+		}
+	}
+	if st, err := os.Stat(name); err == nil {
+		if !st.Mode().IsRegular() {
+			return false
+		}
+		if st.Size() > 100*1024*1024 {
+			return false
+		}
+	}
+	return true
+}
+
 func setSearchPattern(p string) {
 	E.searchPattern = p
 	if p == "" {
@@ -737,6 +764,10 @@ func doRedo() {
 }
 
 func openFile(name string) {
+	if !validateFilename(name) {
+		setStatus("Invalid filename or path")
+		return
+	}
 	f, err := os.Open(name)
 	if err != nil {
 		setStatus("Can't open file: %v", err)
@@ -788,6 +819,10 @@ func saveFile() {
 		}
 		E.filename = name
 		selectSyntax()
+	}
+	if !validateFilename(E.filename) {
+		setStatus("Invalid filename for saving")
+		return
 	}
 	if err := os.WriteFile(E.filename, rowsToString(), 0o644); err != nil {
 		setStatus("Can't save: %v", err)
