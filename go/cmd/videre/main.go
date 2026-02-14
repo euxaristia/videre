@@ -53,6 +53,7 @@ const (
 	hlString
 	hlNumber
 	hlMatch
+	hlMatchCursor
 	hlVisual
 )
 
@@ -601,7 +602,11 @@ func updateSyntax(r *row) {
 			}
 			m += off
 			for i := m; i < m+len(q) && i < len(r.hl); i++ {
-				r.hl[i] = hlMatch
+				if r.idx == E.cy && m <= E.cx && E.cx < m+len(q) {
+					r.hl[i] = hlMatchCursor
+				} else {
+					r.hl[i] = hlMatch
+				}
 			}
 			off = m + 1
 		}
@@ -1652,6 +1657,8 @@ func syntaxColorSeq(h uint8) string {
 		return "\x1b[31m"
 	case hlMatch:
 		return "\x1b[34m"
+	case hlMatchCursor:
+		return "\x1b[33m"
 	default:
 		return "\x1b[37m"
 	}
