@@ -2445,7 +2445,7 @@ func processKeypress() bool {
 		paste()
 	case 3:
 		if E.dirty && E.quitWarnRemaining > 0 {
-			setStatus("WARNING!!! Unsaved changes. Press Ctrl-C %d more times to quit.", E.quitWarnRemaining)
+			setStatus("WARNING!!! File has unsaved changes. Press Ctrl-C %d more times to quit.", E.quitWarnRemaining)
 			E.quitWarnRemaining--
 			return true
 		}
