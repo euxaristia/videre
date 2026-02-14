@@ -224,7 +224,7 @@ func setSearchPattern(p string) {
 		E.searchBytes = nil
 		return
 	}
-	E.searchBytes = []byte(p)
+	E.searchBytes = append(E.searchBytes[:0], p...)
 }
 
 func getWindowSize() (int, int) {
