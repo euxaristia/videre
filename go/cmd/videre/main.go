@@ -91,6 +91,9 @@ type editor struct {
 	selSX, selSY      int
 	searchPattern     string
 	lastSearchChar    byte
+	lastSearchDir     int
+	lastSearchTill    bool
+	quitWarnRemaining int
 	marksX            [26]int
 	marksY            [26]int
 	markSet           [26]bool
@@ -745,6 +748,19 @@ func moveWordBackward(big bool) {
 }
 
 func moveLineStart() { E.cx, E.preferred = 0, 0 }
+
+func moveFirstNonWhitespace() {
+	if E.cy < 0 || E.cy >= len(E.rows) {
+		return
+	}
+	col := 0
+	line := E.rows[E.cy].s
+	for col < len(line) && (line[col] == ' ' || line[col] == '\t') {
+		col++
+	}
+	E.cx, E.preferred = col, col
+}
+
 func moveLineEnd() {
 	if E.cy >= 0 && E.cy < len(E.rows) {
 		E.cx = len(E.rows[E.cy].s)
@@ -759,6 +775,330 @@ func moveFileEnd() {
 	E.cy = len(E.rows) - 1
 	E.cx = len(E.rows[E.cy].s)
 	E.preferred = E.cx
+}
+
+func moveWordEnd(big bool) {
+	if len(E.rows) == 0 {
+		return
+	}
+	r, c := E.cy, E.cx+1
+	for r < len(E.rows) {
+		line := E.rows[r].s
+		for c < len(line) && (line[c] == ' ' || line[c] == '\t') {
+			c++
+		}
+		if c < len(line) {
+			if big {
+				for c < len(line)-1 && line[c+1] != ' ' && line[c+1] != '\t' {
+					c++
+				}
+			} else {
+				if isWordChar(line[c]) {
+					for c < len(line)-1 && isWordChar(line[c+1]) {
+						c++
+					}
+				} else {
+					for c < len(line)-1 && !isWordChar(line[c+1]) && line[c+1] != ' ' && line[c+1] != '\t' {
+						c++
+					}
+				}
+			}
+			E.cy, E.cx, E.preferred = r, c, c
+			return
+		}
+		r++
+		c = 0
+	}
+}
+
+func matchBracket() {
+	if E.cy < 0 || E.cy >= len(E.rows) || E.cx < 0 || E.cx >= len(E.rows[E.cy].s) {
+		return
+	}
+	cur := E.rows[E.cy].s[E.cx]
+	var target byte
+	dir := 0
+	switch cur {
+	case '(':
+		target, dir = ')', 1
+	case ')':
+		target, dir = '(', -1
+	case '[':
+		target, dir = ']', 1
+	case ']':
+		target, dir = '[', -1
+	case '{':
+		target, dir = '}', 1
+	case '}':
+		target, dir = '{', -1
+	default:
+		return
+	}
+	depth := 1
+	ry, rx := E.cy, E.cx+dir
+	for ry >= 0 && ry < len(E.rows) {
+		line := E.rows[ry].s
+		for rx >= 0 && rx < len(line) {
+			ch := line[rx]
+			if ch == cur {
+				depth++
+			} else if ch == target {
+				depth--
+				if depth == 0 {
+					E.cy, E.cx, E.preferred = ry, rx, rx
+					return
+				}
+			}
+			rx += dir
+		}
+		ry += dir
+		if dir > 0 {
+			rx = 0
+		} else if ry >= 0 {
+			rx = len(E.rows[ry].s) - 1
+		}
+	}
+}
+
+func isBlankRow(idx int) bool {
+	if idx < 0 || idx >= len(E.rows) {
+		return true
+	}
+	line := E.rows[idx].s
+	if len(line) == 0 {
+		return true
+	}
+	for _, ch := range line {
+		if ch != ' ' && ch != '\t' {
+			return false
+		}
+	}
+	return true
+}
+
+func movePreviousParagraph() {
+	if len(E.rows) == 0 {
+		return
+	}
+	row := E.cy
+	if !isBlankRow(row) {
+		for row > 0 && !isBlankRow(row-1) {
+			row--
+		}
+	}
+	for row > 0 && isBlankRow(row-1) {
+		row--
+	}
+	for row > 0 && !isBlankRow(row-1) {
+		row--
+	}
+	E.cy, E.cx, E.preferred = row, 0, 0
+}
+
+func moveNextParagraph() {
+	if len(E.rows) == 0 {
+		return
+	}
+	row := E.cy
+	if !isBlankRow(row) {
+		for row < len(E.rows)-1 && !isBlankRow(row+1) {
+			row++
+		}
+	}
+	for row < len(E.rows)-1 && isBlankRow(row+1) {
+		row++
+	}
+	if row < len(E.rows)-1 {
+		row++
+	}
+	E.cy, E.cx, E.preferred = row, 0, 0
+}
+
+func changeCase(toUpper bool) {
+	if E.mode != modeVisual && E.mode != modeVisualLine {
+		return
+	}
+	sy, sx := E.selSY, E.selSX
+	ey, ex := E.cy, E.cx
+	if sy > ey || (sy == ey && sx > ex) {
+		sy, ey = ey, sy
+		sx, ex = ex, sx
+	}
+	saveUndo()
+	for y := sy; y <= ey && y < len(E.rows); y++ {
+		line := E.rows[y].s
+		start := 0
+		end := len(line)
+		if y == sy {
+			start = max(0, sx)
+		}
+		if y == ey {
+			end = min(len(line), ex+1)
+		}
+		for i := start; i < end; i++ {
+			if toUpper {
+				line[i] = byte(unicode.ToUpper(rune(line[i])))
+			} else {
+				line[i] = byte(unicode.ToLower(rune(line[i])))
+			}
+		}
+		updateSyntax(&E.rows[y])
+	}
+	E.mode = modeNormal
+	E.selSX, E.selSY = -1, -1
+}
+
+func indentSelection(indent bool) {
+	if E.mode != modeVisual && E.mode != modeVisualLine {
+		return
+	}
+	sy, ey := E.selSY, E.cy
+	if sy > ey {
+		sy, ey = ey, sy
+	}
+	saveUndo()
+	for y := sy; y <= ey && y < len(E.rows); y++ {
+		if indent {
+			E.rows[y].s = append([]byte("    "), E.rows[y].s...)
+		} else {
+			trim := 0
+			for trim < 4 && trim < len(E.rows[y].s) && E.rows[y].s[trim] == ' ' {
+				trim++
+			}
+			if trim > 0 {
+				E.rows[y].s = E.rows[y].s[trim:]
+			}
+		}
+		updateSyntax(&E.rows[y])
+	}
+	E.mode = modeNormal
+	E.selSX, E.selSY = -1, -1
+}
+
+func findChar(c byte, direction int, till bool) bool {
+	E.lastSearchChar = c
+	E.lastSearchDir = direction
+	E.lastSearchTill = till
+	if len(E.rows) == 0 {
+		return false
+	}
+	start := E.cx
+	if direction > 0 {
+		start++
+	} else {
+		start--
+	}
+	if direction > 0 {
+		for y := E.cy; y < len(E.rows); y++ {
+			line := E.rows[y].s
+			x := 0
+			if y == E.cy {
+				x = start
+			}
+			for ; x < len(line); x++ {
+				if line[x] == c {
+					if till {
+						x--
+						if x < 0 {
+							x = 0
+						}
+					}
+					E.cy, E.cx, E.preferred = y, x, x
+					return true
+				}
+			}
+		}
+	} else {
+		for y := E.cy; y >= 0; y-- {
+			line := E.rows[y].s
+			x := len(line) - 1
+			if y == E.cy {
+				x = start
+			}
+			if x >= len(line) {
+				x = len(line) - 1
+			}
+			for ; x >= 0; x-- {
+				if line[x] == c {
+					if till {
+						x++
+						if x >= len(line) {
+							x = len(line) - 1
+						}
+					}
+					E.cy, E.cx, E.preferred = y, x, x
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func repeatCharSearch(reverse bool) {
+	if E.lastSearchChar == 0 || E.lastSearchDir == 0 {
+		return
+	}
+	dir := E.lastSearchDir
+	if reverse {
+		dir *= -1
+	}
+	_ = findChar(E.lastSearchChar, dir, E.lastSearchTill)
+}
+
+func selectAll() {
+	E.mode = modeVisual
+	E.selSY, E.selSX = 0, 0
+	if len(E.rows) == 0 {
+		E.cy, E.cx = 0, 0
+		return
+	}
+	E.cy = len(E.rows) - 1
+	E.cx = len(E.rows[E.cy].s)
+	E.preferred = E.cx
+}
+
+func incrementNumber(delta int) {
+	if E.cy < 0 || E.cy >= len(E.rows) {
+		return
+	}
+	line := E.rows[E.cy].s
+	i := E.cx
+	for i < len(line) && !(line[i] >= '0' && line[i] <= '9') {
+		if line[i] == '-' && i+1 < len(line) && line[i+1] >= '0' && line[i+1] <= '9' {
+			break
+		}
+		i++
+	}
+	if i >= len(line) {
+		return
+	}
+	j := i
+	if line[j] == '-' {
+		j++
+	}
+	for j < len(line) && line[j] >= '0' && line[j] <= '9' {
+		j++
+	}
+	n, err := strconv.Atoi(string(line[i:j]))
+	if err != nil {
+		return
+	}
+	n += delta
+	saveUndo()
+	repl := []byte(strconv.Itoa(n))
+	newLine := make([]byte, 0, len(line)-(j-i)+len(repl))
+	newLine = append(newLine, line[:i]...)
+	newLine = append(newLine, repl...)
+	newLine = append(newLine, line[j:]...)
+	E.rows[E.cy].s = newLine
+	E.cx = i + len(repl) - 1
+	if E.cx < 0 {
+		E.cx = 0
+	}
+	E.preferred = E.cx
+	updateSyntax(&E.rows[E.cy])
+	E.dirty = true
 }
 
 func yank(sx, sy, ex, ey int, isLine bool) {
@@ -1008,10 +1348,34 @@ func drawRows(b *bytes.Buffer) {
 	if textCols < 1 {
 		textCols = 1
 	}
+	welcome := []string{
+		"VIDERE v0.1.0",
+		"",
+		"videre is open source and freely distributable",
+		"https://github.com/euxaristia/videre",
+		"",
+		"type  :q<Enter>               to exit         ",
+		"type  :wq<Enter>              save and exit   ",
+		"",
+		"Maintainer: euxaristia",
+	}
 	for y := 0; y < E.screenRows; y++ {
 		fr := y + E.rowoff
 		if fr >= len(E.rows) {
-			b.WriteString("\x1b[2m~\x1b[m")
+			if len(E.rows) == 0 && y >= E.screenRows/3 && y < E.screenRows/3+len(welcome) {
+				b.WriteString("\x1b[2m~\x1b[m")
+				msg := welcome[y-E.screenRows/3]
+				if len(msg) > textCols {
+					msg = msg[:textCols]
+				}
+				padding := (textCols - len(msg)) / 2
+				for i := 0; i < padding; i++ {
+					b.WriteByte(' ')
+				}
+				b.WriteString(msg)
+			} else {
+				b.WriteString("\x1b[2m~\x1b[m")
+			}
 		} else {
 			if g > 0 {
 				fmt.Fprintf(b, "\x1b[2m%*d \x1b[m", g, fr+1)
@@ -1068,7 +1432,30 @@ func drawStatusBar(b *bytes.Buffer) {
 			pos = strconv.Itoa((E.rowoff*100)/max(1, len(E.rows)-E.screenRows)) + "%"
 		}
 	}
-	right := fmt.Sprintf(" %d,%d %s", E.cy+1, E.cx+1, pos)
+
+	// Match C vidare ruler format: "line,col-rx" padded before Top/Bot/All/%.
+	rx := 0
+	if E.cy >= 0 && E.cy < len(E.rows) {
+		row := E.rows[E.cy].s
+		for i := 0; i < E.cx && i < len(row); {
+			if row[i] == '\t' {
+				rx += 8 - (rx % 8)
+				i++
+				continue
+			}
+			_, n := utf8.DecodeRune(row[i:])
+			if n <= 0 {
+				n = 1
+			}
+			rx++
+			i += n
+		}
+	}
+	loc := "0,0-1"
+	if len(E.rows) > 0 {
+		loc = fmt.Sprintf("%d,%d-%d", E.cy+1, E.cx+1, rx+1)
+	}
+	right := fmt.Sprintf(" %-14s %s", loc, pos)
 	if len(left) > E.screenCols-len(right) {
 		left = left[:max(0, E.screenCols-len(right))]
 	}
@@ -1239,13 +1626,20 @@ func processKeypress() bool {
 		}
 	case 'u':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
-			// Keep parity scope tight: only undo for now.
-			doUndo()
+			changeCase(false)
 		} else {
 			doUndo()
 		}
 	case 18:
 		doRedo()
+	case 1:
+		incrementNumber(1)
+	case 24:
+		incrementNumber(-1)
+	case 'U':
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			changeCase(true)
+		}
 	case 'y':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
 			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
@@ -1265,9 +1659,9 @@ func processKeypress() bool {
 	case 'p':
 		paste()
 	case 3:
-		if E.dirty {
-			setStatus("WARNING!!! Unsaved changes. Press Ctrl-C again to quit.")
-			E.dirty = false
+		if E.dirty && E.quitWarnRemaining > 0 {
+			setStatus("WARNING!!! Unsaved changes. Press Ctrl-C %d more times to quit.", E.quitWarnRemaining)
+			E.quitWarnRemaining--
 			return true
 		}
 		disableRawMode()
@@ -1314,6 +1708,8 @@ func processKeypress() bool {
 		moveCursor(c)
 	case homeKey, '0':
 		moveLineStart()
+	case '^':
+		moveFirstNonWhitespace()
 	case endKey, '$':
 		moveLineEnd()
 	case pageUp, pageDown:
@@ -1337,6 +1733,10 @@ func processKeypress() bool {
 		moveWordBackward(false)
 	case 'B':
 		moveWordBackward(true)
+	case 'e':
+		moveWordEnd(false)
+	case 'E':
+		moveWordEnd(true)
 	case 'g':
 		if readKey() == 'g' {
 			moveFileStart()
@@ -1363,7 +1763,31 @@ func processKeypress() bool {
 			}
 		}
 	case '%':
-		// kept for compatibility placeholder
+		matchBracket()
+	case '{':
+		movePreviousParagraph()
+	case '}':
+		moveNextParagraph()
+	case '>':
+		indentSelection(true)
+	case '<':
+		indentSelection(false)
+	case 'f', 'F', 't', 'T':
+		n := readKey()
+		if n >= 32 && n < 127 {
+			dir := 1
+			if c == 'F' || c == 'T' {
+				dir = -1
+			}
+			till := c == 't' || c == 'T'
+			if findChar(byte(n), dir, till) {
+				setStatus("Found %c at %d,%d", n, E.cy+1, E.cx+1)
+			}
+		}
+	case ';':
+		repeatCharSearch(false)
+	case ',':
+		repeatCharSearch(true)
 	case 0x1b:
 		E.mode = modeNormal
 		E.selSX, E.selSY = -1, -1
@@ -1371,11 +1795,12 @@ func processKeypress() bool {
 	case '*':
 		selectWord()
 	}
+	E.quitWarnRemaining = 1
 	return true
 }
 
 func initEditor() {
-	E = editor{mode: modeNormal, selSX: -1, selSY: -1}
+	E = editor{mode: modeNormal, selSX: -1, selSY: -1, quitWarnRemaining: 1}
 	updateWindowSize()
 }
 
