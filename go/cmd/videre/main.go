@@ -241,7 +241,8 @@ func enableRawMode() {
 		return
 	}
 	E.raw = true
-	fmt.Print("\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[2J\x1b[H")
+	// Use a bar cursor while running to avoid block-cursor glyph occlusion artifacts.
+	fmt.Print("\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[6 q\x1b[2J\x1b[H")
 }
 
 func disableRawMode() {
@@ -249,7 +250,7 @@ func disableRawMode() {
 		return
 	}
 	_ = ioctlSetTermios(int(os.Stdin.Fd()), syscall.TCSETS, &E.termOrig)
-	fmt.Print("\x1b[?2004l\x1b[?1006l\x1b[?1003l\x1b[?1049l\x1b[?25h")
+	fmt.Print("\x1b[?2004l\x1b[?1006l\x1b[?1003l\x1b[0 q\x1b[?1049l\x1b[?25h")
 	E.raw = false
 }
 
