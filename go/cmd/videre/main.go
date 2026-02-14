@@ -2292,6 +2292,10 @@ func refreshScreen() {
 	if curCol < 1 {
 		curCol = 1
 	}
+	if len(E.statusmsg) > 0 && E.statusmsg[0] == ':' {
+		curRow = E.screenRows + 2
+		curCol = len(E.statusmsg) + 1
+	}
 	fmt.Fprintf(&screenBuf, "\x1b[%d;%dH", curRow, curCol)
 	screenBuf.WriteString("\x1b[?25h")
 	_, _ = os.Stdout.Write(screenBuf.Bytes())
