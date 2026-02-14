@@ -139,6 +139,7 @@ var resizePending int32
 var findLastMatch = -1
 var findDirection = 1
 var screenBuf bytes.Buffer
+var cursorNumBuf [32]byte
 
 var syntaxes = []syntax{
 	{filetype: "c", exts: []string{".c", ".h"}, kws: kwMap([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
@@ -168,6 +169,16 @@ func die(err error) {
 func setStatus(format string, args ...any) {
 	E.statusmsg = fmt.Sprintf(format, args...)
 	E.statusTime = time.Now()
+}
+
+func writeCursorPos(b *bytes.Buffer, row, col int) {
+	b.WriteString("\x1b[")
+	n := strconv.AppendInt(cursorNumBuf[:0], int64(row), 10)
+	b.Write(n)
+	b.WriteByte(';')
+	n = strconv.AppendInt(cursorNumBuf[:0], int64(col), 10)
+	b.Write(n)
+	b.WriteByte('H')
 }
 
 func ioErrText(err error) string {
@@ -2071,10 +2082,10 @@ func drawContextMenu(b *bytes.Buffer) {
 		y = 1
 	}
 	hline := contextMenuHLine
-	fmt.Fprintf(b, "\x1b[%d;%dH", y, x)
+	writeCursorPos(b, y, x)
 	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m┌" + hline + "┐")
 	for i, item := range menuItems {
-		fmt.Fprintf(b, "\x1b[%d;%dH", y+i+1, x)
+		writeCursorPos(b, y+i+1, x)
 		label := item
 		if i == 4 {
 			label = hline
@@ -2096,7 +2107,7 @@ func drawContextMenu(b *bytes.Buffer) {
 			b.WriteString("\x1b[38;5;239m│")
 		}
 	}
-	fmt.Fprintf(b, "\x1b[%d;%dH", y+len(menuItems)+1, x)
+	writeCursorPos(b, y+len(menuItems)+1, x)
 	b.WriteString("\x1b[48;5;235m\x1b[38;5;239m└" + hline + "┘\x1b[m")
 }
 
@@ -2438,7 +2449,7 @@ func refreshScreen() {
 		curRow = E.screenRows + 2
 		curCol = len(E.statusmsg) + 1
 	}
-	fmt.Fprintf(&screenBuf, "\x1b[%d;%dH", curRow, curCol)
+	writeCursorPos(&screenBuf, curRow, curCol)
 	screenBuf.WriteString("\x1b[?25h")
 	_, _ = os.Stdout.Write(screenBuf.Bytes())
 }
