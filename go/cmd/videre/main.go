@@ -2742,6 +2742,7 @@ func main() {
 	}
 	if len(args) >= 1 {
 		openFile(args[0])
+		E.filename = args[0]
 	}
 
 	refreshScreen()
