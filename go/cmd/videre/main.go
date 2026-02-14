@@ -2479,9 +2479,8 @@ func processKeypress() bool {
 				dir = -1
 			}
 			till := c == 't' || c == 'T'
-			if findChar(byte(n), dir, till) {
-				setStatus("Found %c at %d,%d", n, E.cy+1, E.cx+1)
-			}
+			_ = findChar(byte(n), dir, till)
+			setStatus("Found %c at %d,%d", n, E.cy+1, E.cx+1)
 		}
 	case ';':
 		repeatCharSearch()
