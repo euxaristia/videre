@@ -2392,8 +2392,8 @@ func handleMouse() bool {
 			for i := 0; i < 3; i++ {
 				if E.rowoff > 0 {
 					E.rowoff--
-					if E.cy > 0 {
-						E.cy--
+					if E.cy >= E.rowoff+E.screenRows {
+						E.cy = E.rowoff + E.screenRows - 1
 					}
 				}
 			}
@@ -2401,13 +2401,23 @@ func handleMouse() bool {
 			for i := 0; i < 3; i++ {
 				if E.rowoff+E.screenRows < len(E.rows) {
 					E.rowoff++
-					if E.cy < len(E.rows)-1 {
-						E.cy++
+					if E.cy < E.rowoff {
+						E.cy = E.rowoff
 					}
 				}
 			}
 		}
-		E.preferred = E.cx
+		if E.cy >= 0 && E.cy < len(E.rows) {
+			limit := len(E.rows[E.cy].s)
+			if E.mode != modeInsert && limit > 0 {
+				limit = utf8PrevBoundary(E.rows[E.cy].s, limit)
+			}
+			if E.preferred > limit {
+				E.cx = limit
+			} else {
+				E.cx = E.preferred
+			}
+		}
 		return true
 	}
 
