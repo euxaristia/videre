@@ -27,6 +27,9 @@ help.txt
 logs/fuzz_results_videre_10.json
 test_output.log
 videre
+!cmd/videre/
+!cmd/videre/*.go
+!cmd/videre/main_test.go
 *.o
 
 # Build artifacts

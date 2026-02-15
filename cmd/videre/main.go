@@ -66,6 +66,11 @@ const (
 	mouseDrag      = 32
 )
 
+const (
+	termEnterSeq = "\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[1 q\x1b[2J\x1b[H"
+	termLeaveSeq = "\x1b[?2004l\x1b[?1006l\x1b[?1003l\x1b[0 q\x1b[?1049l\x1b[?25h"
+)
+
 type row struct {
 	idx  int
 	s    []byte
@@ -264,7 +269,7 @@ func enableRawMode() {
 	}
 	E.raw = true
 	// Use blinking block cursor to match C implementation parity.
-	fmt.Print("\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[1 q\x1b[2J\x1b[H")
+	fmt.Print(termEnterSeq)
 }
 
 func disableRawMode() {
@@ -272,7 +277,7 @@ func disableRawMode() {
 		return
 	}
 	_ = ioctlSetTermios(int(os.Stdin.Fd()), syscall.TCSETS, &E.termOrig)
-	fmt.Print("\x1b[?2004l\x1b[?1006l\x1b[?1003l\x1b[0 q\x1b[?1049l\x1b[?25h")
+	fmt.Print(termLeaveSeq)
 	E.raw = false
 }
 
