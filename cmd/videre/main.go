@@ -2257,18 +2257,25 @@ func scroll() {
 	}
 }
 
-func byteIndexFromDisplayCol(s []byte, target int) int {
-	if target <= 0 {
+func byteIndexFromDisplayCol(s []byte, target int, colStart int) int {
+	if target <= colStart {
 		return 0
 	}
 	i := 0
-	col := 0
+	col := colStart
 	for i < len(s) {
 		r, n := utf8.DecodeRune(s[i:])
 		if n <= 0 {
 			n = 1
 		}
 		w := runeDisplayWidth(r)
+		if r == '\t' {
+			tabW := 8 - (col % 8)
+			if tabW == 0 {
+				tabW = 8
+			}
+			w = tabW
+		}
 		if col+w > target {
 			break
 		}
@@ -2281,21 +2288,28 @@ func byteIndexFromDisplayCol(s []byte, target int) int {
 	return i
 }
 
-func displayWidthBytes(s []byte) int {
-	col := 0
+func displayWidthBytes(s []byte, startCol int) int {
+	col := startCol
 	for i := 0; i < len(s); {
 		r, n := utf8.DecodeRune(s[i:])
 		if n <= 0 {
 			n = 1
 		}
 		w := runeDisplayWidth(r)
+		if r == '\t' {
+			if col%8 == 0 {
+				w = 8
+			} else {
+				w = 8 - (col % 8)
+			}
+		}
 		if w < 0 {
 			w = 1
 		}
 		col += w
 		i += n
 	}
-	return col
+	return col - startCol
 }
 
 func executeMenuAction(idx int) {
@@ -2435,11 +2449,12 @@ func handleMouse() bool {
 		if textX > 1 {
 			target = textX - 1
 		}
+		target += gcols
 		start := utf8SnapBoundary(E.rows[E.cy].s, E.coloff)
 		if start > len(E.rows[E.cy].s) {
 			start = len(E.rows[E.cy].s)
 		}
-		rel := byteIndexFromDisplayCol(E.rows[E.cy].s[start:], target)
+		rel := byteIndexFromDisplayCol(E.rows[E.cy].s[start:], target, gcols)
 		E.cx = start + rel
 		if E.mode != modeInsert && len(E.rows[E.cy].s) > 0 && E.cx >= len(E.rows[E.cy].s) {
 			E.cx = len(E.rows[E.cy].s) - 1
@@ -2501,6 +2516,10 @@ func refreshScreen() {
 	drawMessageBar(&screenBuf)
 	drawContextMenu(&screenBuf)
 	g := gutterWidth()
+	gcols := 0
+	if g > 0 {
+		gcols = g + 1
+	}
 	curRow := (E.cy - E.rowoff) + 1
 	if curRow < 1 {
 		curRow = 1
@@ -2519,7 +2538,7 @@ func refreshScreen() {
 		if end < start {
 			end = start
 		}
-		curCol += displayWidthBytes(line[start:end])
+		curCol += displayWidthBytes(line[start:end], gcols)
 	}
 	if curCol < 1 {
 		curCol = 1
