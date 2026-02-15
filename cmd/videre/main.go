@@ -128,6 +128,7 @@ type editor struct {
 	registers         [256]reg
 	undo              []undoState
 	redo              []undoState
+	countPrefix       int
 	syntax            *syntax
 	termOrig          syscall.Termios
 	raw               bool
@@ -262,8 +263,8 @@ func enableRawMode() {
 		return
 	}
 	E.raw = true
-	// Force steady block cursor for vi-like behavior and stable glyph rendering.
-	fmt.Print("\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[2 q\x1b[2J\x1b[H")
+	// Use blinking block cursor to match C implementation parity.
+	fmt.Print("\x1b[?1049h\x1b[?1003h\x1b[?1006h\x1b[?2004h\x1b[1 q\x1b[2J\x1b[H")
 }
 
 func disableRawMode() {
@@ -856,15 +857,15 @@ func doRedo() {
 	applyState(last)
 }
 
-func openFile(name string) {
+func openFile(name string) bool {
 	if !validateFilename(name) {
 		setStatus("Invalid filename or path")
-		return
+		return false
 	}
 	f, err := os.Open(name)
 	if err != nil {
 		setStatus("Can't open file: %s", ioErrText(err))
-		return
+		return false
 	}
 	defer f.Close()
 	E.rows = nil
@@ -892,6 +893,7 @@ func openFile(name string) {
 	E.dirty = false
 	selectSyntax()
 	updateGitStatus()
+	return true
 }
 
 func rowsToString() []byte {
@@ -1427,11 +1429,20 @@ func indentSelection(indent bool) {
 	E.selSX, E.selSY = -1, -1
 }
 
-func findChar(c byte, direction int, till bool) bool {
-	E.lastSearchChar = c
-	E.lastSearchDir = direction
-	E.lastSearchTill = till
+func findCharInternal(c byte, direction int, till bool, record bool) bool {
+	if record {
+		E.lastSearchChar = c
+		E.lastSearchDir = direction
+		E.lastSearchTill = till
+	}
 	if len(E.rows) == 0 {
+		return false
+	}
+	if E.cy < 0 || E.cy >= len(E.rows) {
+		return false
+	}
+	line := E.rows[E.cy].s
+	if len(line) == 0 {
 		return false
 	}
 	start := E.cx
@@ -1441,57 +1452,54 @@ func findChar(c byte, direction int, till bool) bool {
 		start--
 	}
 	if direction > 0 {
-		for y := E.cy; y < len(E.rows); y++ {
-			line := E.rows[y].s
-			x := 0
-			if y == E.cy {
-				x = start
-			}
-			for ; x < len(line); x++ {
-				if line[x] == c {
-					if till {
-						x--
-						if x < 0 {
-							x = 0
-						}
+		if start < 0 {
+			start = 0
+		}
+		for x := start; x < len(line); x++ {
+			if line[x] == c {
+				if till {
+					x--
+					if x < 0 {
+						x = 0
 					}
-					E.cy, E.cx, E.preferred = y, x, x
-					return true
 				}
+				E.cx, E.preferred = x, x
+				return true
 			}
 		}
 	} else {
-		for y := E.cy; y >= 0; y-- {
-			line := E.rows[y].s
-			x := len(line) - 1
-			if y == E.cy {
-				x = start
-			}
-			if x >= len(line) {
-				x = len(line) - 1
-			}
-			for ; x >= 0; x-- {
-				if line[x] == c {
-					if till {
-						x++
-						if x >= len(line) {
-							x = len(line) - 1
-						}
+		if start >= len(line) {
+			start = len(line) - 1
+		}
+		for x := start; x >= 0; x-- {
+			if line[x] == c {
+				if till {
+					x++
+					if x >= len(line) {
+						x = len(line) - 1
 					}
-					E.cy, E.cx, E.preferred = y, x, x
-					return true
 				}
+				E.cx, E.preferred = x, x
+				return true
 			}
 		}
 	}
 	return false
 }
 
-func repeatCharSearch() {
-	if E.lastSearchChar == 0 {
+func findChar(c byte, direction int, till bool) bool {
+	return findCharInternal(c, direction, till, true)
+}
+
+func repeatCharSearch(reverse bool) {
+	if E.lastSearchChar == 0 || E.lastSearchDir == 0 {
 		return
 	}
-	_ = findChar(E.lastSearchChar, 1, false)
+	dir := E.lastSearchDir
+	if reverse {
+		dir = -dir
+	}
+	_ = findCharInternal(E.lastSearchChar, dir, E.lastSearchTill, false)
 }
 
 func selectAll() {
@@ -2541,6 +2549,213 @@ func prompt(p string, cb func(string, int)) string {
 	}
 }
 
+func posBefore(ax, ay, bx, by int) bool {
+	if ay != by {
+		return ay < by
+	}
+	return ax < bx
+}
+
+func prevPos(x, y int) (int, int, bool) {
+	if len(E.rows) == 0 || y < 0 || y >= len(E.rows) {
+		return 0, 0, false
+	}
+	if x > 0 {
+		return utf8PrevBoundary(E.rows[y].s, x), y, true
+	}
+	if y == 0 {
+		return 0, 0, false
+	}
+	py := y - 1
+	if len(E.rows[py].s) == 0 {
+		return 0, py, true
+	}
+	return utf8PrevBoundary(E.rows[py].s, len(E.rows[py].s)), py, true
+}
+
+func moveToLine(n int) {
+	if len(E.rows) == 0 {
+		E.cy, E.cx, E.preferred = 0, 0, 0
+		return
+	}
+	if n < 1 {
+		n = 1
+	}
+	E.cy = min(n-1, len(E.rows)-1)
+	if E.cx > len(E.rows[E.cy].s) {
+		E.cx = len(E.rows[E.cy].s)
+	}
+	E.preferred = E.cx
+}
+
+func applyMotionKey(key int, count int) bool {
+	changed := false
+	for i := 0; i < count; i++ {
+		px, py := E.cx, E.cy
+		switch key {
+		case 'h':
+			moveLeftNoWrap()
+		case 'j':
+			moveCursor(arrowDown)
+		case 'k':
+			moveCursor(arrowUp)
+		case 'l':
+			moveRightNoWrap()
+		case arrowLeft, arrowRight, arrowUp, arrowDown:
+			moveCursor(key)
+		case '0':
+			moveLineStart()
+		case '^':
+			moveFirstNonWhitespace()
+		case '$':
+			moveLineEnd()
+		case 'w':
+			moveWordForward(false)
+		case 'W':
+			moveWordForward(true)
+		case 'b':
+			moveWordBackward(false)
+		case 'B':
+			moveWordBackward(true)
+		case 'e':
+			moveWordEnd(false)
+		case 'E':
+			moveWordEnd(true)
+		case '{':
+			movePreviousParagraph()
+		case '}':
+			moveNextParagraph()
+		default:
+			return changed
+		}
+		if E.cx != px || E.cy != py {
+			changed = true
+		}
+	}
+	return changed
+}
+
+func operatorExclusiveMotion(m int) bool {
+	switch m {
+	case 'w', 'W', 'b', 'B', '0', '^', '{', '}', 'h', 'j', 'k', 'l', 'g', 'G':
+		return true
+	}
+	return false
+}
+
+func handleOperator(op int, count int) bool {
+	if len(E.rows) == 0 {
+		if op == 'c' {
+			E.mode = modeInsert
+			setStatus("-- INSERT --")
+		}
+		return true
+	}
+	m := readKey()
+	if m == resizeEvent {
+		return true
+	}
+	if m == op {
+		sy := E.cy
+		ey := min(E.cy+count-1, len(E.rows)-1)
+		yank(0, sy, 0, ey, true)
+		if op != 'y' {
+			saveUndo()
+			for i := 0; i <= ey-sy; i++ {
+				delRow(sy)
+			}
+			if len(E.rows) == 0 {
+				insertRow(0, nil)
+			}
+			E.cy = min(sy, len(E.rows)-1)
+			E.cx, E.preferred = 0, 0
+		}
+		if op == 'c' {
+			E.mode = modeInsert
+			setStatus("-- INSERT --")
+		}
+		return true
+	}
+
+	startX, startY := E.cx, E.cy
+	usedMotion := m
+	switch m {
+	case 'g':
+		if readKey() != 'g' {
+			return true
+		}
+		moveFileStart()
+	case 'G':
+		if count > 1 {
+			moveToLine(count)
+		} else {
+			moveFileEnd()
+		}
+	case 'f', 'F', 't', 'T':
+		n := readKey()
+		if n < 32 || n > 255 || n == 127 {
+			return true
+		}
+		dir := 1
+		if m == 'F' || m == 'T' {
+			dir = -1
+		}
+		till := m == 't' || m == 'T'
+		for i := 0; i < count; i++ {
+			if !findChar(byte(n), dir, till) {
+				break
+			}
+		}
+	default:
+		if !applyMotionKey(m, count) {
+			return true
+		}
+	}
+
+	destX, destY := E.cx, E.cy
+	if destX == startX && destY == startY {
+		return true
+	}
+
+	var sx, sy, ex, ey int
+	if posBefore(startX, startY, destX, destY) {
+		sx, sy = startX, startY
+		if operatorExclusiveMotion(usedMotion) {
+			px, py, ok := prevPos(destX, destY)
+			if !ok {
+				return true
+			}
+			ex, ey = px, py
+		} else {
+			ex, ey = destX, destY
+		}
+	} else {
+		sx, sy = destX, destY
+		if operatorExclusiveMotion(usedMotion) {
+			px, py, ok := prevPos(startX, startY)
+			if !ok {
+				return true
+			}
+			ex, ey = px, py
+		} else {
+			ex, ey = startX, startY
+		}
+	}
+
+	if op == 'y' {
+		yank(sx, sy, ex, ey, false)
+		E.cx, E.cy, E.preferred = startX, startY, startX
+		return true
+	}
+	yank(sx, sy, ex, ey, false)
+	deleteRange(sx, sy, ex, ey)
+	if op == 'c' {
+		E.mode = modeInsert
+		setStatus("-- INSERT --")
+	}
+	return true
+}
+
 func processKeypress() bool {
 	c := readKey()
 	if c == -1 {
@@ -2579,6 +2794,11 @@ func processKeypress() bool {
 		switch c {
 		case '\r':
 			insertNewline()
+		case '\t':
+			insertChar(' ')
+			insertChar(' ')
+			insertChar(' ')
+			insertChar(' ')
 		case 0x1b:
 			E.mode = modeNormal
 			if E.cx > 0 {
@@ -2600,8 +2820,70 @@ func processKeypress() bool {
 		return true
 	}
 
+	if c >= '1' && c <= '9' {
+		E.countPrefix = E.countPrefix*10 + (c - '0')
+		return true
+	}
+	if c == '0' && E.countPrefix > 0 {
+		E.countPrefix *= 10
+		return true
+	}
+	count := E.countPrefix
+	if count <= 0 {
+		count = 1
+	}
+	usedCount := E.countPrefix > 0
+	E.countPrefix = 0
+
 	switch c {
 	case 'i':
+		E.mode = modeInsert
+		E.selSX, E.selSY = -1, -1
+		setStatus("-- INSERT --")
+	case 'a':
+		if E.cy >= 0 && E.cy < len(E.rows) && E.cx < len(E.rows[E.cy].s) {
+			E.cx = utf8NextBoundary(E.rows[E.cy].s, E.cx)
+			if E.cx > len(E.rows[E.cy].s) {
+				E.cx = len(E.rows[E.cy].s)
+			}
+		}
+		E.preferred = E.cx
+		E.mode = modeInsert
+		E.selSX, E.selSY = -1, -1
+		setStatus("-- INSERT --")
+	case 'I':
+		moveFirstNonWhitespace()
+		E.mode = modeInsert
+		E.selSX, E.selSY = -1, -1
+		setStatus("-- INSERT --")
+	case 'A':
+		moveLineEnd()
+		E.mode = modeInsert
+		E.selSX, E.selSY = -1, -1
+		setStatus("-- INSERT --")
+	case 'o':
+		if len(E.rows) == 0 {
+			insertRow(0, nil)
+			E.cy, E.cx = 0, 0
+		} else {
+			E.cy = min(E.cy, len(E.rows)-1)
+			E.cx = len(E.rows[E.cy].s)
+		}
+		insertNewline()
+		E.mode = modeInsert
+		E.selSX, E.selSY = -1, -1
+		setStatus("-- INSERT --")
+	case 'O':
+		if len(E.rows) == 0 {
+			insertRow(0, nil)
+			E.cy, E.cx = 0, 0
+		} else {
+			E.cy = min(E.cy, len(E.rows)-1)
+			E.cx = 0
+		}
+		insertNewline()
+		E.cy--
+		E.cx, E.preferred = 0, 0
 		E.mode = modeInsert
 		E.selSX, E.selSY = -1, -1
 		setStatus("-- INSERT --")
@@ -2625,14 +2907,18 @@ func processKeypress() bool {
 		if E.mode == modeVisual || E.mode == modeVisualLine {
 			changeCase(false)
 		} else {
-			doUndo()
+			for i := 0; i < count; i++ {
+				doUndo()
+			}
 		}
 	case 18:
-		doRedo()
+		for i := 0; i < count; i++ {
+			doRedo()
+		}
 	case 1:
-		incrementNumber(1)
+		incrementNumber(count)
 	case 24:
-		incrementNumber(-1)
+		incrementNumber(-count)
 	case 'U':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
 			changeCase(true)
@@ -2642,6 +2928,8 @@ func processKeypress() bool {
 			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
 			E.mode = modeNormal
 			E.selSX, E.selSY = -1, -1
+		} else {
+			return handleOperator(c, count)
 		}
 	case 'd', 'x':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
@@ -2650,11 +2938,30 @@ func processKeypress() bool {
 			E.mode = modeNormal
 			E.selSX, E.selSY = -1, -1
 		} else if c == 'x' {
-			moveCursor(arrowRight)
-			delChar()
+			for i := 0; i < count; i++ {
+				if E.cy < 0 || E.cy >= len(E.rows) || E.cx >= len(E.rows[E.cy].s) {
+					break
+				}
+				moveCursor(arrowRight)
+				delChar()
+			}
+		} else {
+			return handleOperator(c, count)
+		}
+	case 'c':
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			deleteRange(E.selSX, E.selSY, E.cx, E.cy)
+			E.mode = modeInsert
+			E.selSX, E.selSY = -1, -1
+			setStatus("-- INSERT --")
+		} else {
+			return handleOperator(c, count)
 		}
 	case 'p':
-		paste()
+		for i := 0; i < count; i++ {
+			paste()
+		}
 	case 3:
 		if E.dirty && E.quitWarnRemaining > 0 {
 			setStatus("WARNING!!! File has unsaved changes. Press Ctrl-C %d more times to quit.", E.quitWarnRemaining)
@@ -2664,25 +2971,66 @@ func processKeypress() bool {
 		disableRawMode()
 		os.Exit(0)
 	case ':':
-		cmd := prompt(":%s", nil)
-		switch cmd {
-		case "q":
+		rawCmd := prompt(":%s", nil)
+		cmd := strings.TrimSpace(rawCmd)
+		switch {
+		case cmd == "q":
 			if E.dirty {
 				setStatus("No write since last change (add ! to override)")
 			} else {
 				disableRawMode()
 				os.Exit(0)
 			}
-		case "q!":
+		case cmd == "q!" || cmd == "qa!":
 			disableRawMode()
 			os.Exit(0)
-		case "w":
+		case cmd == "w":
 			saveFile()
-		case "wq":
+		case cmd == "wq":
 			saveFile()
 			disableRawMode()
 			os.Exit(0)
+		case cmd == "h" || cmd == "help":
+			if E.dirty {
+				setStatus("No write since last change (add ! to override)")
+				break
+			}
+			if openFile("help.txt") {
+				E.cx, E.cy, E.preferred = 0, 0, 0
+				E.rowoff, E.coloff = 0, 0
+			}
+		case strings.HasPrefix(cmd, "e "):
+			if E.dirty {
+				setStatus("No write since last change (add ! to override)")
+				break
+			}
+			target := strings.TrimSpace(strings.TrimPrefix(cmd, "e"))
+			if target == "" {
+				setStatus("No file name")
+				break
+			}
+			if openFile(target) {
+				E.cx, E.cy, E.preferred = 0, 0, 0
+				E.rowoff, E.coloff = 0, 0
+			}
 		default:
+			if cmd != "" {
+				if n, err := strconv.Atoi(cmd); err == nil {
+					if n < 1 {
+						n = 1
+					}
+					if len(E.rows) == 0 {
+						E.cy, E.cx, E.preferred = 0, 0, 0
+						break
+					}
+					E.cy = min(n-1, len(E.rows)-1)
+					if E.cx > len(E.rows[E.cy].s) {
+						E.cx = len(E.rows[E.cy].s)
+					}
+					E.preferred = E.cx
+					break
+				}
+			}
 			if cmd != "" {
 				setStatus("Not an editor command: %s", cmd)
 			}
@@ -2690,19 +3038,23 @@ func processKeypress() bool {
 	case '/':
 		find()
 	case 'n':
-		findNext(1)
+		for i := 0; i < count; i++ {
+			findNext(1)
+		}
 	case 'N':
-		findNext(-1)
+		for i := 0; i < count; i++ {
+			findNext(-1)
+		}
 	case 'h':
-		moveLeftNoWrap()
+		_ = applyMotionKey('h', count)
 	case 'j':
-		moveCursor(arrowDown)
+		_ = applyMotionKey('j', count)
 	case 'k':
-		moveCursor(arrowUp)
+		_ = applyMotionKey('k', count)
 	case 'l':
-		moveRightNoWrap()
+		_ = applyMotionKey('l', count)
 	case arrowLeft, arrowRight, arrowUp, arrowDown:
-		moveCursor(c)
+		_ = applyMotionKey(c, count)
 	case homeKey:
 		E.cx = 0
 	case '0':
@@ -2732,23 +3084,31 @@ func processKeypress() bool {
 			}
 		}
 	case 'w':
-		moveWordForward(false)
+		_ = applyMotionKey('w', count)
 	case 'W':
-		moveWordForward(true)
+		_ = applyMotionKey('W', count)
 	case 'b':
-		moveWordBackward(false)
+		_ = applyMotionKey('b', count)
 	case 'B':
-		moveWordBackward(true)
+		_ = applyMotionKey('B', count)
 	case 'e':
-		moveWordEnd(false)
+		_ = applyMotionKey('e', count)
 	case 'E':
-		moveWordEnd(true)
+		_ = applyMotionKey('E', count)
 	case 'g':
 		if readKey() == 'g' {
-			moveFileStart()
+			if usedCount {
+				moveToLine(count)
+			} else {
+				moveFileStart()
+			}
 		}
 	case 'G':
-		moveFileEnd()
+		if usedCount {
+			moveToLine(count)
+		} else {
+			moveFileEnd()
+		}
 	case 'm':
 		m := readKey()
 		if m >= 'a' && m <= 'z' {
@@ -2776,9 +3136,9 @@ func processKeypress() bool {
 	case '%':
 		matchBracket()
 	case '{':
-		movePreviousParagraph()
+		_ = applyMotionKey('{', count)
 	case '}':
-		moveNextParagraph()
+		_ = applyMotionKey('}', count)
 	case '>':
 		indentSelection(true)
 	case '<':
@@ -2791,15 +3151,24 @@ func processKeypress() bool {
 				dir = -1
 			}
 			till := c == 't' || c == 'T'
-			if findChar(byte(n), dir, till) {
+			found := false
+			for i := 0; i < count; i++ {
+				if !findChar(byte(n), dir, till) {
+					break
+				}
+				found = true
+			}
+			if found {
 				setStatus("Found %c at %d,%d", n, E.cy+1, E.cx+1)
 			}
 		}
 	case ';':
-		repeatCharSearch()
+		for i := 0; i < count; i++ {
+			repeatCharSearch(false)
+		}
 	case ',':
-		if E.lastSearchChar != 0 {
-			_ = findChar(E.lastSearchChar, -1, false)
+		for i := 0; i < count; i++ {
+			repeatCharSearch(true)
 		}
 	case 0x1b:
 		E.mode = modeNormal
@@ -2852,8 +3221,7 @@ func main() {
 		args = args[1:]
 	}
 	if len(args) >= 1 {
-		openFile(args[0])
-		E.filename = args[0]
+		_ = openFile(args[0])
 	}
 
 	refreshScreen()

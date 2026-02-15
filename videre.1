@@ -6,7 +6,7 @@ videre \- a lightning-fast, lightweight vi text editor
 .RI [ file ]
 .SH DESCRIPTION
 .B videre
-is a modal text editor built in pure C, bringing the power of vi/Vim modal editing to the terminal with minimal dependencies and maximum performance.
+is a modal text editor built in pure Go, bringing the power of vi/Vim modal editing to the terminal with minimal dependencies and maximum performance.
 .PP
 It features true modal editing (Normal, Insert, Visual, and Command modes), classic vi keybindings with modern enhancements, efficient gap buffer text storage, rich motion and operator system, and a clean Neovim-inspired UI.
 .SH ARGUMENTS
@@ -100,6 +100,9 @@ Quit editor (fails if unsaved changes exist)
 .TP
 .B :q!
 Quit without saving
+.TP
+.B :qa!
+Quit without saving (alias of :q! in this build)
 .TP
 .B :wq
 Write and quit
