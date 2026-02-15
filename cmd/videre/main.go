@@ -142,13 +142,17 @@ type editor struct {
 var E editor
 var Version = "dev"
 
-const versionBanner = `  __     __           ____  U _____ u   ____    U _____ u 
- \ \   /"/u  ___    |  _"\ \| ___"|/U |  _"\ u \| ___"|/ 
-  \ \ / //  |_"_|  /| | | | |  _|"   \| |_) |/  |  _|"   
-  /\ V /_,-. | |   U| |_| |\| |___    |  _ <    | |___   
- U  \_/-(_/U/| |\u  |____/ u|_____|   |_| \_\   |_____|  
-   //   .-,_|___|_,-.|||_   <<   >>   //   \\_  <<   >>  
-  (__)   \_)-' '-(_/(__)_) (__) (__) (__)  (__)(__) (__)`
+const versionBanner = ` ┌──────────────────────────────────────────────────────────────┐
+ │                                                              │
+ │   __     __           ____  U _____ u   ____    U _____ u    │
+ │  \ \   /"/u  ___    |  _"\ \| ___"|/U |  _"\ u \| ___"|/     │
+ │   \ \ / //  |_"_|  /| | | | |  _|"   \| |_) |/  |  _|"       │
+ │   /\ V /_,-. | |   U| |_| |\| |___    |  _ <    | |___       │
+ │  U  \_/-(_/U/| |\u  |____/ u|_____|   |_| \_\   |_____|      │
+ │    //   .-,_|___|_,-.|||_   <<   >>   //   \\_  <<   >>      │
+ │   (__)   \_)-' '-(_/(__)_) (__) (__) (__)  (__)(__) (__)     │
+ │                                                              │
+ └──────────────────────────────────────────────────────────────┘`
 
 var resizePending int32
 var findLastMatch = -1
@@ -3215,7 +3219,12 @@ func main() {
 	for _, arg := range os.Args[1:] {
 		if arg == "--version" || arg == "-V" {
 			fmt.Println(versionBanner)
-			fmt.Printf("videre %s\n", Version)
+			versionStr := fmt.Sprintf("videre %s", Version)
+			padding := (64 - len(versionStr)) / 2
+			if padding < 0 {
+				padding = 0
+			}
+			fmt.Printf("%s%s\n", strings.Repeat(" ", padding), versionStr)
 			os.Exit(0)
 		}
 	}
