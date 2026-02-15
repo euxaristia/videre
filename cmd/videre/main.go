@@ -140,6 +140,7 @@ type editor struct {
 }
 
 var E editor
+var Version = "dev"
 var resizePending int32
 var findLastMatch = -1
 var findDirection = 1
@@ -3201,6 +3202,14 @@ func main() {
 	}()
 
 	initEditor()
+
+	for _, arg := range os.Args[1:] {
+		if arg == "--version" || arg == "-V" {
+			fmt.Println(Version)
+			os.Exit(0)
+		}
+	}
+
 	if _, err := ioctlGetTermios(int(os.Stdin.Fd()), syscall.TCGETS); err != nil {
 		fmt.Fprintln(os.Stderr, "videre-go requires a TTY on stdin")
 		os.Exit(1)
