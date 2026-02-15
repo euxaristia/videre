@@ -609,6 +609,29 @@ func bytesToStringNoAlloc(b []byte) string {
 	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
+func runeDisplayWidth(r rune) int {
+	// Control chars and combining marks are zero-width for cursor math.
+	if r < 0x20 || (r >= 0x7F && r < 0xA0) {
+		return 0
+	}
+	if (r >= 0x0300 && r <= 0x036F) || (r >= 0x1AB0 && r <= 0x1AFF) ||
+		(r >= 0x1DC0 && r <= 0x1DFF) || (r >= 0x20D0 && r <= 0x20FF) ||
+		(r >= 0xFE20 && r <= 0xFE2F) || r == 0x200D ||
+		(r >= 0xFE00 && r <= 0xFE0F) {
+		return 0
+	}
+	// Common wide ranges (CJK + emoji/pictographs).
+	if (r >= 0x1100 && r <= 0x115F) || (r >= 0x2329 && r <= 0x232A) ||
+		(r >= 0x2E80 && r <= 0xA4CF) || (r >= 0xAC00 && r <= 0xD7A3) ||
+		(r >= 0xF900 && r <= 0xFAFF) || (r >= 0xFE10 && r <= 0xFE19) ||
+		(r >= 0xFE30 && r <= 0xFE6F) || (r >= 0xFF00 && r <= 0xFF60) ||
+		(r >= 0xFFE0 && r <= 0xFFE6) || (r >= 0x1F300 && r <= 0x1FAFF) ||
+		(r >= 0x2600 && r <= 0x27BF) {
+		return 2
+	}
+	return 1
+}
+
 func updateSyntax(r *row) {
 	n := len(r.s)
 	if cap(r.hl) < len(r.s) {
@@ -1983,16 +2006,15 @@ func drawStatusBar(b *bytes.Buffer) {
 				i++
 				continue
 			}
-			if row[i] < utf8.RuneSelf {
-				rx++
-				i++
-				continue
-			}
-			_, n := utf8.DecodeRune(row[i:])
+			r, n := utf8.DecodeRune(row[i:])
 			if n <= 0 {
 				n = 1
 			}
-			rx++
+			w := runeDisplayWidth(r)
+			if w < 0 {
+				w = 1
+			}
+			rx += w
 			i += n
 		}
 	}
@@ -2201,31 +2223,18 @@ func byteIndexFromDisplayCol(s []byte, target int) int {
 	i := 0
 	col := 0
 	for i < len(s) {
-		if s[i] == '\t' {
-			step := 8 - (col % 8)
-			if col+step > target {
-				break
-			}
-			col += step
-			i++
-			continue
-		}
-		if s[i] < utf8.RuneSelf {
-			if col+1 > target {
-				break
-			}
-			col++
-			i++
-			continue
-		}
-		_, n := utf8.DecodeRune(s[i:])
+		r, n := utf8.DecodeRune(s[i:])
 		if n <= 0 {
 			n = 1
 		}
-		if col+1 > target {
+		w := runeDisplayWidth(r)
+		if col+w > target {
 			break
 		}
-		col++
+		if w < 0 {
+			w = 1
+		}
+		col += w
 		i += n
 	}
 	return i
@@ -2234,21 +2243,15 @@ func byteIndexFromDisplayCol(s []byte, target int) int {
 func displayWidthBytes(s []byte) int {
 	col := 0
 	for i := 0; i < len(s); {
-		if s[i] == '\t' {
-			col += 8 - (col % 8)
-			i++
-			continue
-		}
-		if s[i] < utf8.RuneSelf {
-			col++
-			i++
-			continue
-		}
-		_, n := utf8.DecodeRune(s[i:])
+		r, n := utf8.DecodeRune(s[i:])
 		if n <= 0 {
 			n = 1
 		}
-		col++
+		w := runeDisplayWidth(r)
+		if w < 0 {
+			w = 1
+		}
+		col += w
 		i += n
 	}
 	return col
