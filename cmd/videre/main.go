@@ -1918,15 +1918,12 @@ func drawRows(b *bytes.Buffer) {
 			}
 			hl := rowData.hl[start:]
 			visible := line[start:]
-			if len(visible) > textCols {
-				visible = visible[:textCols]
-				hl = hl[:textCols]
-			}
 			curColorSeq := ""
 			curSelected := false
 			curReverse := 0
 			rowInSelection := hasSelection && fr >= sy && fr <= ey
-			for i := 0; i < len(visible); i++ {
+			drawnCols := 0
+			for i := 0; i < len(visible) && drawnCols < textCols; i++ {
 				sel := false
 				if rowInSelection {
 					x := i + start
@@ -1992,7 +1989,24 @@ func drawRows(b *bytes.Buffer) {
 						curColorSeq = seq
 					}
 				}
+				if visible[i] == '\t' {
+					// Paint tabs as spaces so selection background is visible in indentation.
+					tabCols := 8 - ((gcols + drawnCols) % 8)
+					if tabCols <= 0 {
+						tabCols = 8
+					}
+					remaining := textCols - drawnCols
+					if tabCols > remaining {
+						tabCols = remaining
+					}
+					for s := 0; s < tabCols; s++ {
+						b.WriteByte(' ')
+					}
+					drawnCols += tabCols
+					continue
+				}
 				b.WriteByte(visible[i])
+				drawnCols++
 			}
 			b.WriteString("\x1b[27m\x1b[39m\x1b[49m")
 		}
