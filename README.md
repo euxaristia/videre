@@ -57,12 +57,21 @@ sudo make install
 sudo make uninstall
 ```
 
+## Benchmarking
+
+Performance is measured using Go's built-in benchmarking tool:
+
+```sh
+make benchmark
+```
+
+This tests core operations including file loading, text insertion, cursor movement, and screen rendering.
+
 ## Project Layout
 
 - `cmd/videre/main.go`: editor implementation and entrypoint
 - `videre.1`: man page
 - `help.txt`: in-editor help buffer content
-- `benchmark/`: benchmark harness and scenarios
 
 ## Notes
 

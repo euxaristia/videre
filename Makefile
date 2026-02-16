@@ -22,6 +22,9 @@ run:
 test:
 	GOCACHE=$(GOCACHE) $(GO) test -ldflags "$(LDFLAGS)" ./...
 
+benchmark:
+	GOCACHE=$(GOCACHE) $(GO) test -bench . -benchmem ./cmd/videre
+
 install: build
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)

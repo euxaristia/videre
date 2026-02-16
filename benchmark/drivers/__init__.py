@@ -1,1 +1,0 @@
-"""Editor drivers for benchmarking."""
