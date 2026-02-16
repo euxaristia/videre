@@ -1,10 +1,10 @@
 # Licensing & Derivative Work Analysis for Videre
 
 **Date:** February 8, 2026
-**Project:** Videre (C-based Text Editor)
+**Project:** Videre (Go-based Text Editor)
 
 ## Executive Summary
-**Videre is likely NOT a "derivative work" of classic vi or Neovim in the copyright sense.** It was originally a clean-room reimplementation in Swift, and has since been ported to C. The port follows the same visual and behavioral specification (the "look and feel" and keybindings) of vi/vim, without using the original source code.
+**Videre is likely NOT a "derivative work" of classic vi or Neovim in the copyright sense.** It was originally a clean-room reimplementation in Swift, then ported to C, and finally to Go. The port follows the same visual and behavioral specification (the "look and feel" and keybindings) of vi/vim, without using the original source code. It is licensed under the GPLv3.
 
 ## Detailed Analysis
 
@@ -20,9 +20,9 @@
 *   **Status:** Many editors (Evil mode in Emacs, VscodeVim, IdeaVim) reimplement these behaviors without legal issue.
 
 ### 3. Licensing Compatibility
-*   **Videre License:** MIT (Permissive).
+*   **Videre License:** GPLv3 (Copyleft).
 *   **Vim License:** Vim License (Charityware, GPL-compatible).
-*   **Implication:** Since Videre does not use Vim's code, you are not bound by the Vim License. You are free to license Videre under MIT, Apache, or any other license you choose.
+*   **Implication:** Since Videre does not use Vim's code, you are not bound by the Vim License. You are free to license Videre under GPLv3, which ensures the code remains free and open source.
 
 ## Recommendation
 You can safely state that Videre is a **"modal editor inspired by vi/vim"** rather than a derivative.

@@ -71,4 +71,4 @@ sudo make uninstall
 
 ## License
 
-MIT. See `LICENSE`.
+GPLv3. See `LICENSE`.

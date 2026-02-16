@@ -1,6 +1,6 @@
 # Videre Security Testing
 
-This document outlines the comprehensive security testing setup for videre to ensure the C version has no 0-days or RCE vulnerabilities.
+This document outlines the security testing setup for videre to ensure the Go version is secure and robust.
 
 ## Overview
 
@@ -80,32 +80,23 @@ make security-test
 
 ## Static Analysis
 
-### Cppcheck
+### Go Vet
 ```bash
-cppcheck --enable=all --std=c99 src/
+go vet ./...
 ```
 
-### Clang Static Analyzer
+### Staticcheck
 ```bash
-scan-build make clean && scan-build make
-```
-
-### Automated Static Analysis
-```bash
-make security-scan
+staticcheck ./...
 ```
 
 ## Memory Error Detection
 
-### Valgrind
-```bash
-make memcheck
-```
+Go's built-in race detector can be used to find data races:
 
-### AddressSanitizer & UndefinedBehaviorSanitizer
-The fuzzing and security tests are built with:
-- `-fsanitize=address` - Detects memory errors
-- `-fsanitize=undefined` - Detects undefined behavior
+```bash
+go test -race ./...
+```
 
 ## Continuous Integration
 
@@ -127,10 +118,11 @@ security:
 ## Vulnerability Classes Tested
 
 ### Memory Safety
-- **Buffer overflows** - Stack and heap
-- **Use-after-free** - Dangling pointers
-- **Double free** - Memory corruption
-- **Memory leaks** - Resource management
+Go is a memory-safe language, which automatically handles memory management and prevents common issues like:
+- **Buffer overflows** - Handled by runtime bounds checking
+- **Use-after-free** - Prevented by garbage collection
+- **Double free** - Prevented by garbage collection
+- **Memory leaks** - Managed by garbage collection
 
 ### Integer Safety
 - **Integer overflows** - Arithmetic operations

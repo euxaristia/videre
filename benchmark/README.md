@@ -259,4 +259,4 @@ Startup
 
 ## License
 
-Same as videre project.
+GPLv3. See main project `LICENSE`.
