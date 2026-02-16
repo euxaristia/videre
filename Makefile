@@ -23,7 +23,16 @@ test:
 	GOCACHE=$(GOCACHE) $(GO) test -ldflags "$(LDFLAGS)" ./...
 
 benchmark:
-	GOCACHE=$(GOCACHE) $(GO) test -bench . -benchmem ./cmd/videre
+	@GOCACHE=$(GOCACHE) $(GO) test -bench . -benchmem ./cmd/videre | awk ' \
+		BEGIN { \
+			printf "\033[1;34m%-45s | %10s | %15s | %15s | %10s\033[0m\n", "BENCHMARK", "ITERATIONS", "TIME", "MEMORY", "ALLOCS"; \
+			print "----------------------------------------------+------------+-----------------+-----------------+----------" \
+		} \
+		/^Benchmark/ { \
+			printf "%-45s | %10s | %11s %-3s | %11s %-3s | %10s\n", $$1, $$2, $$3, $$4, $$5, $$6, $$7; \
+			next \
+		} \
+		{ print }'
 
 install: build
 	install -d $(DESTDIR)$(BINDIR)

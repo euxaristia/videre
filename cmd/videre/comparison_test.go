@@ -12,23 +12,23 @@ func checkNvim(b *testing.B) {
 	}
 }
 
-func runComparison(b *testing.B, name string, testFunc func(b *testing.B, d EditorDriver)) {
+func runComparison(b *testing.B, testFunc func(b *testing.B, d EditorDriver)) {
 	b.Helper()
 	
-	b.Run(name+"/videre", func(b *testing.B) {
+	b.Run("VIDERE", func(b *testing.B) {
 		d := NewVidereDriver()
 		testFunc(b, d)
 	})
 
 	checkNvim(b)
-	b.Run(name+"/nvim", func(b *testing.B) {
+	b.Run("NVIM", func(b *testing.B) {
 		d := NewNvimDriver()
 		testFunc(b, d)
 	})
 }
 
 func BenchmarkCompareStartup(b *testing.B) {
-	runComparison(b, "Startup", func(b *testing.B, d EditorDriver) {
+	runComparison(b, func(b *testing.B, d EditorDriver) {
 		for i := 0; i < b.N; i++ {
 			_, err := d.Start("")
 			if err != nil {
@@ -40,7 +40,7 @@ func BenchmarkCompareStartup(b *testing.B) {
 }
 
 func BenchmarkCompareInsertion(b *testing.B) {
-	runComparison(b, "Insertion", func(b *testing.B, d EditorDriver) {
+	runComparison(b, func(b *testing.B, d EditorDriver) {
 		for i := 0; i < b.N; i++ {
 			_, err := d.Start("")
 			if err != nil {
@@ -68,7 +68,7 @@ func BenchmarkCompareMovement(b *testing.B) {
 	}
 	f.Close()
 
-	runComparison(b, "Movement", func(b *testing.B, d EditorDriver) {
+	runComparison(b, func(b *testing.B, d EditorDriver) {
 		for i := 0; i < b.N; i++ {
 			_, err := d.Start(f.Name())
 			if err != nil {

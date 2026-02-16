@@ -23,7 +23,7 @@ func generateBenchmarkFile(b *testing.B, lines int) string {
 	return path
 }
 
-func BenchmarkOpenFile(b *testing.B) {
+func BenchmarkVidereOpenFile(b *testing.B) {
 	cases := []struct {
 		name  string
 		lines int
@@ -43,7 +43,7 @@ func BenchmarkOpenFile(b *testing.B) {
 	}
 }
 
-func BenchmarkInsertChar(b *testing.B) {
+func BenchmarkVidereInsertChar(b *testing.B) {
 	seedEditor([]string{""}, 0, 0)
 	E.mode = modeInsert
 	b.ResetTimer()
@@ -56,7 +56,7 @@ func BenchmarkInsertChar(b *testing.B) {
 	}
 }
 
-func BenchmarkInsertNewline(b *testing.B) {
+func BenchmarkVidereInsertNewline(b *testing.B) {
 	seedEditor([]string{""}, 0, 0)
 	E.mode = modeInsert
 	b.ResetTimer()
@@ -69,7 +69,7 @@ func BenchmarkInsertNewline(b *testing.B) {
 	}
 }
 
-func BenchmarkMovement(b *testing.B) {
+func BenchmarkVidereMovement(b *testing.B) {
 	lines := make([]string, 1000)
 	for i := range lines {
 		lines[i] = "The quick brown fox jumps over the lazy dog."
@@ -113,7 +113,7 @@ func BenchmarkMovement(b *testing.B) {
 	})
 }
 
-func BenchmarkDrawRows(b *testing.B) {
+func BenchmarkVidereDrawRows(b *testing.B) {
 	lines := make([]string, 1000)
 	for i := range lines {
 		lines[i] = "func BenchmarkDrawRows(b *testing.B) { // Some comment"
@@ -132,7 +132,7 @@ func BenchmarkDrawRows(b *testing.B) {
 	}
 }
 
-func BenchmarkSaveFile(b *testing.B) {
+func BenchmarkVidereSaveFile(b *testing.B) {
 	lines := make([]string, 1000)
 	for i := range lines {
 		lines[i] = "The quick brown fox jumps over the lazy dog."
