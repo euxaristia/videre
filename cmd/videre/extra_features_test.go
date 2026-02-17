@@ -67,3 +67,23 @@ func TestIndentNormalMode(t *testing.T) {
 		t.Errorf("indent failed")
 	}
 }
+
+func TestShiftArrowMotions(t *testing.T) {
+	seedEditor([]string{"word1 word2", "", "word3"}, 0, 0)
+	
+	// Shift+Right should move to next word
+	applyMotionKey(shiftRight, 1)
+	if E.cx == 0 { // It should have moved to 'word2' (index 6)
+		// Note: exact index depends on moveWordForward implementation
+	}
+	if E.cx <= 0 {
+		t.Errorf("Shift+Right didn't move cursor, cx=%d", E.cx)
+	}
+
+	// Shift+Down should move to next paragraph
+	seedEditor([]string{"p1", "", "p2"}, 0, 0)
+	applyMotionKey(shiftDown, 1)
+	if E.cy != 2 {
+		t.Errorf("Shift+Down expected cy=2, got %d", E.cy)
+	}
+}

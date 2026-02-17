@@ -34,6 +34,10 @@ const (
 	endKey
 	pageUp
 	pageDown
+	shiftUp
+	shiftDown
+	shiftRight
+	shiftLeft
 	mouseEvent
 	pasteEvent
 	resizeEvent
@@ -527,6 +531,19 @@ func readKey() int {
 				return pageUp
 			case '6':
 				return pageDown
+			}
+		}
+		// ESC [ 1 ; 2 A  (Shift+Up)
+		if len(seqb) == 5 && seqb[0] == '1' && seqb[1] == ';' && seqb[2] == '2' {
+			switch seqb[4] {
+			case 'A':
+				return shiftUp
+			case 'B':
+				return shiftDown
+			case 'C':
+				return shiftRight
+			case 'D':
+				return shiftLeft
 			}
 		}
 		switch seqb[len(seqb)-1] {
@@ -2770,6 +2787,14 @@ func applyMotionKey(key int, count int) bool {
 			moveRightNoWrap()
 		case arrowLeft, arrowRight, arrowUp, arrowDown:
 			moveCursor(key)
+		case shiftUp:
+			movePreviousParagraph()
+		case shiftDown:
+			moveNextParagraph()
+		case shiftLeft:
+			moveWordBackward(false)
+		case shiftRight:
+			moveWordForward(false)
 		case '0':
 			moveLineStart()
 		case '^':
@@ -2979,6 +3004,14 @@ func processKeypress() bool {
 			delChar()
 		case arrowLeft, arrowRight, arrowUp, arrowDown:
 			moveCursor(c)
+		case shiftUp:
+			movePreviousParagraph()
+		case shiftDown:
+			moveNextParagraph()
+		case shiftLeft:
+			moveWordBackward(false)
+		case shiftRight:
+			moveWordForward(false)
 		default:
 			if c >= 32 && c <= 255 && c != 127 {
 				insertChar(byte(c))
@@ -3224,7 +3257,8 @@ func processKeypress() bool {
 		_ = applyMotionKey('k', count)
 	case 'l':
 		_ = applyMotionKey('l', count)
-	case arrowLeft, arrowRight, arrowUp, arrowDown:
+	case arrowLeft, arrowRight, arrowUp, arrowDown,
+		shiftLeft, shiftRight, shiftUp, shiftDown:
 		_ = applyMotionKey(c, count)
 	case homeKey:
 		E.cx = 0
