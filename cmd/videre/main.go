@@ -1285,9 +1285,25 @@ func moveWordEnd(big bool) {
 }
 
 func matchBracket() {
-	if E.cy < 0 || E.cy >= len(E.rows) || E.cx < 0 || E.cx >= len(E.rows[E.cy].s) {
+	if E.cy < 0 || E.cy >= len(E.rows) {
 		return
 	}
+
+	line := E.rows[E.cy].s
+	found := false
+	for x := E.cx; x < len(line); x++ {
+		ch := line[x]
+		if ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '{' || ch == '}' {
+			E.cx = x
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return
+	}
+
 	cur := E.rows[E.cy].s[E.cx]
 	var target byte
 	dir := 0
@@ -1310,9 +1326,9 @@ func matchBracket() {
 	depth := 1
 	ry, rx := E.cy, E.cx+dir
 	for ry >= 0 && ry < len(E.rows) {
-		line := E.rows[ry].s
-		for rx >= 0 && rx < len(line) {
-			ch := line[rx]
+		rowBytes := E.rows[ry].s
+		for rx >= 0 && rx < len(rowBytes) {
+			ch := rowBytes[rx]
 			if ch == cur {
 				depth++
 			} else if ch == target {
@@ -1417,6 +1433,7 @@ func changeCase(toUpper bool) {
 		}
 		updateSyntax(&E.rows[y])
 	}
+	E.dirty = true
 	E.mode = modeNormal
 	E.selSX, E.selSY = -1, -1
 }
@@ -1444,6 +1461,7 @@ func indentSelection(indent bool) {
 		}
 		updateSyntax(&E.rows[y])
 	}
+	E.dirty = true
 	E.mode = modeNormal
 	E.selSX, E.selSY = -1, -1
 }
@@ -2575,6 +2593,93 @@ func gutterWidth() int {
 	return w
 }
 
+func handleSubstitute(cmd string) {
+	allLines := false
+	sCmd := cmd
+	if strings.HasPrefix(cmd, "%") {
+		allLines = true
+		sCmd = cmd[1:]
+	}
+
+	if !strings.HasPrefix(sCmd, "s") {
+		return
+	}
+
+	rest := sCmd[1:]
+	if len(rest) < 3 {
+		setStatus("Invalid substitute command")
+		return
+	}
+
+	delimiter := rest[0]
+	var parts []string
+	var current strings.Builder
+	escaped := false
+	for i := 1; i < len(rest); i++ {
+		if escaped {
+			current.WriteByte(rest[i])
+			escaped = false
+		} else if rest[i] == '\\' {
+			escaped = true
+		} else if rest[i] == delimiter {
+			parts = append(parts, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(rest[i])
+		}
+	}
+	parts = append(parts, current.String())
+
+	if len(parts) < 2 {
+		setStatus("Invalid substitute command")
+		return
+	}
+
+	pattern := parts[0]
+	replacement := parts[1]
+	flags := ""
+	if len(parts) > 2 {
+		flags = parts[2]
+	}
+
+	global := strings.Contains(flags, "g")
+
+	startRow := 0
+	endRow := len(E.rows) - 1
+	if !allLines {
+		startRow = E.cy
+		endRow = E.cy
+	}
+
+	if startRow < 0 || startRow >= len(E.rows) {
+		return
+	}
+
+	saveUndo()
+	madeChanges := false
+	for y := startRow; y <= endRow; y++ {
+		line := string(E.rows[y].s)
+		var newLine string
+		if global {
+			newLine = strings.ReplaceAll(line, pattern, replacement)
+		} else {
+			newLine = strings.Replace(line, pattern, replacement, 1)
+		}
+
+		if newLine != line {
+			E.rows[y].s = []byte(newLine)
+			updateSyntax(&E.rows[y])
+			madeChanges = true
+		}
+	}
+	if madeChanges {
+		E.dirty = true
+		setStatus("Substitutions complete")
+	} else {
+		setStatus("Pattern not found")
+	}
+}
+
 func prompt(p string, cb func(string, int)) string {
 	buf := make([]byte, 0, 128)
 	for {
@@ -2985,6 +3090,15 @@ func processKeypress() bool {
 		if E.mode == modeVisual || E.mode == modeVisualLine {
 			changeCase(true)
 		}
+	case 'Z':
+		if m := readKey(); m == 'Z' {
+			saveFile()
+			disableRawMode()
+			os.Exit(0)
+		} else if m == 'Q' {
+			disableRawMode()
+			os.Exit(0)
+		}
 	case 'y':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
 			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
@@ -3075,21 +3189,16 @@ func processKeypress() bool {
 				E.cx, E.cy, E.preferred = 0, 0, 0
 				E.rowoff, E.coloff = 0, 0
 			}
+		case strings.HasPrefix(cmd, "s") || strings.HasPrefix(cmd, "%s"):
+			handleSubstitute(cmd)
 		default:
+			if cmd == "$" {
+				moveToLine(len(E.rows))
+				break
+			}
 			if cmd != "" {
 				if n, err := strconv.Atoi(cmd); err == nil {
-					if n < 1 {
-						n = 1
-					}
-					if len(E.rows) == 0 {
-						E.cy, E.cx, E.preferred = 0, 0, 0
-						break
-					}
-					E.cy = min(n-1, len(E.rows)-1)
-					if E.cx > len(E.rows[E.cy].s) {
-						E.cx = len(E.rows[E.cy].s)
-					}
-					E.preferred = E.cx
+					moveToLine(n)
 					break
 				}
 			}
@@ -3202,9 +3311,43 @@ func processKeypress() bool {
 	case '}':
 		_ = applyMotionKey('}', count)
 	case '>':
-		indentSelection(true)
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			indentSelection(true)
+		} else {
+			if readKey() == '>' {
+				saveUndo()
+				for i := 0; i < count; i++ {
+					y := E.cy + i
+					if y < len(E.rows) {
+						E.rows[y].s = append([]byte("    "), E.rows[y].s...)
+						updateSyntax(&E.rows[y])
+					}
+				}
+				E.dirty = true
+			}
+		}
 	case '<':
-		indentSelection(false)
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			indentSelection(false)
+		} else {
+			if readKey() == '<' {
+				saveUndo()
+				for i := 0; i < count; i++ {
+					y := E.cy + i
+					if y < len(E.rows) {
+						trim := 0
+						for trim < 4 && trim < len(E.rows[y].s) && E.rows[y].s[trim] == ' ' {
+							trim++
+						}
+						if trim > 0 {
+							E.rows[y].s = E.rows[y].s[trim:]
+							updateSyntax(&E.rows[y])
+						}
+					}
+				}
+				E.dirty = true
+			}
+		}
 	case 'f', 'F', 't', 'T':
 		n := readKey()
 		if n >= 32 && n <= 255 && n != 127 {

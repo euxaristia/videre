@@ -12,9 +12,8 @@ Based on analysis of the Swift implementation, here are the key features missing
 
 ### 2. Character Search Motions (f, F, t, T, ;, ,)
 **Swift Implementation:** `MotionEngine.swift` lines 414-483
-**Missing in C:** No character search support
+**Status:** ✅ Implemented in Go version
 **Impact:** High - essential for precise navigation
-**Porting Effort:** Medium - can be added to existing motion system
 
 ### 3. Advanced Word Motions (w, b, e, W, B, E)
 **Swift Implementation:** `MotionEngine.swift` lines 35-281
@@ -24,13 +23,12 @@ Based on analysis of the Swift implementation, here are the key features missing
 
 ### 4. Bracket Matching
 **Swift Implementation:** `MotionEngine.swift` lines 485-538
-**Missing in C:** No bracket matching
+**Status:** ✅ Implemented in Go version (including forward search)
 **Impact:** Medium - important for code navigation
-**Porting Effort:** Low - can be added to syntax highlighting
 
 ### 5. Advanced Operators (gu, gU, >, <)
 **Swift Implementation:** `OperatorEngine.swift`
-**Missing in C:** Only basic y/d/c operators
+**Status:** ⚠️ Partial - `>` and `<` implemented for lines and visual selection. `gu`/`gU` missing.
 **Impact:** Medium - useful for text manipulation
 **Porting Effort:** Medium - requires new operator system
 
@@ -38,9 +36,8 @@ Based on analysis of the Swift implementation, here are the key features missing
 
 ### 6. Search Highlighting
 **Swift Implementation:** Highlights all search matches
-**Missing in C:** Only highlights current match
+**Status:** ✅ Implemented in Go version
 **Impact:** Medium - better visual feedback
-**Porting Effort:** Medium - extend syntax highlighting
 
 ### 7. Enhanced Status Bar
 **Swift Features:** Git integration, file info, position indicator
@@ -125,8 +122,8 @@ Based on analysis of the Swift implementation, here are the key features missing
 
 ## 🎯 IMMEDIATE NEXT STEPS
 
-1. **Start with Character Search** - Highest ROI, can be added quickly
-2. **Add Advanced Word Motions** - Extend existing movement system
+1. **Add Advanced Word Motions** - (w, b, e, W, B, E) - Extend existing movement system
+2. **Implement named registers** - Beyond basic yank/paste
 3. **Plan Text Object Engine** - Design the architecture for this major feature
 
 This plan prioritizes the most impactful Vi features while considering the technical effort required for each implementation.
