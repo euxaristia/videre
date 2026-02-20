@@ -20,7 +20,8 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -96,8 +97,13 @@ type undoState struct {
 type syntax struct {
 	filetype string
 	exts     []string
-	kws      map[string]uint8
+	kws      []keyword
 	lineCmt  string
+}
+
+type keyword struct {
+	lit  []byte
+	kind uint8
 }
 
 type editor struct {
@@ -139,7 +145,7 @@ type editor struct {
 	redo              []undoState
 	countPrefix       int
 	syntax            *syntax
-	termOrig          syscall.Termios
+	termOrig          unix.Termios
 	raw               bool
 }
 
@@ -165,22 +171,23 @@ var screenBuf bytes.Buffer
 var cursorNumBuf [32]byte
 
 var syntaxes = []syntax{
-	{filetype: "c", exts: []string{".c", ".h"}, kws: kwMap([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
-	{filetype: "go", exts: []string{".go"}, kws: kwMap([]string{"package", "import", "func", "type", "struct", "interface", "if", "else", "for", "range", "return", "map|", "string|", "int|", "bool|", "error|"}), lineCmt: "//"},
-	{filetype: "rust", exts: []string{".rs"}, kws: kwMap([]string{"fn", "let", "mut", "if", "else", "match", "impl", "struct", "enum", "use", "pub", "String|", "Vec|"}), lineCmt: "//"},
-	{filetype: "python", exts: []string{".py"}, kws: kwMap([]string{"def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "None", "True", "False"}), lineCmt: "#"},
+	{filetype: "c", exts: []string{".c", ".h"}, kws: kwList([]string{"if", "else", "for", "while", "switch", "case", "return", "struct|", "int|", "char|", "void|"}), lineCmt: "//"},
+	{filetype: "go", exts: []string{".go"}, kws: kwList([]string{"package", "import", "func", "type", "struct", "interface", "if", "else", "for", "range", "return", "map|", "string|", "int|", "bool|", "error|"}), lineCmt: "//"},
+	{filetype: "rust", exts: []string{".rs"}, kws: kwList([]string{"fn", "let", "mut", "if", "else", "match", "impl", "struct", "enum", "use", "pub", "String|", "Vec|"}), lineCmt: "//"},
+	{filetype: "python", exts: []string{".py"}, kws: kwList([]string{"def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "None", "True", "False"}), lineCmt: "#"},
 }
 
-func kwMap(src []string) map[string]uint8 {
-	m := make(map[string]uint8, len(src))
+func kwList(src []string) []keyword {
+	out := make([]keyword, 0, len(src))
 	for _, kw := range src {
+		kind := hlKeyword1
 		if strings.HasSuffix(kw, "|") {
-			m[strings.TrimSuffix(kw, "|")] = hlKeyword2
-		} else {
-			m[kw] = hlKeyword1
+			kw = strings.TrimSuffix(kw, "|")
+			kind = hlKeyword2
 		}
+		out = append(out, keyword{lit: []byte(kw), kind: kind})
 	}
-	return m
+	return out
 }
 
 func die(err error) {
@@ -639,11 +646,13 @@ func isAlphaByte(c byte) bool {
 
 func isWordByte(c byte) bool { return isAlphaByte(c) || isDigitByte(c) || c == '_' }
 
-func bytesToStringNoAlloc(b []byte) string {
-	if len(b) == 0 {
-		return ""
+func keywordKind(kws []keyword, token []byte) (uint8, bool) {
+	for _, kw := range kws {
+		if len(kw.lit) == len(token) && bytes.Equal(kw.lit, token) {
+			return kw.kind, true
+		}
 	}
-	return unsafe.String(unsafe.SliceData(b), len(b))
+	return 0, false
 }
 
 func runeDisplayWidth(r rune) int {
@@ -740,8 +749,7 @@ func updateSyntax(r *row) {
 			for j < n && isWordByte(r.s[j]) {
 				j++
 			}
-			kw := bytesToStringNoAlloc(r.s[i:j])
-			if t, ok := E.syntax.kws[kw]; ok {
+			if t, ok := keywordKind(E.syntax.kws, r.s[i:j]); ok {
 				for k := i; k < j; k++ {
 					r.hl[k] = t
 				}
@@ -3499,35 +3507,16 @@ func max(a, b int) int {
 	return b
 }
 
-type winsize struct {
-	Row    uint16
-	Col    uint16
-	Xpixel uint16
-	Ypixel uint16
-}
+type winsize = unix.Winsize
 
 func ioctlGetWinsize(fd int, req uintptr) (*winsize, error) {
-	ws := &winsize{}
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(ws)))
-	if errno != 0 {
-		return nil, errno
-	}
-	return ws, nil
+	return unix.IoctlGetWinsize(fd, uint(req))
 }
 
-func ioctlGetTermios(fd int, req uintptr) (*syscall.Termios, error) {
-	t := &syscall.Termios{}
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(t)))
-	if errno != 0 {
-		return nil, errno
-	}
-	return t, nil
+func ioctlGetTermios(fd int, req uintptr) (*unix.Termios, error) {
+	return unix.IoctlGetTermios(fd, uint(req))
 }
 
-func ioctlSetTermios(fd int, req uintptr, t *syscall.Termios) error {
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(t)))
-	if errno != 0 {
-		return errno
-	}
-	return nil
+func ioctlSetTermios(fd int, req uintptr, t *unix.Termios) error {
+	return unix.IoctlSetTermios(fd, uint(req), t)
 }
