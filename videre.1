@@ -163,8 +163,8 @@ Handles operator-motion pairs (e.g., d3w) and executes them atomically.
 .SH PLATFORM SUPPORT
 .TP
 Supported:
-.IP "• macOS (Clang/make)"
-.IP "• Linux (GCC/Clang/make)"
+.IP "• macOS (Go toolchain)"
+.IP "• Linux (Go toolchain)"
 .TP
 Not Supported:
 .IP "• Windows (requires POSIX APIs not available on Windows)"
@@ -206,7 +206,7 @@ Your terminal may not support ANSI dim mode. Try a modern terminal: iTerm2, Alac
 .SH ENVIRONMENT
 .TP
 .B PATH
-videre should be in your PATH for easy access. The Makefile installs to ~/.local/bin by default.
+videre should be in your PATH for easy access. Use go install to place it in $GOBIN (or $GOPATH/bin).
 .SH FILES
 .TP
 .I file

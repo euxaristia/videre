@@ -24,13 +24,8 @@ The current codebase is a Go rewrite focused on parity with the original C behav
 ## Build
 
 ```sh
-make
-```
-
-or:
-
-```sh
-GOCACHE=/tmp/videre-go-cache go build -o videre ./cmd/videre
+COMMIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+go build -ldflags "-X main.Version=${COMMIT_SHA}" -o videre ./cmd/videre
 ```
 
 ## Run
@@ -42,19 +37,21 @@ GOCACHE=/tmp/videre-go-cache go build -o videre ./cmd/videre
 or:
 
 ```sh
-GOCACHE=/tmp/videre-go-cache go run ./cmd/videre -- path/to/file
+COMMIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+go run -ldflags "-X main.Version=${COMMIT_SHA}" ./cmd/videre -- path/to/file
 ```
 
 ## Install
 
 ```sh
-sudo make install
+COMMIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+go install -ldflags "-X main.Version=${COMMIT_SHA}" ./cmd/videre
 ```
 
 ## Uninstall
 
 ```sh
-sudo make uninstall
+rm -f "${GOBIN:-$(go env GOPATH)/bin}/videre"
 ```
 
 ## Benchmarking
@@ -62,7 +59,7 @@ sudo make uninstall
 Performance is measured using Go's built-in benchmarking tool:
 
 ```sh
-make benchmark
+go test -bench . -benchmem ./cmd/videre
 ```
 
 This tests core operations including file loading, text insertion, cursor movement, and screen rendering.

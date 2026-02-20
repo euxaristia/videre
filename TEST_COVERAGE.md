@@ -1,7 +1,7 @@
 # Test Coverage Report - Videre Go Version
 
 ## ✅ **Core Tests - PASSING**
-- **Unit Tests**: `make test` - All Go core tests pass
+- **Unit Tests**: `go test ./...` - All Go core tests pass
 - **Security Tests**: Security test suite runs successfully
 - **Test Coverage**: Comprehensive tests across multiple packages
 - **Mock Testing**: Proper mock implementations for headless testing
@@ -40,10 +40,9 @@
 ## 🧪 **Test Automation Status**
 
 ### **CI/CD Integration**
-- ✅ `make test` - Runs all unit tests automatically
-- ✅ `make security-test` - Runs security test suite
-- ✅ `make fuzz-build` - Builds fuzzing target
-- ✅ `make fuzz-setup` - Creates seed files automatically
+- ✅ `go test ./...` - Runs all unit tests automatically
+- ✅ `go test -race ./...` - Runs race detector checks
+- ✅ `go vet ./...` - Runs static analysis checks
 
 ### **Manual Testing**
 - ✅ Character search feature - Fully tested and working

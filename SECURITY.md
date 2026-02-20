@@ -14,24 +14,21 @@ The security testing suite includes:
 
 ```bash
 # Run all security tests
-make security-test
+go test ./...
 
-# Set up and run AFL fuzzing
-make fuzz-setup
-make fuzz-run
+# Run race detector checks
+go test -race ./...
 
 # Run static analysis
-make security-scan
-
-# Run memory error detection
-make memcheck
+go vet ./...
+staticcheck ./...
 ```
 
 ## AFL Fuzzing
 
 ### Setup
 ```bash
-make fuzz-setup
+mkdir -p fuzz/input fuzz/output
 ```
 This creates:
 - `fuzz/input/` - Seed files for fuzzing
@@ -41,19 +38,20 @@ This creates:
 ### Running Fuzzing
 ```bash
 # Single-core fuzzing
-make fuzz-run
+afl-fuzz -i fuzz/input -o fuzz/output -- ./fuzz/fuzz_target
 
 # Multi-core parallel fuzzing
-make fuzz-parallel
+afl-fuzz -i fuzz/input -o fuzz/output -M fuzzer01 -- ./fuzz/fuzz_target
+afl-fuzz -i fuzz/input -o fuzz/output -S fuzzer02 -- ./fuzz/fuzz_target
 ```
 
 ### Monitoring Progress
 ```bash
 # View fuzzing statistics
-make fuzz-analyze
-
-# Or manually
 afl-whatsup fuzz/output/
+
+# Inspect crashes
+ls -1 fuzz/output/default/crashes/
 ```
 
 ### Seed Files
@@ -75,7 +73,7 @@ The `tests/security_tests.c` includes tests for:
 
 ### Running Security Tests
 ```bash
-make security-test
+go test ./...
 ```
 
 ## Static Analysis
@@ -105,11 +103,10 @@ Add to your CI pipeline:
 ```yaml
 security:
   script:
-    - make security-test
-    - make fuzz-setup
-    - make fuzz-build
-    - make security-scan
-    - make memcheck
+    - go test ./...
+    - go test -race ./...
+    - go vet ./...
+    - staticcheck ./...
   artifacts:
     reports:
       junit: security-results.xml
