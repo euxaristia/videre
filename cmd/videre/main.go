@@ -232,7 +232,7 @@ func validateFilename(name string) bool {
 	if filepath.IsAbs(name) && len(name) > 4096 {
 		return false
 	}
-	const dangerous = "<>\"|&;$`'()[]{}*?~"
+	const dangerous = "<>\"|&;$`'()[]{}*?"
 	for i := 0; i < len(name); i++ {
 		if strings.ContainsRune(dangerous, rune(name[i])) {
 			return false
@@ -247,6 +247,20 @@ func validateFilename(name string) bool {
 		}
 	}
 	return true
+}
+
+func normalizeFilename(name string) (string, error) {
+	if name == "~" || strings.HasPrefix(name, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		if name == "~" {
+			return home, nil
+		}
+		return filepath.Join(home, name[2:]), nil
+	}
+	return name, nil
 }
 
 func setSearchPattern(p string) {
@@ -902,12 +916,26 @@ func doRedo() {
 }
 
 func openFile(name string) bool {
+	name, err := normalizeFilename(name)
+	if err != nil {
+		setStatus("Can't resolve path: %s", ioErrText(err))
+		return false
+	}
 	if !validateFilename(name) {
 		setStatus("Invalid filename or path")
 		return false
 	}
 	f, err := os.Open(name)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			E.rows = nil
+			E.filename = name
+			E.dirty = false
+			selectSyntax()
+			updateGitStatus()
+			setStatus("\"%s\" [New File]", E.filename)
+			return true
+		}
 		setStatus("Can't open file: %s", ioErrText(err))
 		return false
 	}
@@ -956,7 +984,12 @@ func saveFile() {
 			setStatus("Save aborted")
 			return
 		}
-		E.filename = name
+		normalized, err := normalizeFilename(name)
+		if err != nil {
+			setStatus("Can't resolve path: %s", ioErrText(err))
+			return
+		}
+		E.filename = normalized
 		selectSyntax()
 	}
 	if !validateFilename(E.filename) {
@@ -3436,7 +3469,7 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			disableRawMode()
-			fmt.Fprintf(os.Stderr, "videre-go panic: %v\n", r)
+			fmt.Fprintf(os.Stderr, "videre panic: %v\n", r)
 			_, _ = os.Stderr.Write(debug.Stack())
 			os.Exit(2)
 		}
@@ -3458,11 +3491,11 @@ func main() {
 	}
 
 	if _, err := ioctlGetTermios(int(os.Stdin.Fd()), syscall.TCGETS); err != nil {
-		fmt.Fprintln(os.Stderr, "videre-go requires a TTY on stdin")
+		fmt.Fprintln(os.Stderr, "videre requires a TTY on stdin")
 		os.Exit(1)
 	}
 	if _, err := ioctlGetWinsize(int(os.Stdout.Fd()), syscall.TIOCGWINSZ); err != nil {
-		fmt.Fprintln(os.Stderr, "videre-go requires a TTY on stdout")
+		fmt.Fprintln(os.Stderr, "videre requires a TTY on stdout")
 		os.Exit(1)
 	}
 	enableRawMode()

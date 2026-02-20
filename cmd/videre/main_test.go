@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -77,17 +78,53 @@ func TestMoveToLineClamps(t *testing.T) {
 	}
 }
 
+func TestOpenFileMissingStartsNewBuffer(t *testing.T) {
+	seedEditor([]string{"keep"}, 1, 0)
+	E.filename = "existing.txt"
+	target := filepath.Join(t.TempDir(), "does-not-exist.txt")
+	ok := openFile(target)
+	if !ok {
+		t.Fatalf("openFile should succeed for missing file")
+	}
+	if len(E.rows) != 0 {
+		t.Fatalf("expected empty buffer for new file, got %d rows", len(E.rows))
+	}
+	if got, want := E.filename, target; got != want {
+		t.Fatalf("expected filename %q, got %q", want, got)
+	}
+	if E.dirty {
+		t.Fatalf("new file buffer should not start dirty")
+	}
+}
+
 func TestOpenFileFailureKeepsExistingBuffer(t *testing.T) {
 	seedEditor([]string{"keep"}, 1, 0)
 	E.filename = "existing.txt"
-	ok := openFile(filepath.Join(t.TempDir(), "does-not-exist.txt"))
+	notAFile := filepath.Join(t.TempDir(), "dir")
+	if err := os.Mkdir(notAFile, 0o755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	ok := openFile(notAFile)
 	if ok {
-		t.Fatalf("openFile should fail for missing file")
+		t.Fatalf("openFile should fail for invalid file path")
 	}
 	if len(E.rows) != 1 || string(E.rows[0].s) != "keep" {
 		t.Fatalf("buffer mutated on failed open")
 	}
 	if E.filename != "existing.txt" {
 		t.Fatalf("filename changed on failed open: %q", E.filename)
+	}
+}
+
+func TestOpenFileExpandsHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	target := filepath.Join(home, "expand-home.txt")
+	ok := openFile("~/expand-home.txt")
+	if !ok {
+		t.Fatalf("openFile should succeed for missing file under home")
+	}
+	if E.filename != target {
+		t.Fatalf("expected expanded path %q, got %q", target, E.filename)
 	}
 }

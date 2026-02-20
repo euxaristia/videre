@@ -1,4 +1,4 @@
-module videre-go
+module videre
 
 go 1.25
 
