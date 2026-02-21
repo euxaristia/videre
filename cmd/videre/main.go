@@ -234,6 +234,9 @@ func validateFilename(name string) bool {
 	}
 	const dangerous = "<>\"|&;$`'()[]{}*?"
 	for i := 0; i < len(name); i++ {
+		if name[i] < 0x20 || name[i] == 0x7f {
+			return false
+		}
 		if strings.ContainsRune(dangerous, rune(name[i])) {
 			return false
 		}
@@ -2081,7 +2084,7 @@ func drawRows(b *bytes.Buffer) {
 					drawnCols += tabCols
 					continue
 				}
-				b.WriteByte(visible[i])
+				b.WriteByte(safeTermByte(visible[i]))
 				drawnCols++
 			}
 			b.WriteString("\x1b[27m\x1b[39m\x1b[49m")
@@ -2102,6 +2105,7 @@ func drawStatusBar(b *bytes.Buffer) {
 	if E.gitStatus != "" {
 		left += " [" + E.gitStatus + "]"
 	}
+	left = safeTermString(left)
 	pos := "All"
 	if len(E.rows) > 0 {
 		if E.rowoff == 0 {
@@ -2172,7 +2176,7 @@ func drawStatusBar(b *bytes.Buffer) {
 func drawMessageBar(b *bytes.Buffer) {
 	b.WriteString("\x1b[K")
 	if E.statusmsg != "" && time.Since(E.statusTime) < 5*time.Second {
-		msg := E.statusmsg
+		msg := safeTermString(E.statusmsg)
 		if len(msg) > E.screenCols {
 			msg = msg[:E.screenCols]
 		}
@@ -2386,6 +2390,25 @@ func displayWidthBytes(s []byte, startCol int) int {
 		i += n
 	}
 	return col - startCol
+}
+
+func safeTermByte(c byte) byte {
+	if c < 0x20 || c == 0x7f {
+		return '?'
+	}
+	return c
+}
+
+func safeTermString(s string) string {
+	if s == "" {
+		return s
+	}
+	b := []byte(s)
+	out := make([]byte, len(b))
+	for i := range b {
+		out[i] = safeTermByte(b[i])
+	}
+	return string(out)
 }
 
 func executeMenuAction(idx int) {

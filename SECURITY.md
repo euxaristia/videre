@@ -10,6 +10,13 @@ The security testing suite includes:
 - **Memory Error Detection** - Runtime memory safety checks
 - **Security Test Suite** - Targeted security tests
 
+## Threat Model Assumptions
+
+- Local host integrity is assumed (no active local compromise).
+- The runtime environment and `PATH` are treated as trusted.
+- External helper commands (`git`, `wl-copy`, `wl-paste`, `xclip`) are resolved via `PATH` by design.
+- If an attacker can replace binaries in trusted lookup paths, that is considered host compromise and out of scope for Videre hardening.
+
 ## Quick Start
 
 ```bash
