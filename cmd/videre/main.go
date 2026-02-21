@@ -1656,7 +1656,7 @@ func incrementNumber(delta int) {
 	E.dirty = true
 }
 
-func yank(sx, sy, ex, ey int, isLine bool) {
+func yoink(sx, sy, ex, ey int, isLine bool) {
 	if sy > ey || (sy == ey && sx > ex) {
 		sx, ex = ex, sx
 		sy, ey = ey, sy
@@ -2415,14 +2415,14 @@ func executeMenuAction(idx int) {
 	switch idx {
 	case 0: // Cut
 		if E.mode == modeVisual || E.mode == modeVisualLine {
-			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			yoink(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
 			deleteRange(E.selSX, E.selSY, E.cx, E.cy)
 			E.mode = modeNormal
 			E.selSX, E.selSY = -1, -1
 		}
 	case 1: // Copy
 		if E.mode == modeVisual || E.mode == modeVisualLine {
-			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			yoink(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
 			E.mode = modeNormal
 			E.selSX, E.selSY = -1, -1
 		}
@@ -2914,7 +2914,7 @@ func handleOperator(op int, count int) bool {
 	if m == op {
 		sy := E.cy
 		ey := min(E.cy+count-1, len(E.rows)-1)
-		yank(0, sy, 0, ey, true)
+		yoink(0, sy, 0, ey, true)
 		if op != 'y' {
 			saveUndo()
 			for i := 0; i <= ey-sy; i++ {
@@ -2999,11 +2999,11 @@ func handleOperator(op int, count int) bool {
 	}
 
 	if op == 'y' {
-		yank(sx, sy, ex, ey, false)
+		yoink(sx, sy, ex, ey, false)
 		E.cx, E.cy, E.preferred = startX, startY, startX
 		return true
 	}
-	yank(sx, sy, ex, ey, false)
+	yoink(sx, sy, ex, ey, false)
 	deleteRange(sx, sy, ex, ey)
 	if op == 'c' {
 		E.mode = modeInsert
@@ -3198,7 +3198,7 @@ func processKeypress() bool {
 		}
 	case 'y':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
-			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			yoink(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
 			E.mode = modeNormal
 			E.selSX, E.selSY = -1, -1
 		} else {
@@ -3206,7 +3206,7 @@ func processKeypress() bool {
 		}
 	case 'd', 'x':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
-			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			yoink(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
 			deleteRange(E.selSX, E.selSY, E.cx, E.cy)
 			E.mode = modeNormal
 			E.selSX, E.selSY = -1, -1
@@ -3223,7 +3223,7 @@ func processKeypress() bool {
 		}
 	case 'c':
 		if E.mode == modeVisual || E.mode == modeVisualLine {
-			yank(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			yoink(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
 			deleteRange(E.selSX, E.selSY, E.cx, E.cy)
 			E.mode = modeInsert
 			E.selSX, E.selSY = -1, -1

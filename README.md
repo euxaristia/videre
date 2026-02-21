@@ -10,7 +10,7 @@ The current codebase is a Go rewrite focused on parity with the original C behav
 - Modal editing that stays close to muscle memory
 - Tight terminal feedback with a low-friction UI
 - Single-binary workflow with simple build/run/install paths
-- Practical feature set: motions, visual selections, search, marks, yanks, paste, and command mode
+- Practical feature set: motions, visual selections, search, marks, yoinks, paste, and command mode
 
 ## Features
 

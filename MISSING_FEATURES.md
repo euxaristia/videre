@@ -67,7 +67,7 @@ Based on analysis of the Swift implementation, here are the key features missing
 
 ### 11. Register System
 **Swift Implementation:** Comprehensive register support
-**Missing in C:** Basic y/p only
+**Missing in C:** Basic yoink/p only
 **Impact:** Low - advanced editing feature
 **Porting Effort:** High - requires register system
 
@@ -123,7 +123,7 @@ Based on analysis of the Swift implementation, here are the key features missing
 ## 🎯 IMMEDIATE NEXT STEPS
 
 1. **Add Advanced Word Motions** - (w, b, e, W, B, E) - Extend existing movement system
-2. **Implement named registers** - Beyond basic yank/paste
+2. **Implement named registers** - Beyond basic yoink/paste
 3. **Plan Text Object Engine** - Design the architecture for this major feature
 
 This plan prioritizes the most impactful Vi features while considering the technical effort required for each implementation.

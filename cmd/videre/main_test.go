@@ -128,3 +128,18 @@ func TestOpenFileExpandsHome(t *testing.T) {
 		t.Fatalf("expected expanded path %q, got %q", target, E.filename)
 	}
 }
+
+func TestYoink(t *testing.T) {
+	seedEditor([]string{"hello", "world"}, 0, 0)
+	yoink(0, 0, 4, 0, false) // yoink "hello"
+	got := string(E.registers['"'].s)
+	if got != "hello" {
+		t.Fatalf("expected 'hello', got %q", got)
+	}
+
+	yoink(0, 0, 0, 1, true) // yoink both lines
+	got = string(E.registers['"'].s)
+	if got != "hello\nworld\n" {
+		t.Fatalf("expected 'hello\\nworld\\n', got %q", got)
+	}
+}
