@@ -51,7 +51,9 @@ func BenchmarkCompareInsertion(b *testing.B) {
 				_ = d.SendKeys("hello ", 0)
 			}
 			_ = d.SendKeys("<ESC>", 0)
-			_, _ = d.Quit(true)
+			if _, err := d.Quit(true); err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }
@@ -77,7 +79,9 @@ func BenchmarkCompareMovement(b *testing.B) {
 			for j := 0; j < 10; j++ {
 				_ = d.SendKeys("jjjkkkwwbbe", 0)
 			}
-			_, _ = d.Quit(true)
+			if _, err := d.Quit(true); err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }

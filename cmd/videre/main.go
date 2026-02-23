@@ -39,6 +39,7 @@ const (
 	shiftDown
 	shiftRight
 	shiftLeft
+	ctrlShiftC
 	mouseEvent
 	pasteEvent
 	resizeEvent
@@ -323,7 +324,18 @@ func disableRawMode() {
 	E.raw = false
 }
 
+var inputBuffer []byte
+
+func unreadByte(b byte) {
+	inputBuffer = append(inputBuffer, b)
+}
+
 func readByte(fd int) (byte, error) {
+	if len(inputBuffer) > 0 {
+		b := inputBuffer[0]
+		inputBuffer = inputBuffer[1:]
+		return b, nil
+	}
 	var b [1]byte
 	for {
 		if atomic.SwapInt32(&resizePending, 0) != 0 {
@@ -351,6 +363,11 @@ func readByte(fd int) (byte, error) {
 }
 
 func readByteTimeout(fd int, maxPolls int) (byte, bool, error) {
+	if len(inputBuffer) > 0 {
+		b := inputBuffer[0]
+		inputBuffer = inputBuffer[1:]
+		return b, true, nil
+	}
 	var b [1]byte
 	polls := 0
 	for polls < maxPolls {
@@ -428,9 +445,20 @@ func parseSGRMouse(seq []byte) (mb, mx, my int, ok bool) {
 	return mb, mx, my, true
 }
 
+func logDebug(format string, v ...interface{}) {
+	f, err := os.OpenFile("videre_debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		fmt.Fprintf(f, format+"\n", v...)
+		f.Close()
+	}
+}
+
 func readKey() int {
 	fd := int(os.Stdin.Fd())
 	first, err := readByte(fd)
+	if err == nil {
+		logDebug("readKey: read first byte: %q (%d)", first, first)
+	}
 	if err != nil {
 		if errors.Is(err, syscall.EINTR) {
 			return resizeEvent
@@ -441,11 +469,15 @@ func readKey() int {
 		return int(first)
 	}
 	if !inputReady(fd) {
+		logDebug("readKey: input not ready after ESC")
 		return 0x1b
 	}
 
 	// Keep plain ESC responsive (mode exit) while still allowing escape-sequence parsing.
 	b, ok, err := readByteTimeout(fd, 1)
+	if err == nil && ok {
+		logDebug("readKey: read second byte: %q (%d)", b, b)
+	}
 	if err != nil {
 		if errors.Is(err, syscall.EINTR) {
 			return resizeEvent
@@ -453,6 +485,7 @@ func readKey() int {
 		die(err)
 	}
 	if !ok {
+		logDebug("readKey: timeout after ESC")
 		return 0x1b
 	}
 
@@ -480,6 +513,7 @@ func readKey() int {
 			return 0x1b
 		}
 		seqb := seq[:seqLen]
+		logDebug("readKey: sequence: %q", seqb)
 		// Bracketed paste start: ESC [ 200 ~
 		if len(seqb) == 4 && seqb[0] == '2' && seqb[1] == '0' && seqb[2] == '0' && seqb[3] == '~' {
 			var paste bytes.Buffer
@@ -570,6 +604,10 @@ func readKey() int {
 				return shiftLeft
 			}
 		}
+		// ESC [ 99 ; 6 u  or  ESC [ 67 ; 6 u  (Ctrl+Shift+C in CSI u)
+		if len(seqb) == 5 && seqb[2] == ';' && seqb[3] == '6' && seqb[4] == 'u' && (string(seqb[:2]) == "99" || string(seqb[:2]) == "67") {
+			return ctrlShiftC
+		}
 		switch seqb[len(seqb)-1] {
 		case 'A':
 			return arrowUp
@@ -601,6 +639,7 @@ func readKey() int {
 			return endKey
 		}
 	}
+	unreadByte(b)
 	return 0x1b
 }
 
@@ -3235,6 +3274,13 @@ func processKeypress() bool {
 		for i := 0; i < count; i++ {
 			paste()
 		}
+	case ctrlShiftC:
+		if E.mode == modeVisual || E.mode == modeVisualLine {
+			yoink(E.selSX, E.selSY, E.cx, E.cy, E.mode == modeVisualLine)
+			E.mode = modeNormal
+			E.selSX, E.selSY = -1, -1
+		}
+		return true
 	case 3:
 		if E.dirty && E.quitWarnRemaining > 0 {
 			setStatus("WARNING!!! File has unsaved changes. Press Ctrl-C %d more times to quit.", E.quitWarnRemaining)
@@ -3246,6 +3292,7 @@ func processKeypress() bool {
 	case ':':
 		rawCmd := prompt(":%s", nil)
 		cmd := strings.TrimSpace(rawCmd)
+		logDebug("processKeypress: command: %q", cmd)
 		switch {
 		case cmd == "q":
 			if E.dirty {
