@@ -446,11 +446,6 @@ func parseSGRMouse(seq []byte) (mb, mx, my int, ok bool) {
 }
 
 func logDebug(format string, v ...interface{}) {
-	f, err := os.OpenFile("videre_debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err == nil {
-		fmt.Fprintf(f, format+"\n", v...)
-		f.Close()
-	}
 }
 
 func readKey() int {

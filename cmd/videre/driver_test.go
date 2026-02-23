@@ -48,15 +48,15 @@ func (d *BaseDriver) Start(filePath string) (time.Duration, error) {
 	d.Process = cmd.Process
 	d.StartTime = start
 
-	// Wait for editor to be ready by reading some output
 	ready := make(chan bool)
 	go func() {
-		buf := make([]byte, 1024)
+		buf := make([]byte, 8192)
+		firstRead := true
 		for {
-			n, err := d.PTY.Read(buf)
-			if n > 0 {
+			_, err := d.PTY.Read(buf)
+			if firstRead {
 				ready <- true
-				return
+				firstRead = false
 			}
 			if err != nil {
 				return
