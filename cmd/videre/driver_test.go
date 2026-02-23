@@ -207,3 +207,17 @@ func NewNvimDriver() *NvimDriver {
 		},
 	}
 }
+
+type VimDriver struct {
+	BaseDriver
+}
+
+func NewVimDriver() *VimDriver {
+	return &VimDriver{
+		BaseDriver: BaseDriver{
+			Name:    "vim",
+			CmdPath: "vim",
+			Args:    []string{"--noplugin", "-u", "NONE"},
+		},
+	}
+}

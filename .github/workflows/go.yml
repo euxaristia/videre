@@ -19,7 +19,7 @@ jobs:
         check-latest: true
 
     - name: Build
-      run: go build -ldflags "-X main.Version=${GITHUB_SHA::7}" -o videre ./cmd/videre
+      run: GOEXPERIMENT=greenteagc go build -ldflags="-s -w -X main.Version=${GITHUB_SHA::7}" -o videre ./cmd/videre
 
     - name: Test
-      run: go test -ldflags "-X main.Version=${GITHUB_SHA::7}" ./...
+      run: GOEXPERIMENT=greenteagc go test -v -ldflags "-X main.Version=${GITHUB_SHA::7}" ./...

@@ -23,9 +23,17 @@ The current codebase is a Go rewrite focused on parity with the original C behav
 
 ## Build
 
+For the fastest startup and runtime performance (using Green Tea GC and stripped symbols):
+
 ```sh
 COMMIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
-go build -ldflags "-X main.Version=${COMMIT_SHA}" -o videre ./cmd/videre
+GOEXPERIMENT=greenteagc go build -ldflags="-s -w -X main.Version=${COMMIT_SHA}" -o videre ./cmd/videre
+```
+
+For a standard development build:
+
+```sh
+go build -o videre ./cmd/videre
 ```
 
 ## Run

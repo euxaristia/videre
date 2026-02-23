@@ -25,6 +25,11 @@ func runComparison(b *testing.B, testFunc func(b *testing.B, d EditorDriver)) {
 		d := NewNvimDriver()
 		testFunc(b, d)
 	})
+
+	b.Run("VIM", func(b *testing.B) {
+		d := NewVimDriver()
+		testFunc(b, d)
+	})
 }
 
 func BenchmarkCompareStartup(b *testing.B) {
